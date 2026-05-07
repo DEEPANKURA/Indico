@@ -56,7 +56,8 @@ export default function AuthPage() {
         router.refresh();
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred during authentication.');
+      const msg = err?.message || err?.error_description || err?.msg || JSON.stringify(err);
+      setError(msg || 'An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }

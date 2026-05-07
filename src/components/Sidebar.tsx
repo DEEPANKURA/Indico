@@ -1,14 +1,20 @@
+'use client';
+
 import Link from 'next/link';
-import { Home, Compass, TrendingUp, MessageSquare, Users, Radio, Video, BarChart2, DollarSign, Bell, Settings } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Home, Compass, TrendingUp, MessageSquare, Users, Radio, Video, BarChart2, DollarSign, Bell, Settings, User } from 'lucide-react';
 
 export default function Sidebar() {
+  const pathname = usePathname();
+
   const navItems = [
-    { icon: Home, label: 'Home', href: '/', active: true },
+    { icon: Home, label: 'Home', href: '/' },
     { icon: Compass, label: 'Explore', href: '/explore' },
     { icon: TrendingUp, label: 'Trending', href: '/trending' },
     { icon: MessageSquare, label: 'Messages', href: '/messages', badge: 2 },
     { icon: Users, label: 'Communities', href: '/communities' },
     { icon: Radio, label: 'Live', href: '/live' },
+    { icon: User, label: 'Profile', href: '/profile' },
   ];
 
   const creatorTools = [
@@ -49,17 +55,19 @@ export default function Sidebar() {
           Creator-First
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {navItems.map((item, i) => (
+          {navItems.map((item, i) => {
+            const isActive = pathname === item.href;
+            return (
             <Link key={i} href={item.href} style={{
               display: 'flex', alignItems: 'center', gap: '16px',
               padding: '12px', borderRadius: '12px',
-              color: item.active ? 'white' : 'var(--text-secondary)',
-              background: item.active ? 'var(--bg-glass-hover)' : 'transparent',
+              color: isActive ? 'white' : 'var(--text-secondary)',
+              background: isActive ? 'var(--bg-glass-hover)' : 'transparent',
               transition: 'all var(--transition-fast)',
-              position: 'relative'
+              position: 'relative', textDecoration: 'none'
             }}>
-              <item.icon size={22} style={{ color: item.active ? 'var(--accent-secondary)' : 'inherit' }} />
-              <span style={{ fontWeight: item.active ? '600' : '500' }}>{item.label}</span>
+              <item.icon size={22} style={{ color: isActive ? 'var(--accent-secondary)' : 'inherit' }} />
+              <span style={{ fontWeight: isActive ? '600' : '500' }}>{item.label}</span>
               {item.badge && (
                 <span style={{
                   position: 'absolute', right: '12px',
@@ -71,7 +79,8 @@ export default function Sidebar() {
                 </span>
               )}
             </Link>
-          ))}
+            );
+          })}
         </div>
 
         <div style={{ margin: '32px 0 16px 0', borderTop: '1px solid var(--border-light)' }}></div>
