@@ -10,7 +10,7 @@ export default async function MonetizePage() {
   const { data: earnings } = await supabase
     .from('transactions')
     .select('amount, created_at, sender_id')
-    .eq('receiver_id', user.id)
+    .eq('recipient_id', user.id)
     .eq('status', 'completed')
     .order('created_at', { ascending: false });
 

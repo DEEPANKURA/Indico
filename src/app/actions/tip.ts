@@ -25,8 +25,9 @@ export async function tipCreatorAction(postId: string, creatorId: string, amount
     // Simple transaction record
     const { error } = await supabase.from('transactions').insert({
       sender_id: user.id,
-      receiver_id: creatorId,
+      recipient_id: creatorId,
       amount: amount,
+      type: 'tip',
       transaction_type: 'tip',
       status: 'completed'
     });

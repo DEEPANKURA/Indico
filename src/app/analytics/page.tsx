@@ -14,7 +14,7 @@ export default async function AnalyticsPage() {
     .order('created_at', { ascending: false });
 
   const { data: profile } = await supabase.from('profiles').select('followers_count, following_count').eq('id', user.id).single();
-  const { data: earnings } = await supabase.from('transactions').select('amount, created_at').eq('receiver_id', user.id).eq('status', 'completed');
+  const { data: earnings } = await supabase.from('transactions').select('amount, created_at').eq('recipient_id', user.id).eq('status', 'completed');
 
   const totalLikes = posts?.reduce((s, p) => s + (p.like_count || 0), 0) || 0;
   const totalComments = posts?.reduce((s, p) => s + (p.comment_count || 0), 0) || 0;

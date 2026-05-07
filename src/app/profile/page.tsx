@@ -26,7 +26,7 @@ export default async function ProfilePage() {
   const { data: earnings } = await supabase
     .from('transactions')
     .select('amount')
-    .eq('receiver_id', user.id)
+    .eq('recipient_id', user.id)
     .eq('status', 'completed');
 
   const totalEarnings = earnings?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;

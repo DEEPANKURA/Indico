@@ -125,11 +125,15 @@ export type Database = {
       posts: {
         Row: {
           ai_confidence_score: number | null
+          ai_safety_score: number | null
           author_id: string
+          comment_count: number | null
           content: string | null
           created_at: string
           engagement_score: number | null
           id: string
+          is_flagged: boolean | null
+          like_count: number | null
           media_urls: string[] | null
           moderation_status:
             | Database["public"]["Enums"]["moderation_status"]
@@ -138,11 +142,15 @@ export type Database = {
         }
         Insert: {
           ai_confidence_score?: number | null
+          ai_safety_score?: number | null
           author_id: string
+          comment_count?: number | null
           content?: string | null
           created_at?: string
           engagement_score?: number | null
           id?: string
+          is_flagged?: boolean | null
+          like_count?: number | null
           media_urls?: string[] | null
           moderation_status?:
             | Database["public"]["Enums"]["moderation_status"]
@@ -151,11 +159,15 @@ export type Database = {
         }
         Update: {
           ai_confidence_score?: number | null
+          ai_safety_score?: number | null
           author_id?: string
+          comment_count?: number | null
           content?: string | null
           created_at?: string
           engagement_score?: number | null
           id?: string
+          is_flagged?: boolean | null
+          like_count?: number | null
           media_urls?: string[] | null
           moderation_status?:
             | Database["public"]["Enums"]["moderation_status"]
@@ -177,34 +189,46 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string
+          followers_count: number | null
+          following_count: number | null
           full_name: string | null
           id: string
           is_creator: boolean | null
           updated_at: string
           username: string
           wallet_balance: number | null
+          website: string | null
+          website_url: string | null
         }
         Insert: {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          followers_count?: number | null
+          following_count?: number | null
           full_name?: string | null
           id: string
           is_creator?: boolean | null
           updated_at?: string
           username: string
           wallet_balance?: number | null
+          website?: string | null
+          website_url?: string | null
         }
         Update: {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          followers_count?: number | null
+          following_count?: number | null
           full_name?: string | null
           id?: string
           is_creator?: boolean | null
           updated_at?: string
           username?: string
           wallet_balance?: number | null
+          website?: string | null
+          website_url?: string | null
         }
         Relationships: []
       }
