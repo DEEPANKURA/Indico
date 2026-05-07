@@ -1,43 +1,23 @@
 import PostCard from "@/components/PostCard";
+import CreatePost from "@/components/CreatePost";
 import { Sparkles, Info } from "lucide-react";
+import { createClient } from "@/utils/supabase/server";
 
-export default function Home() {
-  const dummyPosts = [
-    {
-      id: "1",
-      author: {
-        name: "DEEP ANKURA",
-        handle: "@deepankura",
-        avatar: "",
-        isNew: true,
-      },
-      content: "Just dropped a new guitar cover. Tell me what you think! Working on some new beats later today.",
-      mediaUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop",
-      mediaType: "video" as const,
-      likes: "12.4K",
-      comments: "342",
-      shares: "1.2K",
-      tags: ["indico", "viral", "music", "trending"],
-      timeAgo: "2h ago",
-    },
-    {
-      id: "2",
-      author: {
-        name: "CyberPunk Art",
-        handle: "@neon_dreams",
-        avatar: "",
-        isNew: false,
-      },
-      content: "Rendered this in Blender using the new AI node setup. The lighting is 100% raytraced.",
-      mediaUrl: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2564&auto=format&fit=crop",
-      mediaType: "image" as const,
-      likes: "8.9K",
-      comments: "156",
-      shares: "890",
-      tags: ["3dart", "blender", "cyberpunk", "aigenerated"],
-      timeAgo: "4h ago",
-    }
-  ];
+export default async function Home() {
+  const supabase = await createClient();
+  
+  const { data: posts, error } = await supabase
+    .from('posts')
+    .select(`
+      id,
+      content,
+      media_urls,
+      like_count,
+      comment_count,
+      created_at,
+      profiles:author_id ( id, username, full_name, avatar_url, is_creator )
+    `)
+    .order('created_at', { ascending: false });
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px' }}>
@@ -69,11 +49,39 @@ export default function Home() {
         </p>
       </div>
 
+      {/* Create Post */}
+      <CreatePost />
+
       {/* Feed */}
       <div className="feed-container">
-        {dummyPosts.map(post => (
-          <PostCard key={post.id} post={post} />
+        {posts?.map((post: any) => (
+          <PostCard 
+            key={post.id} 
+            post={{
+              id: post.id,
+              authorId: post.profiles?.id,
+              author: {
+                name: post.profiles?.full_name || 'Anonymous',
+                handle: `@${post.profiles?.username || 'unknown'}`,
+                avatar: post.profiles?.avatar_url || '',
+                isNew: post.profiles?.is_creator ? false : true,
+              },
+              content: post.content,
+              mediaUrl: post.media_urls?.[0] || undefined,
+              mediaType: post.media_urls?.[0]?.includes('mp4') ? 'video' : 'image',
+              likes: post.like_count?.toString() || "0",
+              comments: post.comment_count?.toString() || "0",
+              shares: "0",
+              tags: [],
+              timeAgo: new Date(post.created_at).toLocaleDateString()
+            }} 
+          />
         ))}
+        {(!posts || posts.length === 0) && (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+            No posts yet. Be the first to post!
+          </div>
+        )}
       </div>
     </div>
   );

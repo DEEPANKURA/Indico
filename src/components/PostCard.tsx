@@ -1,9 +1,14 @@
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Play } from 'lucide-react';
+'use client';
+
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Play, DollarSign, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { tipCreatorAction } from '@/app/actions/tip';
 import Image from 'next/image';
 
 interface PostCardProps {
   post: {
     id: string;
+    authorId?: string;
     author: {
       name: string;
       handle: string;
@@ -11,8 +16,8 @@ interface PostCardProps {
       isNew: boolean;
     };
     content: string;
-    mediaUrl: string;
-    mediaType: 'video' | 'image';
+    mediaUrl?: string;
+    mediaType?: 'video' | 'image';
     likes: string;
     comments: string;
     shares: string;
@@ -22,6 +27,25 @@ interface PostCardProps {
 }
 
 export default function PostCard({ post }: PostCardProps) {
+  const [isTipping, setIsTipping] = useState(false);
+  
+  const handleTip = async () => {
+    if (!post.authorId) return;
+    setIsTipping(true);
+    try {
+      const result = await tipCreatorAction(post.id, post.authorId, 5.00); // fixed tip amount for now
+      if (result.success) {
+        alert(`Successfully sent $5 to ${post.author.name}!`);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to send tip');
+    } finally {
+      setIsTipping(false);
+    }
+  };
+
   return (
     <article className="glass-card animate-fade-in" style={{ marginBottom: '24px', overflow: 'hidden' }}>
       <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -33,7 +57,7 @@ export default function PostCard({ post }: PostCardProps) {
             fontWeight: 'bold', fontSize: '1.2rem', color: 'white',
             border: '2px solid var(--bg-primary)', position: 'relative'
           }}>
-            {post.author.name[0]}
+            {post.author.name?.[0] || 'A'}
             {post.author.isNew && (
               <div style={{
                 position: 'absolute', bottom: '-4px', right: '-4px',
@@ -61,7 +85,7 @@ export default function PostCard({ post }: PostCardProps) {
       <div style={{ padding: '0 16px 12px 16px' }}>
         <p style={{ marginBottom: '12px', fontSize: '0.95rem', lineHeight: '1.6' }}>{post.content}</p>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-          {post.tags.map((tag, i) => (
+          {post.tags?.map((tag, i) => (
             <span key={i} className="text-gradient" style={{ fontWeight: '600', fontSize: '0.9rem' }}>#{tag}</span>
           ))}
         </div>
@@ -72,7 +96,7 @@ export default function PostCard({ post }: PostCardProps) {
           {/* Placeholder for video/image using a colored background pattern until next/image setup */}
           <div style={{ 
             position: 'absolute', inset: 0, 
-            background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8) 100%), url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
+            background: `linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8) 100%), url("${post.mediaUrl}")`,
             backgroundSize: 'cover', backgroundPosition: 'center'
           }} />
           
@@ -102,9 +126,22 @@ export default function PostCard({ post }: PostCardProps) {
             <Share2 size={22} /> <span className="text-sm font-semibold">{post.shares}</span>
           </button>
         </div>
-        <button style={{ color: 'var(--text-secondary)' }}>
-          <Bookmark size={22} />
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {post.authorId && (
+            <button 
+              onClick={handleTip} 
+              disabled={isTipping}
+              className="btn-primary" 
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '0.85rem' }}
+            >
+              {isTipping ? <Loader2 size={16} className="animate-spin" /> : <DollarSign size={16} />}
+              Tip $5
+            </button>
+          )}
+          <button style={{ color: 'var(--text-secondary)' }}>
+            <Bookmark size={22} />
+          </button>
+        </div>
       </div>
     </article>
   );
