@@ -34,6 +34,7 @@ export default function ExplorePage() {
       {/* Search */}
       <div style={{ marginBottom: '32px' }}>
         <input
+          suppressHydrationWarning
           type="text"
           placeholder="Search creators, topics, hashtags..."
           style={{
