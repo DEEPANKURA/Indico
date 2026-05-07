@@ -106,11 +106,15 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <div style={{ padding: '20px 24px', borderTop: '1px solid var(--border-light)' }}>
-        <button className="btn-primary w-full" style={{ display: 'flex', justifyContent: 'center', gap: '8px', alignItems: 'center' }}>
+      <div style={{ padding: '20px 24px', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <Link href="/upload" className="btn-primary w-full" style={{ display: 'flex', justifyContent: 'center', gap: '8px', alignItems: 'center', textDecoration: 'none', padding: '12px' }}>
           <Video size={18} />
           <span>Upload</span>
-        </button>
+        </Link>
+        <Link href="/settings" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', color: 'var(--text-secondary)', textDecoration: 'none', transition: 'all 0.15s' }}>
+          <Settings size={18} />
+          <span style={{ fontSize: '0.9rem', fontWeight: '500' }}>Settings</span>
+        </Link>
       </div>
     </aside>
   );
