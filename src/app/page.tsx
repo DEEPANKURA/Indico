@@ -3,6 +3,7 @@ import CreatePost from "@/components/CreatePost";
 import { Info } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import Link from "next/link";
+import Stories from "@/components/Stories";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -15,6 +16,9 @@ export default async function Home() {
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px' }}>
+      {/* Stories */}
+      <Stories />
+
       {/* Header / Feed Tabs */}
       <div className="glass-card feed-tabs" style={{ 
         display: 'flex', alignItems: 'center', gap: '8px', 
