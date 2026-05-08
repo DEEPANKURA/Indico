@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Lock, Globe, Loader2, Search } from 'lucide-react';
+import { Users, Lock, Globe, Loader2, Search, Plus, Sparkles, TrendingUp, ShieldCheck, MapPin } from 'lucide-react';
 import { getCommunitiesAction, joinCommunityAction } from '@/app/actions/communities';
 import CreateCommunityModal from '@/components/CreateCommunityModal';
+import { createClient } from '@/utils/supabase/client';
+import { useRouter } from 'next/navigation';
 
 export default function CommunitiesPage() {
   const [communities, setCommunities] = useState<any[]>([]);
@@ -11,17 +13,50 @@ export default function CommunitiesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
+  const [user, setUser] = useState<any>(null);
+  const [isLive, setIsLive] = useState(false);
+  
+  const supabase = createClient();
+  const router = useRouter();
 
   const fetchCommunities = async () => {
-    setLoading(true);
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    setUser(currentUser);
+    
     const res = await getCommunitiesAction();
-    if (res.success) setCommunities(res.communities || []);
+    if (res.success) {
+      setCommunities(res.communities || []);
+    }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchCommunities();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Real-time updates for communities
+    const suffix = Math.random().toString(36).substring(7);
+    const channel = supabase
+      .channel(`communities_live_${suffix}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'communities' }, () => {
+        setIsLive(true);
+        fetchCommunities();
+        setTimeout(() => setIsLive(false), 2000);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_members' }, () => {
+        setIsLive(true);
+        fetchCommunities();
+        setTimeout(() => setIsLive(false), 2000);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   const handleJoin = async (id: string) => {
     const res = await joinCommunityAction(id);
@@ -37,95 +72,186 @@ export default function CommunitiesPage() {
     return matchesFilter && matchesSearch;
   });
 
+  const categories = [
+    { name: 'All', icon: Users },
+    { name: 'Music', icon: Sparkles },
+    { name: 'Gaming', icon: TrendingUp },
+    { name: 'Art', icon: Sparkles },
+    { name: 'Tech', icon: ShieldCheck },
+    { name: 'Fitness', icon: MapPin }
+  ];
+
   return (
-    <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px', paddingBottom: '80px' }}>
+    <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px', paddingBottom: '100px' }}>
+      {/* Header section with live status */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ padding: '8px', borderRadius: '12px', background: 'var(--accent-primary)22' }}>
-            <Users size={28} style={{ color: 'var(--accent-primary)' }} />
+          <div style={{ 
+            padding: '10px', borderRadius: '16px', 
+            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+            boxShadow: '0 8px 16px -4px rgba(139,92,246,0.3)'
+          }}>
+            <Users size={24} color="white" />
           </div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>Communities</h1>
+          <div>
+            <h1 style={{ fontSize: '1.8rem', fontWeight: '800', margin: 0 }}>Communities</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: isLive ? '#10b981' : 'var(--text-secondary)' }}>
+              <span className={isLive ? "animate-pulse" : ""} style={{ width: '6px', height: '6px', borderRadius: '50%', background: isLive ? '#10b981' : '#6b7280' }} />
+              {isLive ? 'Live Updates Active' : 'Real-time Discovering'}
+            </div>
+          </div>
         </div>
         <button 
           onClick={() => setShowCreate(true)}
           className="btn-primary" 
-          style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '12px' }}
         >
-          + Create
+          <Plus size={18} /> Create
         </button>
       </div>
 
-      {/* Search Bar */}
+      {/* Search with modern glass effect */}
       <div style={{ position: 'relative', marginBottom: '24px' }}>
         <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
         <input 
           type="text" 
-          placeholder="Search communities..."
+          placeholder="Search for vibes, topics, or creators..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ 
-            width: '100%', padding: '14px 16px 14px 48px', borderRadius: '16px', 
+            width: '100%', padding: '16px 16px 16px 48px', borderRadius: '18px', 
             background: 'var(--bg-glass)', border: '1px solid var(--border-light)',
-            color: 'white', outline: 'none'
+            color: 'white', outline: 'none', fontSize: '1rem',
+            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
           }}
         />
       </div>
 
-      {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', overflowX: 'auto', paddingBottom: '8px' }} className="no-scrollbar">
-        {['All', 'Music', 'Gaming', 'Art', 'Tech', 'Fitness'].map((tab) => (
+      {/* Filter tabs with icons */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '32px', overflowX: 'auto', paddingBottom: '12px' }} className="no-scrollbar">
+        {categories.map((cat) => (
           <button 
-            key={tab} 
-            onClick={() => setFilter(tab)}
+            key={cat.name} 
+            onClick={() => setFilter(cat.name)}
             style={{
-              padding: '8px 20px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: '600',
-              background: filter === tab ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'var(--bg-glass)',
-              border: '1px solid var(--border-light)', color: 'white', cursor: 'pointer',
-              whiteSpace: 'nowrap', transition: 'all 0.2s'
+              padding: '10px 20px', borderRadius: '24px', fontSize: '0.85rem', fontWeight: '700',
+              background: filter === cat.name ? 'white' : 'var(--bg-glass)',
+              border: filter === cat.name ? '1px solid white' : '1px solid var(--border-light)', 
+              color: filter === cat.name ? 'black' : 'white', cursor: 'pointer',
+              whiteSpace: 'nowrap', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              display: 'flex', alignItems: 'center', gap: '8px',
+              boxShadow: filter === cat.name ? '0 4px 12px rgba(255,255,255,0.2)' : 'none'
             }}
           >
-            {tab}
+            <cat.icon size={14} />
+            {cat.name}
           </button>
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-            <Loader2 className="animate-spin" size={32} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
+            <Loader2 className="animate-spin" size={40} style={{ marginBottom: '16px', color: 'var(--accent-primary)' }} />
+            <span>Finding the best communities...</span>
           </div>
         ) : filteredCommunities.length > 0 ? (
-          filteredCommunities.map((comm) => (
-            <div key={comm.id} className="glass-card animate-fade-in" style={{ padding: '20px', borderRadius: '16px', borderLeft: `4px solid ${comm.color}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <h3 style={{ fontWeight: '700', fontSize: '1rem' }}>{comm.name}</h3>
-                    {comm.is_public
-                      ? <Globe size={14} style={{ color: 'var(--text-secondary)' }} />
-                      : <Lock size={14} style={{ color: 'var(--text-secondary)' }} />}
-                    <span style={{ fontSize: '0.75rem', background: `${comm.color}22`, color: comm.color, padding: '2px 8px', borderRadius: '10px', fontWeight: '600' }}>{comm.category}</span>
+          filteredCommunities.map((comm) => {
+            const isMember = comm.community_members?.some((m: any) => m.user_id === user?.id);
+            return (
+              <div key={comm.id} className="glass-card animate-fade-in" style={{ 
+                padding: '24px', borderRadius: '24px', position: 'relative', overflow: 'hidden',
+                borderLeft: `6px solid ${comm.color || 'var(--accent-primary)'}`,
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                cursor: 'pointer'
+              }} onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = `0 12px 24px -8px ${comm.color}44`;
+              }} onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}>
+                {/* Background glow based on community color */}
+                <div style={{ 
+                  position: 'absolute', top: '-20px', right: '-20px', width: '120px', height: '120px', 
+                  background: comm.color || 'var(--accent-primary)', opacity: 0.05, borderRadius: '50%', filter: 'blur(40px)' 
+                }} />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <h3 style={{ fontWeight: '800', fontSize: '1.2rem', margin: 0 }}>{comm.name}</h3>
+                      {comm.is_public ? <Globe size={14} style={{ color: '#10b981' }} /> : <Lock size={14} style={{ color: '#f59e0b' }} />}
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                      <span style={{ 
+                        fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em',
+                        background: `${comm.color}15` || 'rgba(139,92,246,0.1)', 
+                        color: comm.color || 'var(--accent-primary)', 
+                        padding: '4px 10px', borderRadius: '20px', fontWeight: '800' 
+                      }}>
+                        {comm.category}
+                      </span>
+                      {comm.member_count > 10 && (
+                        <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', padding: '4px 10px', borderRadius: '20px', fontWeight: '600' }}>
+                          🔥 Trending
+                        </span>
+                      )}
+                    </div>
+
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '20px', lineHeight: '1.6', maxWidth: '90%' }}>
+                      {comm.description || "A space for creators to connect and share their latest work."}
+                    </p>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+                        <Users size={16} /> {comm.member_count} members
+                      </div>
+                      <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--border-light)' }} />
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        Active {new Date(comm.updated_at).toLocaleDateString()}
+                      </div>
+                    </div>
                   </div>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '12px', lineHeight: '1.5' }}>{comm.description}</p>
-                  <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    <span>👥 {comm.member_count} members</span>
-                    <span>✨ Founded {new Date(comm.created_at).toLocaleDateString()}</span>
-                  </div>
+
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isMember) handleJoin(comm.id);
+                    }}
+                    className={isMember ? "btn-secondary" : "btn-primary"} 
+                    style={{ 
+                      marginLeft: '16px', padding: '10px 24px', flexShrink: 0, borderRadius: '14px',
+                      background: isMember ? 'rgba(255,255,255,0.05)' : (comm.color || 'var(--accent-primary)'),
+                      border: isMember ? '1px solid var(--border-light)' : 'none',
+                      color: isMember ? 'var(--text-secondary)' : 'white',
+                      fontWeight: '700', fontSize: '0.9rem'
+                    }}
+                    disabled={isMember}
+                  >
+                    {isMember ? 'Joined' : 'Join Community'}
+                  </button>
                 </div>
-                <button 
-                  onClick={() => handleJoin(comm.id)}
-                  className="btn-secondary" 
-                  style={{ marginLeft: '16px', padding: '8px 24px', flexShrink: 0, borderRadius: '12px' }}
-                >
-                  Join
-                </button>
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
-          <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)', background: 'var(--bg-glass)', borderRadius: '24px' }}>
-            <Users size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
-            <p>No communities found. Why not create one?</p>
+          <div style={{ 
+            textAlign: 'center', padding: '80px 40px', color: 'var(--text-secondary)', 
+            background: 'var(--bg-glass)', borderRadius: '32px', border: '1px dashed var(--border-light)' 
+          }}>
+            <div style={{ 
+              width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px'
+            }}>
+              <Search size={32} style={{ opacity: 0.3 }} />
+            </div>
+            <h3 style={{ color: 'white', marginBottom: '8px' }}>No communities found</h3>
+            <p style={{ maxWidth: '300px', margin: '0 auto 24px' }}>Try adjusting your filters or search terms to find what you're looking for.</p>
+            <button onClick={() => {setFilter('All'); setSearch('');}} style={{ background: 'none', border: 'none', color: 'var(--accent-secondary)', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}>
+              Clear all filters
+            </button>
           </div>
         )}
       </div>
