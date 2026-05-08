@@ -55,7 +55,25 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
       .eq('community_id', id)
       .order('created_at', { ascending: false });
 
-    setPosts(postData || []);
+    const mappedPosts = postData?.map(p => ({
+      ...p,
+      author: {
+        name: p.author?.username || 'Anonymous',
+        handle: `@${p.author?.username || 'anon'}`,
+        avatar: p.author?.avatar_url,
+        isNew: false
+      },
+      authorId: p.author_id,
+      likes: (p.like_count || 0).toLocaleString(),
+      comments: (p.comment_count || 0).toLocaleString(),
+      shares: '0',
+      tags: [],
+      timeAgo: new Date(p.created_at).toLocaleDateString(),
+      mediaUrl: p.media_urls?.[0],
+      mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image'
+    })) || [];
+
+    setPosts(mappedPosts);
     setLoading(false);
   };
 
