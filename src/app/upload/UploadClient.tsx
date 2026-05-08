@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, Image, Video, Film, X, Loader2, CheckCircle } from 'lucide-react';
-import { uploadMediaAction } from '@/app/actions/profile';
+import { createClient } from '@/utils/supabase/client';
 
 type UploadType = 'photo' | 'video' | 'reel';
 
@@ -15,9 +15,11 @@ export default function UploadClient() {
   const [preview, setPreview] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const supabase = createClient();
 
   const acceptMap = {
     photo: 'image/*',
@@ -41,18 +43,49 @@ export default function UploadClient() {
   const handleUpload = async () => {
     if (!file) return;
     setUploading(true);
+    setProgress(10);
     setError(null);
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('caption', caption);
-    fd.append('type', type);
-    const result = await uploadMediaAction(fd);
-    setUploading(false);
-    if (result.success) {
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('You must be logged in to upload');
+
+      // 1. Upload to Storage
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/${Date.now()}.${ext}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+      setProgress(60);
+
+      // 2. Get Public URL
+      const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(filePath);
+
+      // 3. Create Post Record
+      const { error: postError } = await supabase.from('posts').insert({
+        author_id: user.id,
+        content: caption,
+        media_urls: [publicUrl],
+        ai_safety_score: 100,
+        is_flagged: false,
+      });
+
+      if (postError) throw postError;
+
+      setProgress(100);
       setDone(true);
       setTimeout(() => router.push('/'), 2000);
-    } else {
-      setError(result.error || 'Upload failed');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -160,7 +193,7 @@ export default function UploadClient() {
           style={{
             width: '100%', padding: '14px', borderRadius: '12px', minHeight: '100px',
             background: 'var(--bg-glass)', border: '1px solid var(--border-light)',
-            color: 'white', outline: 'none', resize: 'none', fontFamily: 'inherit',
+            color: 'var(--text-primary)', outline: 'none', resize: 'none', fontFamily: 'inherit',
             fontSize: '0.95rem', boxSizing: 'border-box'
           }}
         />
@@ -173,13 +206,24 @@ export default function UploadClient() {
         </div>
       )}
 
+      {uploading && (
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ width: '100%', height: '6px', background: 'var(--border-light)', borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{ width: `${progress}%`, height: '100%', background: 'var(--accent-primary)', transition: 'width 0.3s ease' }} />
+          </div>
+          <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
+            Processing: {progress}%
+          </p>
+        </div>
+      )}
+
       <button
         onClick={handleUpload}
         disabled={!file || uploading}
         className="btn-primary"
-        style={{ width: '100%', padding: '14px', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', opacity: !file ? 0.5 : 1 }}
+        style={{ width: '100%', padding: '14px', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', opacity: !file || uploading ? 0.5 : 1 }}
       >
-        {uploading ? <><Loader2 size={20} className="animate-spin" /> Uploading & AI Moderating...</> : <><Upload size={20} /> Share {type.charAt(0).toUpperCase() + type.slice(1)}</>}
+        {uploading ? <><Loader2 size={20} className="animate-spin" /> Uploading...</> : <><Upload size={20} /> Share {type.charAt(0).toUpperCase() + type.slice(1)}</>}
       </button>
     </div>
   );

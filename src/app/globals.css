@@ -59,13 +59,13 @@
 
 /* Ensure text is always visible in form elements */
 input, textarea, select {
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
   background: var(--bg-glass);
   font-family: var(--font-inter);
 }
 
 input::placeholder, textarea::placeholder {
-  color: var(--text-muted);
+  color: var(--text-muted) !important;
 }
 
 @keyframes spin {

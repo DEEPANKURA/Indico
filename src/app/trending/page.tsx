@@ -1,90 +1,123 @@
-import { TrendingUp, Flame, ArrowUpRight } from 'lucide-react';
+'use client';
 
-const trends = [
-  { rank: 1, tag: '#indico', posts: '8.2M', change: '+42%', hot: true },
-  { rank: 2, tag: '#newcreator', posts: '4.1M', change: '+89%', hot: true },
-  { rank: 3, tag: '#goviralindico', posts: '2.8M', change: '+156%', hot: true },
-  { rank: 4, tag: '#beatmaking', posts: '1.9M', change: '+34%', hot: false },
-  { rank: 5, tag: '#aiart', posts: '1.6M', change: '+67%', hot: false },
-  { rank: 6, tag: '#contentcreator', posts: '1.4M', change: '+28%', hot: false },
-  { rank: 7, tag: '#gaming2026', posts: '1.1M', change: '+45%', hot: false },
-  { rank: 8, tag: '#studywithme', posts: '980K', change: '+22%', hot: false },
-  { rank: 9, tag: '#fitnessjourney', posts: '870K', change: '+31%', hot: false },
-  { rank: 10, tag: '#photography', posts: '760K', change: '+18%', hot: false },
-];
-
-const trendingPosts = [
-  { author: 'LunaCreative', handle: '@luna_create', content: 'Just hit 4M followers on Indico! New creators CAN go viral here. Algorithm actually rewards quality 🔥', likes: '89K', timeAgo: '2h ago' },
-  { author: 'TechBro Dev', handle: '@techbro_dev', content: 'Built this entire dashboard in 2 hours using AI tools. The future of dev is here.', likes: '45K', timeAgo: '5h ago' },
-  { author: 'BeatMaker Pro', handle: '@beatmakerpro', content: 'New track dropping at midnight. This one hits different. #beatmaking #music', likes: '62K', timeAgo: '8h ago' },
-];
+import { useEffect, useState, useRef } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { TrendingUp, Flame, Play } from 'lucide-react';
+import ReelCard from '@/components/ReelCard';
 
 export default function TrendingPage() {
+  const [reels, setReels] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const fetchReels = async () => {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          id,
+          content,
+          media_urls,
+          like_count,
+          comment_count,
+          profiles:author_id ( id, username, full_name, avatar_url )
+        `)
+        .not('media_urls', 'is', null)
+        .order('like_count', { ascending: false })
+        .limit(10);
+
+      if (data) {
+        // Filter for videos (simple check by extension or presence of multiple URLs if we had better metadata)
+        const videoPosts = data.filter(p => 
+          p.media_urls?.[0]?.toLowerCase().match(/\.(mp4|webm|mov|m4v)$/) || 
+          p.media_urls?.[0]?.includes('video')
+        );
+        setReels(videoPosts);
+      }
+      setLoading(false);
+    };
+
+    fetchReels();
+  }, []);
+
+  const handleScroll = () => {
+    if (!containerRef.current) return;
+    const scrollPos = containerRef.current.scrollTop;
+    const height = containerRef.current.clientHeight;
+    const newIndex = Math.round(scrollPos / height);
+    if (newIndex !== activeIndex) {
+      setActiveIndex(newIndex);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--text-secondary)' }}>
+        <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid var(--accent-primary)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
         <TrendingUp size={28} style={{ color: 'var(--accent-secondary)' }} />
-        <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>Trending</h1>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>Trending Reels</h1>
       </div>
 
-      {/* Trending Hashtags */}
-      <div className="glass-card" style={{ padding: '20px', borderRadius: '16px', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <Flame size={20} style={{ color: '#f97316' }} />
-          <h2 style={{ fontWeight: '700', fontSize: '1rem' }}>Top Hashtags Right Now</h2>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-          {trends.map((trend) => (
-            <div key={trend.rank} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '12px 0',
-              borderBottom: trend.rank < trends.length ? '1px solid var(--border-light)' : 'none',
-              cursor: 'pointer'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <span style={{ width: '24px', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.9rem' }}>
-                  {trend.rank}
-                </span>
-                <div>
-                  <div style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className={trend.hot ? 'text-gradient' : ''}>{trend.tag}</span>
-                    {trend.hot && <Flame size={14} style={{ color: '#f97316' }} />}
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{trend.posts} posts</div>
-                </div>
-              </div>
-              <span style={{ color: '#10b981', fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                <ArrowUpRight size={14} />{trend.change}
-              </span>
-            </div>
+      {reels.length > 0 ? (
+        <div 
+          ref={containerRef}
+          onScroll={handleScroll}
+          style={{ 
+            height: 'calc(100vh - 180px)', 
+            overflowY: 'scroll', 
+            scrollSnapType: 'y mandatory',
+            borderRadius: '20px'
+          }}
+          className="hide-scrollbar"
+        >
+          {reels.map((post, index) => (
+            <ReelCard 
+              key={post.id} 
+              isActive={index === activeIndex}
+              post={{
+                id: post.id,
+                content: post.content,
+                mediaUrl: post.media_urls[0],
+                likes: post.like_count || 0,
+                comments: post.comment_count || 0,
+                author: {
+                  id: post.profiles.id,
+                  name: post.profiles.full_name || 'Creator',
+                  username: post.profiles.username || 'user',
+                  avatar: post.profiles.avatar_url || ''
+                }
+              }}
+            />
           ))}
         </div>
-      </div>
-
-      {/* Trending Posts */}
-      <h2 style={{ fontWeight: '700', marginBottom: '16px', fontSize: '1.1rem' }}>🔥 Trending Posts</h2>
-      {trendingPosts.map((post, i) => (
-        <div key={i} className="glass-card animate-fade-in" style={{ padding: '20px', borderRadius: '16px', marginBottom: '12px' }}>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <div style={{
-              width: '44px', height: '44px', borderRadius: '50%', flexShrink: 0,
-              background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 'bold'
-            }}>{post.author[0]}</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: '700' }}>{post.author}
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '400', marginLeft: '6px', fontSize: '0.85rem' }}>{post.handle}</span>
-              </div>
-              <p style={{ margin: '8px 0', lineHeight: '1.5' }}>{post.content}</p>
-              <div style={{ display: 'flex', gap: '16px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                <span>❤️ {post.likes}</span>
-                <span>{post.timeAgo}</span>
-              </div>
-            </div>
-          </div>
+      ) : (
+        <div className="glass-card" style={{ padding: '60px', textAlign: 'center', borderRadius: '20px' }}>
+          <Play size={48} style={{ color: 'var(--text-muted)', marginBottom: '16px' }} />
+          <h2 style={{ fontWeight: '700', marginBottom: '8px' }}>No Trending Reels Yet</h2>
+          <p style={{ color: 'var(--text-secondary)' }}>Be the first to upload a video and start a trend!</p>
+          <a href="/upload" className="btn-primary" style={{ display: 'inline-block', marginTop: '20px', textDecoration: 'none', padding: '10px 24px' }}>Upload Reel</a>
         </div>
-      ))}
+      )}
+
+      {/* CSS to hide scrollbar */}
+      <style jsx global>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 }
