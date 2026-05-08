@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, use, useRef } from 'react';
+import { useState, useEffect, use, useRef, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Users, Eye, Heart, MessageSquare, Send, X, ArrowLeft, Loader2, Share2, DollarSign, Gift, Zap } from 'lucide-react';
+import { Users, Eye, Heart, MessageSquare, Send, X, ArrowLeft, Loader2, Share2, DollarSign, Gift, Zap, Radio } from 'lucide-react';
 
 export default function WatchLivePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -19,7 +19,7 @@ export default function WatchLivePage({ params }: { params: Promise<{ id: string
   const supabase = createClient();
   const router = useRouter();
 
-  const fetchStreamData = async () => {
+  const fetchStreamData = useCallback(async () => {
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     setUser(currentUser);
 
@@ -47,7 +47,7 @@ export default function WatchLivePage({ params }: { params: Promise<{ id: string
       { id: 2, user: 'CryptoKing', text: 'LETS GOOOOOO! 🚀' },
       { id: 3, user: 'SarahJ', text: 'Loving the vibe today!' },
     ]);
-  };
+  }, [id, supabase, router]);
 
   useEffect(() => {
     fetchStreamData();
@@ -76,7 +76,7 @@ export default function WatchLivePage({ params }: { params: Promise<{ id: string
       supabase.removeChannel(channel);
       supabase.rpc('decrement_viewer_count', { stream_id: id });
     };
-  }, [id]);
+  }, [id, supabase, fetchStreamData]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -98,10 +98,9 @@ export default function WatchLivePage({ params }: { params: Promise<{ id: string
 
   const handleLike = () => {
     setLikes(prev => prev + 1);
-    // Realtime animation trigger could go here
   };
 
-  if (loading) return (
+  if (loading || !stream) return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#000', color: 'white' }}>
       <Loader2 className="animate-spin" size={40} style={{ color: 'var(--accent-primary)', marginBottom: '16px' }} />
       <span>Connecting to secure stream...</span>
@@ -265,6 +264,3 @@ export default function WatchLivePage({ params }: { params: Promise<{ id: string
     </div>
   );
 }
-
-// Add Radio from lucide-react if not imported
-import { Radio } from 'lucide-react';
