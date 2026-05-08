@@ -55,14 +55,50 @@ export default function LivePage() {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: 1280, height: 720 }, 
+        audio: true 
+      });
       streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
       setShowBroadcastPanel(true);
+      // The video element will be rendered now, srcObject will be set in useEffect
     } catch (err) {
+      console.error('Camera error:', err);
       alert('Could not access camera/microphone. Please ensure permissions are granted.');
     }
   };
+
+  const [audioLevel, setAudioLevel] = useState(0);
+
+  useEffect(() => {
+    if (showBroadcastPanel && videoRef.current && streamRef.current) {
+      if (videoRef.current.srcObject !== streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+      }
+      
+      // Audio level meter
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(streamRef.current);
+      source.connect(analyser);
+      analyser.fftSize = 256;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      
+      let animationId: number;
+      const updateMeter = () => {
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        setAudioLevel(average);
+        animationId = requestAnimationFrame(updateMeter);
+      };
+      updateMeter();
+
+      return () => {
+        cancelAnimationFrame(animationId);
+        audioContext.close();
+      };
+    }
+  }, [showBroadcastPanel, isBroadcasting]);
 
   const stopCamera = () => {
     if (streamRef.current) {
@@ -140,6 +176,20 @@ export default function LivePage() {
               playsInline 
               style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
             />
+
+            {/* Audio Meter */}
+            <div style={{ 
+              position: 'absolute', bottom: '20px', left: '20px', 
+              width: '120px', height: '6px', background: 'rgba(0,0,0,0.5)', 
+              borderRadius: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center'
+            }}>
+              <div style={{ 
+                height: '100%', width: `${Math.min(100, audioLevel * 2)}%`,
+                background: audioLevel > 30 ? '#10b981' : '#6366f1',
+                transition: 'width 0.1s ease-out'
+              }} />
+              <div style={{ position: 'absolute', right: '4px', fontSize: '10px', color: 'white', opacity: 0.8 }}>MIC</div>
+            </div>
             
             {isBroadcasting && (
               <div style={{ position: 'absolute', top: '20px', left: '20px', background: '#ef4444', color: 'white', padding: '4px 12px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
