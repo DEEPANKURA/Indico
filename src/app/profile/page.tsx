@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Grid3x3, Heart, MessageCircle, Settings, DollarSign, Camera } from 'lucide-react';
+import { Grid3x3, Heart, MessageCircle, Settings, DollarSign, Camera, BarChart2, Video, Sparkles, Layout } from 'lucide-react';
 import EditProfileModal from '@/components/EditProfileModal';
 
 export default function ProfilePage() {
@@ -149,7 +149,40 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Posts */}
+      {/* Creator Tools Section (Especially for Mobile) */}
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <Layout size={20} style={{ color: 'var(--accent-neon)' }} />
+          <h2 style={{ fontWeight: '700', fontSize: '1.1rem' }}>Creator Studio</h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+          {[
+            { label: 'Analytics', icon: BarChart2, href: '/analytics', color: '#06b6d4' },
+            { label: 'Studio', icon: Video, href: '/studio', color: '#8b5cf6' },
+            { label: 'Monetize', icon: DollarSign, href: '/monetize', color: '#10b981' },
+            { label: 'AI Tools', icon: Sparkles, href: '/ai-tools', color: 'var(--accent-neon)' },
+          ].map((tool) => (
+            <a key={tool.label} href={tool.href} style={{ textDecoration: 'none' }}>
+              <div className="glass-card" style={{ 
+                padding: '16px', borderRadius: '16px', display: 'flex', flexDirection: 'column', 
+                alignItems: 'center', gap: '10px', textAlign: 'center',
+                border: `1px solid ${tool.color}33`,
+                transition: 'transform 0.2s'
+              }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                 onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                <div style={{ 
+                  width: '40px', height: '40px', borderRadius: '10px', 
+                  background: `${tool.color}11`, display: 'flex', 
+                  alignItems: 'center', justifyContent: 'center' 
+                }}>
+                  <tool.icon size={20} style={{ color: tool.color }} />
+                </div>
+                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-primary)' }}>{tool.label}</span>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
           <Grid3x3 size={20} style={{ color: 'var(--accent-secondary)' }} />

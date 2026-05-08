@@ -3,6 +3,8 @@
 import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Play, DollarSign, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { tipCreatorAction } from '@/app/actions/tip';
+import { toggleLikeAction, toggleFollowAction } from '@/app/actions/social';
+import Link from 'next/link';
 import Image from 'next/image';
 
 interface PostCardProps {
@@ -46,38 +48,80 @@ export default function PostCard({ post }: PostCardProps) {
     }
   };
 
+  const [localLikes, setLocalLikes] = useState(parseInt(post.likes.replace(/,/g, '')) || 0);
+  const [isLiked, setIsLiked] = useState(false); // We don't have initial state from parent yet
+  const handleLike = async () => {
+    const wasLiked = isLiked;
+    setIsLiked(!wasLiked);
+    setLocalLikes(prev => wasLiked ? Math.max(0, prev - 1) : prev + 1);
+    
+    const res = await toggleLikeAction(post.id);
+    if (!res.success) {
+      setIsLiked(wasLiked);
+      setLocalLikes(prev => wasLiked ? prev + 1 : Math.max(0, prev - 1));
+    } else {
+      setIsLiked(res.liked!);
+    }
+  };
+
+  const [isFollowing, setIsFollowing] = useState(false);
+  const handleFollow = async () => {
+    if (!post.authorId) return;
+    const wasFollowing = isFollowing;
+    setIsFollowing(!wasFollowing);
+    
+    const res = await toggleFollowAction(post.authorId);
+    if (!res.success) {
+      setIsFollowing(wasFollowing);
+    } else {
+      setIsFollowing(res.following!);
+    }
+  };
+
   return (
     <article className="glass-card animate-fade-in" style={{ marginBottom: '24px', overflow: 'hidden' }}>
       <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ 
-            width: '48px', height: '48px', 
-            borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 'bold', fontSize: '1.2rem', color: 'white',
-            border: '2px solid var(--bg-primary)', position: 'relative'
-          }}>
-            {post.author.name?.[0] || 'A'}
-            {post.author.isNew && (
-              <div style={{
-                position: 'absolute', bottom: '-4px', right: '-4px',
-                width: '14px', height: '14px', borderRadius: '50%',
-                background: 'var(--accent-neon)', border: '2px solid var(--bg-secondary)'
-              }}></div>
-            )}
-          </div>
-          <div>
-            <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {post.author.name}
-              {post.author.isNew && <span className="badge badge-neon">NEW</span>}
+          <Link href={`/profile/${post.authorId}`} style={{ textDecoration: 'none' }}>
+            <div style={{ 
+              width: '48px', height: '48px', 
+              borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 'bold', fontSize: '1.2rem', color: 'white',
+              border: '2px solid var(--bg-primary)', position: 'relative', overflow: 'hidden'
+            }}>
+              {post.author.avatar ? (
+                <img src={post.author.avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                post.author.name?.[0]?.toUpperCase() || 'A'
+              )}
+              {post.author.isNew && (
+                <div style={{
+                  position: 'absolute', bottom: '-4px', right: '-4px',
+                  width: '14px', height: '14px', borderRadius: '50%',
+                  background: 'var(--accent-neon)', border: '2px solid var(--bg-secondary)'
+                }}></div>
+              )}
             </div>
+          </Link>
+          <div>
+            <Link href={`/profile/${post.authorId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {post.author.name}
+                {post.author.isNew && <span className="badge badge-neon">NEW</span>}
+              </div>
+            </Link>
             <div className="text-sm text-secondary">
               {post.timeAgo} • {post.author.handle}
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="btn-secondary" style={{ padding: '6px 16px', fontSize: '0.85rem' }}>Follow</button>
+          {post.authorId && (
+            <button onClick={handleFollow} className={isFollowing ? "btn-secondary" : "btn-primary"} style={{ padding: '6px 16px', fontSize: '0.85rem' }}>
+              {isFollowing ? 'Following' : 'Follow'}
+            </button>
+          )}
           <button style={{ color: 'var(--text-secondary)' }}><MoreHorizontal size={20} /></button>
         </div>
       </div>
@@ -116,8 +160,8 @@ export default function PostCard({ post }: PostCardProps) {
 
       <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-light)' }}>
         <div style={{ display: 'flex', gap: '24px' }}>
-          <button style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', transition: 'color 0.2s' }}>
-            <Heart size={22} /> <span className="text-sm font-semibold">{post.likes}</span>
+          <button onClick={handleLike} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isLiked ? '#ef4444' : 'var(--text-secondary)', transition: 'color 0.2s' }}>
+            <Heart size={22} fill={isLiked ? '#ef4444' : 'none'} /> <span className="text-sm font-semibold">{localLikes}</span>
           </button>
           <button style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', transition: 'color 0.2s' }}>
             <MessageCircle size={22} /> <span className="text-sm font-semibold">{post.comments}</span>
