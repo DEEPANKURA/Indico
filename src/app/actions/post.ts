@@ -6,7 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-export async function createPostAction(content: string, mediaUrls: string[] = []) {
+export async function createPostAction(content: string, mediaUrls: string[] = [], communityId?: string) {
   try {
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -56,6 +56,7 @@ export async function createPostAction(content: string, mediaUrls: string[] = []
       media_urls: mediaUrls,
       ai_safety_score: aiSafetyScore,
       is_flagged: isFlagged,
+      community_id: communityId || null
     });
 
     if (insertError) throw insertError;

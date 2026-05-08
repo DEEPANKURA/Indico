@@ -6,7 +6,13 @@ import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { createPostAction } from '@/app/actions/post';
 
-export default function CreatePost() {
+export default function CreatePost({ 
+  communityId, 
+  onPostCreated 
+}: { 
+  communityId?: string; 
+  onPostCreated?: () => void;
+}) {
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -66,7 +72,7 @@ export default function CreatePost() {
     setError(null);
 
     try {
-      const result = await createPostAction(content, mediaUrls);
+      const result = await createPostAction(content, mediaUrls, communityId);
       
       if (!result.success) {
         throw new Error(result.error);
@@ -74,7 +80,12 @@ export default function CreatePost() {
       
       setContent('');
       setMediaUrls([]);
-      router.refresh();
+      
+      if (onPostCreated) {
+        onPostCreated();
+      } else {
+        router.refresh();
+      }
       
       if (result.isFlagged) {
         alert('Your post was created but flagged for review by our AI safety system.');

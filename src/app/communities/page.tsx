@@ -170,7 +170,7 @@ export default function CommunitiesPage() {
               }} onMouseLeave={e => {
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = 'none';
-              }}>
+              }} onClick={() => router.push(`/communities/${comm.id}`)}>
                 {/* Background glow based on community color */}
                 <div style={{ 
                   position: 'absolute', top: '-20px', right: '-20px', width: '120px', height: '120px', 
