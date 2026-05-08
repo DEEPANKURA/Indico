@@ -149,8 +149,14 @@ export async function getFriendsAction() {
       .eq('following_id', user.id);
 
     const friends = new Map();
-    following?.forEach(f => friends.set(f.profiles.id, f.profiles));
-    followers?.forEach(f => friends.set(f.profiles.id, f.profiles));
+    following?.forEach(f => {
+      const profile = Array.isArray(f.profiles) ? f.profiles[0] : (f.profiles as any);
+      if (profile?.id) friends.set(profile.id, profile);
+    });
+    followers?.forEach(f => {
+      const profile = Array.isArray(f.profiles) ? f.profiles[0] : (f.profiles as any);
+      if (profile?.id) friends.set(profile.id, profile);
+    });
 
     return { success: true, users: Array.from(friends.values()) };
   } catch (error: any) {
