@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Plus, X, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import Image from 'next/image';
 
@@ -21,7 +21,7 @@ export default function Stories() {
   const [stories, setStories] = useState<Story[]>([]);
   const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any | null>(null);
   const supabase = createClient();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -31,11 +31,11 @@ export default function Stories() {
       setUser(currentUser);
 
       // Fetch active stories
-      const { data, error } = await supabase
-        .from('stories')
+      const { data } = await (supabase
+        .from('stories' as any)
         .select('*, profiles:user_id(username, avatar_url)')
         .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as any);
 
       if (data) {
         // Group by user for simplicity or just show all for now
@@ -59,15 +59,15 @@ export default function Stories() {
     
     const randomImg = demoStories[Math.floor(Math.random() * demoStories.length)];
 
-    const { data, error } = await supabase
-      .from('stories')
+    const { data } = await (supabase
+      .from('stories' as any)
       .insert({
         user_id: user.id,
         media_url: randomImg,
         media_type: 'image'
       })
       .select('*, profiles:user_id(username, avatar_url)')
-      .single();
+      .single() as any);
 
     if (data) {
       setStories([data, ...stories]);
