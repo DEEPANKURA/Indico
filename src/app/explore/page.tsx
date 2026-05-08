@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Compass, Search, Flame, Music, Gamepad2, Camera, Palette, BookOpen, Dumbbell, User, Loader2 } from 'lucide-react';
+import { Compass, Search, Flame, Music, Gamepad2, Camera, Palette, BookOpen, Dumbbell, User, Loader2, PlayCircle, TrendingUp } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import PostCard from '@/components/PostCard';
+import { useRouter } from 'next/navigation';
 
 const categories = [
   { icon: Flame,    label: 'Viral',         color: '#f97316' },
@@ -16,21 +18,47 @@ const categories = [
 
 export default function ExplorePage() {
   const supabase = createClient();
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [risingCreators, setRisingCreators] = useState<any[]>([]);
+  const [trendingPosts, setTrendingPosts] = useState<any[]>([]);
+  const [activeCategory, setActiveCategory] = useState('Trending');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load real rising creators on mount
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
+      // Fetch creators
+      const { data: profiles } = await supabase
         .from('profiles')
         .select('id, username, full_name, avatar_url, followers_count, is_creator')
         .order('followers_count', { ascending: false })
-        .limit(6);
-      setRisingCreators(data || []);
+        .limit(8);
+      setRisingCreators(profiles || []);
+
+      // Fetch trending posts
+      const { data: posts } = await supabase
+        .from('posts')
+        .select('*, author:profiles(username, avatar_url, full_name)')
+        .order('engagement_score', { ascending: false })
+        .limit(10);
+      
+      // Map posts to match PostCard expectations
+      const mappedPosts = (posts || []).map(p => ({
+        ...p,
+        authorId: p.author_id,
+        author: {
+          name: p.author.full_name || p.author.username,
+          handle: p.author.username,
+          avatar: p.author.avatar_url
+        },
+        likes: p.like_count || 0,
+        comments: p.comment_count || 0,
+        timestamp: new Date(p.created_at).toLocaleDateString()
+      }));
+      setTrendingPosts(mappedPosts);
     };
     load();
   }, []);
@@ -54,36 +82,25 @@ export default function ExplorePage() {
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-          <Compass size={28} style={{ color: 'var(--accent-secondary)' }} />
-          <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>Explore</h1>
-        </div>
-        <p style={{ color: 'var(--text-secondary)' }}>Discover creators and content</p>
-      </div>
-
-      {/* Search */}
-      <div style={{ marginBottom: '28px', position: 'relative' }}>
-        <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search users, topics, hashtags..."
-          style={{
-            width: '100%', padding: '14px 20px 14px 46px',
-            background: 'var(--bg-glass)', border: '1px solid var(--border-light)',
-            borderRadius: '40px', color: 'var(--text-primary)', outline: 'none',
-            fontSize: '1rem', boxSizing: 'border-box', fontFamily: 'inherit',
-            transition: 'border-color 0.2s',
-          }}
-          onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
-          onBlur={(e) => e.target.style.borderColor = 'var(--border-light)'}
-        />
-        {searching && (
-          <Loader2 size={18} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)', animation: 'spin 1s linear infinite' }} />
-        )}
+      {/* Quick Categories Bar */}
+      <div style={{ 
+        display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '24px',
+        scrollbarWidth: 'none', msOverflowStyle: 'none'
+      }} className="no-scrollbar">
+        {['Trending', ...categories.map(c => c.label)].map((cat) => (
+          <button 
+            key={cat}
+            onClick={() => setActiveCategory(cat)}
+            style={{ 
+              padding: '10px 20px', borderRadius: '40px', border: '1px solid var(--border-light)',
+              background: activeCategory === cat ? 'var(--accent-primary)' : 'var(--bg-glass)',
+              color: 'white', whiteSpace: 'nowrap', fontWeight: '700', cursor: 'pointer',
+              transition: 'all 0.2s', fontSize: '0.9rem'
+            }}
+          >
+            {cat}
+          </button>
+        ))}
       </div>
 
       {/* Search Results */}
@@ -95,8 +112,8 @@ export default function ExplorePage() {
           {results.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {results.map((u) => (
-                <a key={u.id} href={`/profile/${u.id}`}
-                  style={{ textDecoration: 'none' }}>
+                <div key={u.id} onClick={() => router.push(`/profile/${u.id}`)}
+                  style={{ cursor: 'pointer' }}>
                   <div className="glass-card" style={{ padding: '14px 16px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '14px' }}>
                     {u.avatar_url ? (
                       <img src={u.avatar_url} alt="" style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
@@ -113,11 +130,10 @@ export default function ExplorePage() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{u.full_name || u.username}</div>
                       <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>@{u.username} · {(u.followers_count || 0).toLocaleString()} followers</div>
-                      {u.bio && <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.bio}</div>}
                     </div>
                     <User size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                   </div>
-                </a>
+                </div>
               ))}
             </div>
           ) : !searching ? (
@@ -128,64 +144,61 @@ export default function ExplorePage() {
         </div>
       )}
 
-      {/* Categories — hide during search */}
+      {/* Main Explore Content — hide during search */}
       {!query.trim() && (
         <>
-          <div style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontWeight: '700', marginBottom: '16px', fontSize: '1.1rem' }}>Browse Categories</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-              {categories.map((cat) => (
-                <div key={cat.label} className="glass-card" style={{
-                  padding: '14px 16px', borderRadius: '14px', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '14px',
-                  border: `1px solid ${cat.color}22`,
-                }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: `${cat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <cat.icon size={22} style={{ color: cat.color }} />
-                  </div>
-                  <div style={{ fontWeight: '700' }}>{cat.label}</div>
+          {activeCategory === 'Trending' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+               {/* Rising Creators Horizontal Scroll */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                   <h2 style={{ fontWeight: '800', fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                     <Flame size={20} style={{ color: '#ef4444' }} /> Rising Stars
+                   </h2>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Rising Creators */}
-          <div>
-            <h2 style={{ fontWeight: '700', marginBottom: '16px', fontSize: '1.1rem' }}>🔥 Rising Creators</h2>
-            {risingCreators.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {risingCreators.map((c) => (
-                  <a key={c.id} href={`/profile/${c.id}`} style={{ textDecoration: 'none' }}>
-                    <div className="glass-card" style={{ padding: '14px 16px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                        {c.avatar_url ? (
-                          <img src={c.avatar_url} alt="" style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover' }} />
-                        ) : (
-                          <div style={{
-                            width: '46px', height: '46px', borderRadius: '50%',
-                            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontWeight: 'bold', fontSize: '1.2rem', color: 'white',
-                          }}>
-                            {(c.full_name || c.username || '?')[0].toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <div style={{ fontWeight: '700' }}>{c.full_name || c.username}</div>
-                          <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>@{c.username} · {(c.followers_count || 0).toLocaleString()} followers</div>
+                <div style={{ 
+                  display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '16px',
+                  scrollbarWidth: 'none', msOverflowStyle: 'none'
+                }} className="no-scrollbar">
+                  {risingCreators.map((c) => (
+                    <div key={c.id} onClick={() => router.push(`/profile/${c.id}`)} style={{ 
+                      minWidth: '130px', textAlign: 'center', cursor: 'pointer',
+                      padding: '16px', borderRadius: '20px', background: 'var(--bg-glass)',
+                      border: '1px solid var(--border-light)'
+                    }}>
+                      <div style={{ position: 'relative', width: '64px', height: '64px', margin: '0 auto 12px' }}>
+                        <img 
+                          src={c.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.username}`} 
+                          style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-primary)' }} 
+                        />
+                        <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--accent-primary)', borderRadius: '50%', padding: '2px' }}>
+                          <TrendingUp size={12} color="white" />
                         </div>
                       </div>
-                      <button className="btn-secondary" style={{ padding: '5px 14px', fontSize: '0.8rem' }}>Follow</button>
+                      <div style={{ fontWeight: '800', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.full_name || c.username}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '2px' }}>@{c.username}</div>
                     </div>
-                  </a>
+                  ))}
+                </div>
+              </div>
+
+              {/* Trending Posts Feed */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h2 style={{ fontWeight: '800', fontSize: '1.2rem', margin: '8px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <TrendingUp size={20} style={{ color: 'var(--accent-neon)' }} /> Popular Right Now
+                </h2>
+                {trendingPosts.map((post) => (
+                  <PostCard key={post.id} post={post} />
                 ))}
               </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)' }}>
-                No creators yet — be the first to sign up!
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+             <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
+                <PlayCircle size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
+                <p>Coming Soon: Dynamic {activeCategory} Feed</p>
+                <button onClick={() => setActiveCategory('Trending')} className="btn-secondary" style={{ marginTop: '12px' }}>Back to Trending</button>
+             </div>
+          )}
         </>
       )}
     </div>

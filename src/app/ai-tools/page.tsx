@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sparkles, Shield, Wand2, Hash, FileText, BarChart2, Loader2, Copy, Check, RotateCcw, Save, Trash2, History, LayoutGrid, Zap } from 'lucide-react';
+import { Sparkles, Shield, Wand2, Hash, FileText, BarChart2, Loader2, Copy, Check, RotateCcw, Save, Trash2, History, LayoutGrid, Zap, Compass } from 'lucide-react';
 
 const tools = [
   { id: 'caption', icon: FileText, label: 'Caption Generator', desc: 'Generate viral captions for your posts', color: '#8b5cf6', prompt: 'Generate 3 viral social media captions for a post about: ', placeholder: 'e.g. A sunset photo at the beach with friends' },
@@ -10,6 +10,7 @@ const tools = [
   { id: 'moderation', icon: Shield, label: 'Content Checker', desc: 'Check if your content is safe to post', color: '#10b981', prompt: 'Analyze this content for safety and community guidelines compliance. Highlight any risks: ', placeholder: 'Paste the text you want to check here...' },
   { id: 'analytics', icon: BarChart2, label: 'Growth Advisor', desc: 'Get personalized growth tips', color: '#f97316', prompt: 'Give me 5 specific growth tips for a creator who posts about: ', placeholder: 'e.g. Cooking Italian food for beginners' },
   { id: 'script', icon: Zap, label: 'Script Assistant', desc: 'Write a script for your next reel/video', color: '#facc15', prompt: 'Write a 60-second video script for a reel about: ', placeholder: 'e.g. 3 simple morning routine hacks' },
+  { id: 'strategy', icon: Compass, label: 'Content Strategy', desc: 'Get a 7-day content plan', color: '#3b82f6', prompt: 'Create a detailed 7-day content strategy for a creator focused on: ', placeholder: 'e.g. Building a sustainable fashion brand' },
 ];
 
 export default function AIToolsPage() {
