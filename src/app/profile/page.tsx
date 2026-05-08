@@ -193,8 +193,12 @@ export default function ProfilePage() {
             {posts.map((post) => (
               <div key={post.id} className="glass-card" style={{ padding: '16px', borderRadius: '14px' }}>
                 {post.media_urls?.[0] && (
-                  <div style={{ marginBottom: '12px', borderRadius: '10px', overflow: 'hidden' }}>
-                    <img src={post.media_urls[0]} alt="" style={{ width: '100%', maxHeight: '300px', objectFit: 'cover' }} />
+                  <div style={{ marginBottom: '12px', borderRadius: '10px', overflow: 'hidden', background: '#000' }}>
+                    {post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
+                      <video src={post.media_urls[0]} controls style={{ width: '100%', maxHeight: '400px', display: 'block' }} />
+                    ) : (
+                      <img src={post.media_urls[0]} alt="" style={{ width: '100%', maxHeight: '400px', objectFit: 'cover' }} />
+                    )}
                   </div>
                 )}
                 <p style={{ marginBottom: '12px', lineHeight: '1.6', fontSize: '0.95rem' }}>{post.content}</p>
