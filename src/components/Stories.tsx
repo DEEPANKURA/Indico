@@ -31,6 +31,11 @@ export default function Stories() {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       setUser(currentUser);
 
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+
       // 1. Get followings
       const { data: followings } = await supabase
         .from('follows')
