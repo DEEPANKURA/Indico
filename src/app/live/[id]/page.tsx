@@ -119,12 +119,30 @@ export default function WatchLivePage({ params }: { params: Promise<{ id: string
           <ArrowLeft size={24} />
         </button>
 
-        {/* Video Simulation Placeholder */}
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0.1, background: 'radial-gradient(circle, var(--accent-primary) 0%, transparent 70%)' }} />
-           <Radio size={80} style={{ color: 'var(--accent-primary)', opacity: 0.3, marginBottom: '20px' }} />
-           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1.2rem', fontWeight: '600' }}>Waiting for stream signal...</p>
-           <div className="badge badge-neon animate-pulse" style={{ marginTop: '12px' }}>LIVE STREAM ENCRYPTED</div>
+        {/* Video Area */}
+        <div style={{ width: '100%', height: '100%', position: 'relative', background: '#000' }}>
+           {/* Simulated Live Stream Feed */}
+           <video 
+              src="https://assets.mixkit.co/videos/preview/mixkit-gaming-stream-on-a-laptop-screen-34444-large.mp4"
+              autoPlay 
+              loop 
+              muted 
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }}
+           />
+           
+           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, transparent 20%, rgba(0,0,0,0.4) 100%)', pointerEvents: 'none' }} />
+           
+           {/* Connection Overlay (Fade out) */}
+           <div style={{ 
+             position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
+             background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+             animation: 'fadeOut 2s forwards 3s', pointerEvents: 'none'
+           }}>
+             <Radio size={80} style={{ color: 'var(--accent-primary)', marginBottom: '20px' }} />
+             <p style={{ color: 'white', fontSize: '1.2rem', fontWeight: '600' }}>Establishing Secure Connection...</p>
+             <div className="badge badge-neon" style={{ marginTop: '12px' }}>P2P ENCRYPTED</div>
+           </div>
         </div>
 
         {/* Overlay Info */}
