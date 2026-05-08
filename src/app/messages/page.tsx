@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { MessageSquare, Send, Search, User, Loader2 } from 'lucide-react';
+import { MessageSquare, Send, Search, User, Loader2, ArrowLeft } from 'lucide-react';
 import { searchUsersAction } from '@/app/actions/social';
 
 export default function MessagesPage() {
@@ -101,6 +101,13 @@ export default function MessagesPage() {
       .order('created_at', { ascending: true });
 
     if (data) setMessages(data);
+
+    // Mark as read
+    await supabase
+      .from('messages')
+      .update({ is_read: true })
+      .eq('recipient_id', currentUser.id)
+      .eq('sender_id', otherUserId);
   };
 
   const handleSend = async () => {
@@ -154,9 +161,18 @@ export default function MessagesPage() {
         <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>Messages</h1>
       </div>
 
-      <div className="glass-card" style={{ borderRadius: '16px', overflow: 'hidden', display: 'flex', height: '75vh' }}>
-        {/* Sidebar */}
-        <div style={{ width: '320px', borderRight: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column' }}>
+      <div className="glass-card" style={{ 
+        borderRadius: '16px', overflow: 'hidden', display: 'flex', height: '75vh',
+        position: 'relative'
+      }}>
+        {/* Sidebar - hidden on mobile when a chat is selected */}
+        <div style={{ 
+          width: selectedUser ? '320px' : '100%', 
+          borderRight: '1px solid var(--border-light)', 
+          display: (selectedUser && typeof window !== 'undefined' && window.innerWidth < 640) ? 'none' : 'flex', 
+          flexDirection: 'column',
+          flexShrink: 0
+        }}>
           <div style={{ padding: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-glass)', borderRadius: '12px', padding: '10px 16px' }}>
               <Search size={18} style={{ color: 'var(--text-secondary)' }} />
@@ -222,11 +238,22 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* Chat area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.2)' }}>
+        {/* Chat area - hidden on mobile when no chat is selected */}
+        <div style={{ 
+          flex: 1, 
+          display: (!selectedUser && typeof window !== 'undefined' && window.innerWidth < 640) ? 'none' : 'flex', 
+          flexDirection: 'column', 
+          background: 'rgba(0,0,0,0.2)',
+          width: '100%'
+        }}>
           {selectedUser ? (
             <>
               <div style={{ padding: '16px', borderBottom: '1px solid var(--border-light)', display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--bg-glass)' }}>
+                {typeof window !== 'undefined' && window.innerWidth < 640 && (
+                  <button onClick={() => setSelectedUser(null)} style={{ marginRight: '8px', color: 'var(--text-secondary)' }}>
+                    <ArrowLeft size={24} />
+                  </button>
+                )}
                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', overflow: 'hidden' }}>
                   {selectedUser.avatar_url ? <img src={selectedUser.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : selectedUser.full_name?.[0]}
                 </div>
