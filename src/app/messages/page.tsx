@@ -26,7 +26,18 @@ export default function MessagesPage() {
       fetchConversations(user.id);
     };
     init();
-  }, []);
+
+    const handleManualRefresh = () => {
+      console.log('Manual unread refresh triggered');
+      if (currentUser) fetchConversations(currentUser.id);
+    };
+
+    window.addEventListener('messages_read', handleManualRefresh);
+
+    return () => {
+      window.removeEventListener('messages_read', handleManualRefresh);
+    };
+  }, [currentUser]);
 
   useEffect(() => {
     if (selectedUser && currentUser) {
@@ -49,7 +60,10 @@ export default function MessagesPage() {
               .from('messages')
               .update({ is_read: true })
               .eq('id', payload.new.id)
-              .then(() => fetchConversations(currentUser.id));
+              .then(() => {
+                fetchConversations(currentUser.id);
+                window.dispatchEvent(new Event('messages_read'));
+              });
           } else {
             fetchConversations(currentUser.id);
           }
@@ -111,11 +125,20 @@ export default function MessagesPage() {
     if (data) setMessages(data);
 
     // Mark as read
-    await supabase
-      .from('messages')
-      .update({ is_read: true })
-      .eq('recipient_id', currentUser.id)
-      .eq('sender_id', otherUserId);
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('recipient_id', currentUser.id)
+        .eq('sender_id', otherUserId)
+        .eq('is_read', false); // Only update unread ones to trigger less events
+      
+      if (!error) {
+        window.dispatchEvent(new Event('messages_read'));
+      }
+    } catch (e) {
+      console.error('Error marking messages as read:', e);
+    }
   };
 
   const handleSend = async () => {

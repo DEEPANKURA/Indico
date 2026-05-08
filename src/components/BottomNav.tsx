@@ -46,8 +46,18 @@ export default function BottomNav() {
         })
         .subscribe();
 
+      fetchUnread();
+
+      const handleManualRefresh = () => {
+        console.log('Manual unread refresh triggered in BottomNav');
+        fetchUnread();
+      };
+
+      window.addEventListener('messages_read', handleManualRefresh);
+
       return () => {
         supabase.removeChannel(channel);
+        window.removeEventListener('messages_read', handleManualRefresh);
       };
     };
 
