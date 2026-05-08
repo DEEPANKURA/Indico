@@ -31,45 +31,39 @@ export default function StudioPage() {
 
   useEffect(() => {
     fetchData();
+  }, []);
 
-    // Setup Realtime subscription
-    let channel: any;
-    
-    const setupRealtime = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  useEffect(() => {
+    if (!user) return;
 
-      channel = supabase
-        .channel(`studio_updates_${user.id}`)
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'posts',
-          filter: `author_id=eq.${user.id}`
-        }, (payload) => {
-          console.log('Real-time update in Studio:', payload);
-          setIsLive(true);
-          setTimeout(() => setIsLive(false), 2000);
-          
-          if (payload.eventType === 'INSERT') {
-            setPosts(prev => [payload.new, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            setPosts(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
-          } else if (payload.eventType === 'DELETE') {
-            setPosts(prev => prev.filter(p => p.id === payload.old.id));
-          }
-        })
-        .subscribe((status) => {
-          console.log('Studio Realtime status:', status);
-        });
-    };
-
-    setupRealtime();
+    // Use a unique suffix to avoid channel name collisions in Strict Mode
+    const suffix = Math.random().toString(36).substring(7);
+    const channel = supabase
+      .channel(`studio_updates_${user.id}_${suffix}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'posts',
+        filter: `author_id=eq.${user.id}`
+      }, (payload) => {
+        console.log('Real-time update in Studio:', payload);
+        setIsLive(true);
+        setTimeout(() => setIsLive(false), 2000);
+        
+        if (payload.eventType === 'INSERT') {
+          setPosts(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setPosts(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        } else if (payload.eventType === 'DELETE') {
+          setPosts(prev => prev.filter(p => p.id === payload.old.id));
+        }
+      })
+      .subscribe();
 
     return () => {
-      if (channel) supabase.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user?.id]);
 
   if (loading) return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>

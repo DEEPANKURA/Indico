@@ -53,33 +53,10 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     fetchData();
+  }, []);
 
-    let postsChannel: any;
-    let profilesChannel: any;
-    let transactionsChannel: any;
-
-    const setupRealtime = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Subscribe to posts for likes/comments
-      postsChannel = supabase.channel(`analytics_posts_${user.id}`)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts', filter: `author_id=eq.${user.id}` }, () => {
-          triggerLiveUpdate();
-        }).subscribe();
-
-      // Subscribe to profiles for followers
-      profilesChannel = supabase.channel(`analytics_profile_${user.id}`)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, () => {
-          triggerLiveUpdate();
-        }).subscribe();
-
-      // Subscribe to transactions for earnings
-      transactionsChannel = supabase.channel(`analytics_tx_${user.id}`)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `recipient_id=eq.${user.id}` }, () => {
-          triggerLiveUpdate();
-        }).subscribe();
-    };
+  useEffect(() => {
+    if (!user) return;
 
     const triggerLiveUpdate = () => {
       setIsLive(true);
@@ -87,14 +64,29 @@ export default function AnalyticsPage() {
       setTimeout(() => setIsLive(false), 2000);
     };
 
-    setupRealtime();
+    // Use unique channel names to avoid collisions in Strict Mode
+    const suffix = Math.random().toString(36).substring(7);
+    const postsChannel = supabase.channel(`analytics_posts_${user.id}_${suffix}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts', filter: `author_id=eq.${user.id}` }, () => {
+        triggerLiveUpdate();
+      }).subscribe();
+
+    const profilesChannel = supabase.channel(`analytics_profile_${user.id}_${suffix}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, () => {
+        triggerLiveUpdate();
+      }).subscribe();
+
+    const transactionsChannel = supabase.channel(`analytics_tx_${user.id}_${suffix}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `recipient_id=eq.${user.id}` }, () => {
+        triggerLiveUpdate();
+      }).subscribe();
 
     return () => {
-      if (postsChannel) supabase.removeChannel(postsChannel);
-      if (profilesChannel) supabase.removeChannel(profilesChannel);
-      if (transactionsChannel) supabase.removeChannel(transactionsChannel);
+      supabase.removeChannel(postsChannel);
+      supabase.removeChannel(profilesChannel);
+      supabase.removeChannel(transactionsChannel);
     };
-  }, []);
+  }, [user?.id]);
 
   if (loading) return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>
