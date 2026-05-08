@@ -74,3 +74,42 @@ export async function toggleFollowAction(targetUserId: string) {
     return { success: false, error: error.message };
   }
 }
+
+export async function addCommentAction(postId: string, content: string) {
+  try {
+    const supabase = await getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const { data, error } = await supabase
+      .from('comments')
+      .insert({ 
+        post_id: postId, 
+        user_id: user.id,
+        content: content
+      })
+      .select('*, profiles:user_id(full_name, avatar_url, username)')
+      .single();
+
+    if (error) throw error;
+    return { success: true, comment: data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getCommentsAction(postId: string) {
+  try {
+    const supabase = await getSupabase();
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*, profiles:user_id(full_name, avatar_url, username)')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, comments: data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

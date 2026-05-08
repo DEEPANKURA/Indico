@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Heart, MessageCircle, Share2, Music2, User, Volume2, VolumeX } from 'lucide-react';
 import { toggleLikeAction } from '@/app/actions/social';
+import CommentModal from './CommentModal';
 
 interface ReelCardProps {
   post: {
@@ -26,6 +27,7 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes);
   const [isMuted, setIsMuted] = useState(true);
+  const [showComments, setShowComments] = useState(false);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -47,6 +49,23 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
       setLiked(wasLiked);
       setLikesCount(prev => wasLiked ? prev + 1 : prev - 1);
     }
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: 'Check out this reel on Indico',
+      text: post.content,
+      url: `${window.location.origin}/post/${post.id}`
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareData.url);
+        alert('Link copied to clipboard!');
+      }
+    } catch (err) {}
   };
 
   return (
@@ -140,19 +159,23 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
           <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{likesCount}</span>
         </button>
         
-        <button style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+        <button onClick={() => setShowComments(true)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
           <div style={{ padding: '10px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
             <MessageCircle size={24} />
           </div>
           <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{post.comments}</span>
         </button>
 
-        <button style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+        <button onClick={handleShare} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
           <div style={{ padding: '10px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
             <Share2 size={24} />
           </div>
         </button>
       </div>
+
+      {showComments && (
+        <CommentModal postId={post.id} onClose={() => setShowComments(false)} />
+      )}
     </div>
   );
 }

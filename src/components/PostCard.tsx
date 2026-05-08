@@ -6,6 +6,7 @@ import { tipCreatorAction } from '@/app/actions/tip';
 import { toggleLikeAction, toggleFollowAction } from '@/app/actions/social';
 import Link from 'next/link';
 import Image from 'next/image';
+import CommentModal from './CommentModal';
 
 interface PostCardProps {
   post: {
@@ -30,6 +31,7 @@ interface PostCardProps {
 
 export default function PostCard({ post }: PostCardProps) {
   const [isTipping, setIsTipping] = useState(false);
+  const [showComments, setShowComments] = useState(false);
   
   const handleTip = async () => {
     if (!post.authorId) return;
@@ -46,6 +48,23 @@ export default function PostCard({ post }: PostCardProps) {
     } finally {
       setIsTipping(false);
     }
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: 'Check out this post on Indico',
+      text: post.content,
+      url: `${window.location.origin}/post/${post.id}`
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareData.url);
+        alert('Link copied to clipboard!');
+      }
+    } catch (err) {}
   };
 
   const [localLikes, setLocalLikes] = useState(parseInt(post.likes.replace(/,/g, '')) || 0);
@@ -162,10 +181,10 @@ export default function PostCard({ post }: PostCardProps) {
           <button onClick={handleLike} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isLiked ? '#ef4444' : 'var(--text-secondary)', transition: 'color 0.2s' }}>
             <Heart size={22} fill={isLiked ? '#ef4444' : 'none'} /> <span className="text-sm font-semibold">{localLikes}</span>
           </button>
-          <button style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', transition: 'color 0.2s' }}>
+          <button onClick={() => setShowComments(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', transition: 'color 0.2s' }}>
             <MessageCircle size={22} /> <span className="text-sm font-semibold">{post.comments}</span>
           </button>
-          <button style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', transition: 'color 0.2s' }}>
+          <button onClick={handleShare} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', transition: 'color 0.2s' }}>
             <Share2 size={22} /> <span className="text-sm font-semibold">{post.shares}</span>
           </button>
         </div>
@@ -186,6 +205,10 @@ export default function PostCard({ post }: PostCardProps) {
           </button>
         </div>
       </div>
+
+      {showComments && (
+        <CommentModal postId={post.id} onClose={() => setShowComments(false)} />
+      )}
     </article>
   );
 }
