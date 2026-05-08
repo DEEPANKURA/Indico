@@ -129,3 +129,52 @@ export async function searchUsersAction(query: string) {
     return { success: false, error: error.message };
   }
 }
+
+export async function getFriendsAction() {
+  try {
+    const supabase = await getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    // Get following
+    const { data: following } = await supabase
+      .from('follows')
+      .select('profiles:following_id(id, username, full_name, avatar_url)')
+      .eq('follower_id', user.id);
+
+    // Get followers
+    const { data: followers } = await supabase
+      .from('follows')
+      .select('profiles:follower_id(id, username, full_name, avatar_url)')
+      .eq('following_id', user.id);
+
+    const friends = new Map();
+    following?.forEach(f => friends.set(f.profiles.id, f.profiles));
+    followers?.forEach(f => friends.set(f.profiles.id, f.profiles));
+
+    return { success: true, users: Array.from(friends.values()) };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function sendDirectMessageAction(recipientId: string, content: string) {
+  try {
+    const supabase = await getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const { error } = await supabase
+      .from('messages')
+      .insert({
+        sender_id: user.id,
+        recipient_id: recipientId,
+        content: content
+      });
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

@@ -32,7 +32,7 @@ export default function BottomNav() {
       
       setUnreadCount(count || 0);
 
-      // Subscribe to new messages
+      // Subscribe to new messages and read status changes
       const channel = supabase
         .channel('nav_notifications')
         .on('postgres_changes', { 
@@ -40,7 +40,8 @@ export default function BottomNav() {
           schema: 'public', 
           table: 'messages',
           filter: `recipient_id=eq.${user.id}`
-        }, () => {
+        }, (payload) => {
+          console.log('Message change detected:', payload);
           fetchUnread();
         })
         .subscribe();

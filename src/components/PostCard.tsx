@@ -7,6 +7,7 @@ import { toggleLikeAction, toggleFollowAction } from '@/app/actions/social';
 import Link from 'next/link';
 import Image from 'next/image';
 import CommentModal from './CommentModal';
+import ShareModal from './ShareModal';
 
 interface PostCardProps {
   post: {
@@ -32,6 +33,7 @@ interface PostCardProps {
 export default function PostCard({ post }: PostCardProps) {
   const [isTipping, setIsTipping] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   
   const handleTip = async () => {
     if (!post.authorId) return;
@@ -184,7 +186,7 @@ export default function PostCard({ post }: PostCardProps) {
           <button onClick={() => setShowComments(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', transition: 'color 0.2s' }}>
             <MessageCircle size={22} /> <span className="text-sm font-semibold">{post.comments}</span>
           </button>
-          <button onClick={handleShare} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', transition: 'color 0.2s' }}>
+          <button onClick={() => setShowShare(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', transition: 'color 0.2s' }}>
             <Share2 size={22} /> <span className="text-sm font-semibold">{post.shares}</span>
           </button>
         </div>
@@ -208,6 +210,10 @@ export default function PostCard({ post }: PostCardProps) {
 
       {showComments && (
         <CommentModal postId={post.id} onClose={() => setShowComments(false)} />
+      )}
+
+      {showShare && (
+        <ShareModal postId={post.id} onClose={() => setShowShare(false)} />
       )}
     </article>
   );

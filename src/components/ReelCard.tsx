@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from 'react';
 import { Heart, MessageCircle, Share2, Music2, User, Volume2, VolumeX } from 'lucide-react';
 import { toggleLikeAction } from '@/app/actions/social';
 import CommentModal from './CommentModal';
+import ShareModal from './ShareModal';
 
 interface ReelCardProps {
   post: {
@@ -28,6 +29,7 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
   const [likesCount, setLikesCount] = useState(post.likes);
   const [isMuted, setIsMuted] = useState(true);
   const [showComments, setShowComments] = useState(false);
+  const [showShare, setShowShare] = useState(false);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -166,7 +168,7 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
           <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{post.comments}</span>
         </button>
 
-        <button onClick={handleShare} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+        <button onClick={() => setShowShare(true)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
           <div style={{ padding: '10px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
             <Share2 size={24} />
           </div>
@@ -175,6 +177,10 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
 
       {showComments && (
         <CommentModal postId={post.id} onClose={() => setShowComments(false)} />
+      )}
+
+      {showShare && (
+        <ShareModal postId={post.id} onClose={() => setShowShare(false)} />
       )}
     </div>
   );
