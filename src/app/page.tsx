@@ -1,7 +1,8 @@
 import PostCard from "@/components/PostCard";
 import CreatePost from "@/components/CreatePost";
-import { Sparkles, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
+import Link from "next/link";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -28,8 +29,12 @@ export default async function Home() {
       }}>
         <button className="btn-primary" style={{ flex: 1 }}>For You</button>
         <button className="btn-secondary" style={{ flex: 1, border: 'none', background: 'transparent' }}>Following</button>
-        <button className="btn-secondary" style={{ flex: 1, border: 'none', background: 'transparent' }}>Community</button>
-        <button className="btn-secondary" style={{ flex: 1, border: 'none', background: 'transparent' }}>Go Live</button>
+        <Link href="/communities" style={{ flex: 1, display: 'flex' }}>
+          <button className="btn-secondary" style={{ width: '100%', border: 'none', background: 'transparent' }}>Community</button>
+        </Link>
+        <Link href="/live" style={{ flex: 1, display: 'flex' }}>
+          <button className="btn-secondary" style={{ width: '100%', border: 'none', background: 'transparent' }}>Go Live</button>
+        </Link>
       </div>
 
       {/* Info Banner */}
