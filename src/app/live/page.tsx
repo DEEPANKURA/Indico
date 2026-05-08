@@ -263,7 +263,7 @@ export default function LivePage() {
       {/* Streams list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {activeStreams.length > 0 ? activeStreams.map((stream) => (
-          <div key={stream.id} className="glass-card" style={{ borderRadius: '20px', overflow: 'hidden', cursor: 'pointer' }}>
+          <div key={stream.id} onClick={() => router.push(`/live/${stream.id}`)} className="glass-card" style={{ borderRadius: '20px', overflow: 'hidden', cursor: 'pointer' }}>
             <div style={{ height: '240px', background: 'rgba(0,0,0,0.4)', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ textAlign: 'center' }}>
                 <Play size={48} style={{ color: 'white', opacity: 0.8 }} />
