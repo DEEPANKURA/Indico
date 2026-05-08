@@ -3,17 +3,18 @@
 import { useState, useEffect, use, useRef, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Users, Eye, Heart, MessageSquare, Send, X, ArrowLeft, Loader2, Share2, DollarSign, Gift, Zap, Radio } from 'lucide-react';
+import { Eye, Heart, MessageSquare, Send, X, Loader2, DollarSign, Gift, Zap, Radio } from 'lucide-react';
+import Image from 'next/image';
 
 export default function WatchLivePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [stream, setStream] = useState<any>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [stream, setStream] = useState<any | null>(null);
+  const [messages, setMessages] = useState<{id: number, user: string, text: string, system?: boolean}[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [likes, setLikes] = useState(0);
   const [viewers, setViewers] = useState(0);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   
   const supabase = createClient();
@@ -50,6 +51,7 @@ export default function WatchLivePage({ params }: { params: Promise<{ id: string
   }, [id, supabase, router]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStreamData();
 
     // Real-time viewer count and status
@@ -76,7 +78,7 @@ export default function WatchLivePage({ params }: { params: Promise<{ id: string
       supabase.removeChannel(channel);
       supabase.rpc('decrement_viewer_count', { stream_id: id });
     };
-  }, [id, supabase, fetchStreamData]);
+  }, [id, supabase, fetchStreamData, router]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -179,11 +181,13 @@ export default function WatchLivePage({ params }: { params: Promise<{ id: string
             <div style={{ 
               width: '60px', height: '60px', borderRadius: '50%', 
               background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-              padding: '2px', flexShrink: 0
+              padding: '2px', flexShrink: 0, position: 'relative', overflow: 'hidden'
             }}>
-              <img 
+              <Image 
                 src={stream.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${stream.profiles?.username}`} 
-                style={{ width: '100%', height: '100%', borderRadius: '50%', border: '2px solid black', objectFit: 'cover' }} 
+                alt={stream.profiles?.username || 'Streamer'}
+                fill
+                style={{ borderRadius: '50%', border: '2px solid black', objectFit: 'cover' }} 
               />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -260,6 +264,7 @@ export default function WatchLivePage({ params }: { params: Promise<{ id: string
             </button>
           </div>
         </form>
+      </div>
       </div>
     </div>
   );
