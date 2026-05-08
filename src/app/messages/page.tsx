@@ -115,7 +115,7 @@ export default function MessagesPage() {
           convs.push({
             user: otherUser,
             lastMsg: msg.content,
-            time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
           });
           seen.add(otherUser.id);
         }
