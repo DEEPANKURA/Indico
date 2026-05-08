@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Radio, Users, Eye, Heart, Camera, StopCircle, Play, Loader2, X } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
 export default function LivePage() {
   const supabase = createClient();
+  const router = useRouter();
   const [activeStreams, setActiveStreams] = useState<any[]>([]);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [showBroadcastPanel, setShowBroadcastPanel] = useState(false);
