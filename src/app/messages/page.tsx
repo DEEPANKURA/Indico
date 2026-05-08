@@ -225,6 +225,21 @@ export default function MessagesPage() {
                 style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', width: '100%', fontSize: '0.95rem' }} 
               />
             </div>
+            <button 
+              onClick={async () => {
+                if (!currentUser) return;
+                await supabase.from('messages').update({ is_read: true }).eq('recipient_id', currentUser.id).eq('is_read', false);
+                window.dispatchEvent(new Event('messages_read'));
+                fetchConversations(currentUser.id);
+              }}
+              style={{ 
+                marginTop: '12px', width: '100%', padding: '8px', borderRadius: '8px', 
+                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-light)',
+                color: 'var(--text-secondary)', fontSize: '0.8rem', cursor: 'pointer'
+              }}
+            >
+              Mark all as read
+            </button>
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {searchQuery ? (

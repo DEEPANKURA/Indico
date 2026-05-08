@@ -6,7 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-export async function createPostAction(content: string) {
+export async function createPostAction(content: string, mediaUrls: string[] = []) {
   try {
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -53,6 +53,7 @@ export async function createPostAction(content: string) {
     const { error: insertError } = await supabase.from('posts').insert({
       author_id: user.id,
       content: content.trim(),
+      media_urls: mediaUrls,
       ai_safety_score: aiSafetyScore,
       is_flagged: isFlagged,
     });

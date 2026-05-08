@@ -28,11 +28,8 @@ export default async function Home() {
       }}>
         <button className="btn-primary" style={{ flex: 1 }}>For You</button>
         <button className="btn-secondary" style={{ flex: 1, border: 'none', background: 'transparent' }}>Following</button>
-        <button className="btn-secondary" style={{ flex: 1, border: 'none', background: 'transparent' }}>Trending</button>
-        <button className="btn-secondary" style={{ flex: 1, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-          <Sparkles size={16} className="text-gradient" />
-          <span className="text-gradient font-bold">AI Pick</span>
-        </button>
+        <button className="btn-secondary" style={{ flex: 1, border: 'none', background: 'transparent' }}>Community</button>
+        <button className="btn-secondary" style={{ flex: 1, border: 'none', background: 'transparent' }}>Go Live</button>
       </div>
 
       {/* Info Banner */}
