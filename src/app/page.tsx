@@ -22,7 +22,7 @@ export default async function Home() {
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px' }}>
       {/* Header / Feed Tabs */}
-      <div className="glass-card" style={{ 
+      <div className="glass-card feed-tabs" style={{ 
         display: 'flex', alignItems: 'center', gap: '8px', 
         padding: '8px', marginBottom: '24px', position: 'sticky', top: '10px', zIndex: 10 
       }}>

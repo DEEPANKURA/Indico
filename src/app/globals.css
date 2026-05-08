@@ -23,6 +23,9 @@
   
   --transition-fast: 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --transition-smooth: 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* Bottom nav height for mobile padding */
+  --bottom-nav-height: 64px;
 }
 
 @media (prefers-color-scheme: light) {
@@ -54,6 +57,11 @@
   margin: 0;
 }
 
+html {
+  /* Prevent horizontal scroll on mobile */
+  overflow-x: hidden;
+}
+
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -74,6 +82,8 @@ button {
   cursor: pointer;
   font-family: inherit;
   color: inherit;
+  /* Prevent tap highlight on mobile */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Glassmorphism Utilities */
@@ -94,7 +104,7 @@ button {
 }
 
 .glass-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-neon);
   border-color: rgba(138, 43, 226, 0.3);
 }
@@ -126,6 +136,11 @@ button {
   box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
   position: relative;
   overflow: hidden;
+  /* Better touch targets */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-primary:hover {
@@ -154,6 +169,10 @@ button {
   font-weight: 600;
   font-size: 0.95rem;
   transition: all var(--transition-fast);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-secondary:hover {
@@ -165,8 +184,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: var(--bg-glass);
   border: 1px solid var(--border-glass);
@@ -186,14 +205,19 @@ button {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: var(--bg-primary); 
@@ -224,37 +248,165 @@ button {
 .w-full { width: 100%; }
 .h-full { height: 100%; }
 
-/* Grid Layout for App */
+/* ============================================================
+   APP LAYOUT — 3-column desktop grid
+   ============================================================ */
 .app-layout {
   display: grid;
   grid-template-columns: 260px 1fr 340px;
-  height: 100vh;
+  height: 100dvh;   /* dvh = dynamic viewport height, handles mobile browsers */
   overflow: hidden;
 }
 
-@media (max-width: 1024px) {
-  .app-layout {
-    grid-template-columns: 80px 1fr;
-  }
-  .hide-on-mobile {
-    display: none;
-  }
-}
-
-@media (max-width: 768px) {
-  .app-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr 60px;
-  }
-}
-
+/* ============================================================
+   MAIN FEED
+   ============================================================ */
 .main-feed-area {
   overflow-y: auto;
   padding: 20px;
   scroll-behavior: smooth;
+  /* Leave room for bottom nav on mobile */
 }
 
-/* Typography */
+/* ============================================================
+   BOTTOM NAV — mobile only
+   ============================================================ */
+.bottom-nav {
+  display: none;   /* hidden on desktop */
+}
+
+/* ============================================================
+   SIDEBAR — tablet: icon-only
+   ============================================================ */
+@media (max-width: 1024px) {
+  .app-layout {
+    grid-template-columns: 72px 1fr;
+  }
+
+  .right-sidebar {
+    display: none !important;
+  }
+
+  /* Collapse sidebar text labels */
+  .sidebar-label,
+  .sidebar-logo-text,
+  .sidebar-section-title,
+  .sidebar-upload-btn span,
+  .sidebar-settings-label {
+    display: none !important;
+  }
+
+  .sidebar-logo {
+    justify-content: center;
+    padding: 0 !important;
+  }
+
+  .sidebar-nav-link {
+    justify-content: center;
+    gap: 0 !important;
+    padding: 14px !important;
+  }
+
+  .sidebar-creator-section {
+    display: none !important;
+  }
+
+  .sidebar-upload-btn {
+    padding: 12px !important;
+    justify-content: center;
+  }
+
+  .sidebar-settings-link {
+    justify-content: center;
+    padding: 10px !important;
+  }
+}
+
+/* ============================================================
+   MOBILE — bottom nav replaces left sidebar
+   ============================================================ */
+@media (max-width: 640px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    height: 100dvh;
+  }
+
+  /* Hide the left sidebar entirely on mobile */
+  .sidebar {
+    display: none !important;
+  }
+
+  .right-sidebar {
+    display: none !important;
+  }
+
+  /* Pad main feed so content isn't under the bottom nav */
+  .main-feed-area {
+    padding: 16px 12px calc(var(--bottom-nav-height) + 16px) 12px;
+  }
+
+  /* Show bottom nav */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--bottom-nav-height);
+    background: rgba(10, 10, 15, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-light);
+    z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+    min-height: 44px;
+  }
+
+  .bottom-nav-item.active {
+    color: var(--accent-secondary);
+  }
+
+  .bottom-nav-item.active svg {
+    filter: drop-shadow(0 0 6px var(--accent-secondary));
+  }
+
+  /* Mobile feed adjustments */
+  .glass-card:hover {
+    transform: none;  /* No hover lift on touch */
+  }
+
+  /* Sticky feed tabs become full-width scrollable on mobile */
+  .feed-tabs {
+    gap: 4px !important;
+    padding: 6px !important;
+  }
+
+  .feed-tabs button {
+    font-size: 0.8rem !important;
+    padding: 8px 10px !important;
+    min-height: 38px !important;
+  }
+}
+
+/* ============================================================
+   Typography
+   ============================================================ */
 h1, h2, h3, h4, h5, h6 {
   color: var(--text-primary);
   font-weight: 700;

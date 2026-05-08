@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import RightSidebar from "@/components/RightSidebar";
+import BottomNav from "@/components/BottomNav";
 
 export const metadata: Metadata = {
   title: "Indico | The Creator-First Social Media Platform",
   description: "A next-generation creator-first social media app where new creators can go viral easily based on content quality, watch time, and shares instead of follower count.",
+  viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
 };
 
 export default function RootLayout({
@@ -15,6 +17,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta name="theme-color" content="#0a0a0f" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      </head>
       <body suppressHydrationWarning>
         <div className="app-layout">
           <Sidebar />
@@ -23,6 +31,8 @@ export default function RootLayout({
           </main>
           <RightSidebar />
         </div>
+        {/* Bottom nav shown only on mobile via CSS */}
+        <BottomNav />
       </body>
     </html>
   );
