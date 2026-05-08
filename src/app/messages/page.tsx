@@ -43,8 +43,16 @@ export default function MessagesPage() {
         }, (payload) => {
           if (payload.new.sender_id === selectedUser.id) {
             setMessages(prev => [...prev, payload.new]);
+            
+            // Mark as read immediately if chat is open
+            supabase
+              .from('messages')
+              .update({ is_read: true })
+              .eq('id', payload.new.id)
+              .then(() => fetchConversations(currentUser.id));
+          } else {
+            fetchConversations(currentUser.id);
           }
-          fetchConversations(currentUser.id);
         })
         .subscribe();
 
@@ -96,7 +104,7 @@ export default function MessagesPage() {
   const fetchMessages = async (otherUserId: string) => {
     const { data } = await supabase
       .from('messages')
-      .select('*')
+      .select('*, posts:post_id(id, content, media_urls)')
       .or(`and(sender_id.eq.${currentUser.id},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${currentUser.id})`)
       .order('created_at', { ascending: true });
 
@@ -266,11 +274,33 @@ export default function MessagesPage() {
                 {messages.map((msg, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: msg.sender_id === currentUser.id ? 'flex-end' : 'flex-start' }}>
                     <div style={{
-                      maxWidth: '70%', padding: '12px 16px', borderRadius: msg.sender_id === currentUser.id ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+                      maxWidth: '75%', padding: '12px 16px', borderRadius: msg.sender_id === currentUser.id ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
                       background: msg.sender_id === currentUser.id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'var(--bg-glass)',
-                      fontSize: '0.95rem', lineHeight: '1.5', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      fontSize: '0.95rem', lineHeight: '1.5', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      display: 'flex', flexDirection: 'column', gap: '8px'
                     }}>
-                      {msg.content}
+                      {msg.post_id && msg.posts && (
+                        <div style={{ 
+                          background: 'rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden', 
+                          border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
+                          width: '240px'
+                        }} onClick={() => window.location.href = `/post/${msg.post_id}`}>
+                          {msg.posts.media_urls?.[0] && (
+                            <div style={{ width: '100%', aspectRatio: '16/9', overflow: 'hidden' }}>
+                              {msg.posts.media_urls[0].includes('mp4') ? (
+                                <video src={msg.posts.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                              ) : (
+                                <img src={msg.posts.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              )}
+                            </div>
+                          )}
+                          <div style={{ padding: '10px', fontSize: '0.85rem' }}>
+                            <div style={{ fontWeight: 'bold', color: 'var(--accent-secondary)', marginBottom: '4px' }}>Shared Post</div>
+                            <div style={{ opacity: 0.8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msg.posts.content}</div>
+                          </div>
+                        </div>
+                      )}
+                      <div>{msg.content}</div>
                     </div>
                   </div>
                 ))}

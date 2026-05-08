@@ -43,7 +43,7 @@ export default function ShareModal({ postId, onClose }: ShareModalProps) {
   const handleSend = async (userId: string) => {
     setSending(userId);
     const postUrl = `${window.location.origin}/post/${postId}`;
-    const res = await sendDirectMessageAction(userId, `Check out this post: ${postUrl}`);
+    const res = await sendDirectMessageAction(userId, `Check out this post: ${postUrl}`, postId);
     if (res.success) {
       setSent(prev => new Set(prev).add(userId));
     } else {

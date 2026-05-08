@@ -164,7 +164,7 @@ export async function getFriendsAction() {
   }
 }
 
-export async function sendDirectMessageAction(recipientId: string, content: string) {
+export async function sendDirectMessageAction(recipientId: string, content: string, postId?: string) {
   try {
     const supabase = await getSupabase();
     const { data: { user } } = await supabase.auth.getUser();
@@ -175,7 +175,8 @@ export async function sendDirectMessageAction(recipientId: string, content: stri
       .insert({
         sender_id: user.id,
         recipient_id: recipientId,
-        content: content
+        content: content,
+        post_id: postId
       });
 
     if (error) throw error;
