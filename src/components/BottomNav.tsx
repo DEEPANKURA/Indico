@@ -55,9 +55,17 @@ export default function BottomNav() {
 
       window.addEventListener('messages_read', handleManualRefresh);
 
+      // Polling fallback
+      const interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          fetchUnread();
+        }
+      }, 10000);
+
       return () => {
         supabase.removeChannel(channel);
         window.removeEventListener('messages_read', handleManualRefresh);
+        clearInterval(interval);
       };
     };
 

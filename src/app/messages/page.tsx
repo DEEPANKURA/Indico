@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { MessageSquare, Send, Search, User, Loader2, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { searchUsersAction } from '@/app/actions/social';
 
 export default function MessagesPage() {
@@ -17,6 +18,15 @@ export default function MessagesPage() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -200,7 +210,7 @@ export default function MessagesPage() {
         <div style={{ 
           width: selectedUser ? '320px' : '100%', 
           borderRight: '1px solid var(--border-light)', 
-          display: (selectedUser && typeof window !== 'undefined' && window.innerWidth < 640) ? 'none' : 'flex', 
+          display: (selectedUser && isMobile) ? 'none' : 'flex', 
           flexDirection: 'column',
           flexShrink: 0
         }}>
@@ -272,7 +282,7 @@ export default function MessagesPage() {
         {/* Chat area - hidden on mobile when no chat is selected */}
         <div style={{ 
           flex: 1, 
-          display: (!selectedUser && typeof window !== 'undefined' && window.innerWidth < 640) ? 'none' : 'flex', 
+          display: (!selectedUser && isMobile) ? 'none' : 'flex', 
           flexDirection: 'column', 
           background: 'rgba(0,0,0,0.2)',
           width: '100%'
@@ -307,7 +317,7 @@ export default function MessagesPage() {
                           background: 'rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden', 
                           border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
                           width: '240px'
-                        }} onClick={() => window.location.href = `/post/${msg.post_id}`}>
+                        }} onClick={() => router.push(`/post/${msg.post_id}`)}>
                           {msg.posts.media_urls?.[0] && (
                             <div style={{ width: '100%', aspectRatio: '16/9', overflow: 'hidden' }}>
                               {msg.posts.media_urls[0].includes('mp4') ? (
