@@ -24,21 +24,31 @@ export default function Stories() {
   const [user, setUser] = useState<any | null>(null);
   const supabase = createClient();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function fetchData() {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       setUser(currentUser);
 
-      // Fetch active stories
+      // 1. Get followings
+      const { data: followings } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', currentUser.id);
+      
+      const followingIds = followings?.map(f => f.following_id) || [];
+      const filterIds = [currentUser.id, ...followingIds];
+
+      // 2. Fetch active stories from followings
       const { data } = await (supabase
         .from('stories' as any)
         .select('*, profiles:user_id(username, avatar_url)')
+        .in('user_id', filterIds)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false }) as any);
 
       if (data) {
-        // Group by user for simplicity or just show all for now
         setStories(data);
       }
       setLoading(false);
@@ -46,32 +56,51 @@ export default function Stories() {
     fetchData();
   }, [supabase]);
 
-  const handleAddStory = async () => {
-    // In a real app, this would open a file picker
-    // For demo, we'll add a beautiful placeholder story
-    if (!user) return alert('Please login to add a story');
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
 
-    const demoStories = [
-      'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=800',
-      'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=800',
-      'https://images.unsplash.com/photo-1633356122544-f134324a6cee?auto=format&fit=crop&q=80&w=800'
-    ];
-    
-    const randomImg = demoStories[Math.floor(Math.random() * demoStories.length)];
+    try {
+      setLoading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Math.random()}.${fileExt}`;
+      const filePath = `stories/${fileName}`;
 
-    const { data } = await (supabase
-      .from('stories' as any)
-      .insert({
-        user_id: user.id,
-        media_url: randomImg,
-        media_type: 'image'
-      })
-      .select('*, profiles:user_id(username, avatar_url)')
-      .single() as any);
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(filePath, file);
 
-    if (data) {
-      setStories([data, ...stories]);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('media')
+        .getPublicUrl(filePath);
+
+      const { data, error: insertError } = await (supabase
+        .from('stories' as any)
+        .insert({
+          user_id: user.id,
+          media_url: publicUrl,
+          media_type: file.type.startsWith('video') ? 'video' : 'image'
+        })
+        .select('*, profiles:user_id(username, avatar_url)')
+        .single() as any);
+
+      if (insertError) throw insertError;
+
+      if (data) {
+        setStories([data, ...stories]);
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to upload story');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleAddStory = () => {
+    if (!user) return alert('Please login to add a story');
+    fileInputRef.current?.click();
   };
 
   const nextStory = () => {
@@ -92,6 +121,13 @@ export default function Stories() {
 
   return (
     <div style={{ marginBottom: '32px', position: 'relative' }}>
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        hidden 
+        accept="image/*,video/*"
+        onChange={handleFileChange}
+      />
       <div 
         ref={scrollRef}
         style={{ 
