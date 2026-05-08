@@ -57,6 +57,26 @@
   margin: 0;
 }
 
+/* Ensure text is always visible in form elements */
+input, textarea, select {
+  color: var(--text-primary);
+  background: var(--bg-glass);
+  font-family: var(--font-inter);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
 html {
   /* Prevent horizontal scroll on mobile */
   overflow-x: hidden;
