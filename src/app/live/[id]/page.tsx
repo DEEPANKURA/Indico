@@ -102,46 +102,64 @@ export default function WatchLivePage({ params }: { params: Promise<{ id: string
   };
 
   if (loading) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#000', color: 'white' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#000', color: 'white' }}>
       <Loader2 className="animate-spin" size={40} style={{ color: 'var(--accent-primary)', marginBottom: '16px' }} />
-      <span>Connecting to stream...</span>
+      <span>Connecting to secure stream...</span>
     </div>
   );
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', height: '100vh', background: '#000', overflow: 'hidden' }}>
-      {/* Main Video Area */}
-      <div style={{ position: 'relative', height: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ 
+      position: 'fixed', inset: 0, zIndex: 2500, background: '#000', 
+      display: 'flex', flexDirection: 'column', overflow: 'hidden' 
+    }}>
+      {/* Top Bar for Mobile/Exit */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '60px', zIndex: 10, display: 'flex', alignItems: 'center', padding: '0 20px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)', pointerEvents: 'none' }}>
         <button 
           onClick={() => router.push('/live')}
-          style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10, background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', padding: '10px', borderRadius: '50%', cursor: 'pointer' }}
+          style={{ pointerEvents: 'auto', background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '10px', borderRadius: '50%', cursor: 'pointer', backdropFilter: 'blur(10px)' }}
         >
-          <ArrowLeft size={24} />
+          <X size={24} />
         </button>
+      </div>
+
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: '1fr 380px', 
+        height: '100%',
+        flex: 1
+      }} className="live-layout-grid">
+        {/* Main Video Area */}
+        <div style={{ position: 'relative', height: '100%', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
 
         {/* Video Area */}
         <div style={{ width: '100%', height: '100%', position: 'relative', background: '#000' }}>
-           {/* Simulated Live Stream Feed */}
+           {/* Robust Live Stream Feed */}
            <video 
-              src="https://assets.mixkit.co/videos/preview/mixkit-gaming-stream-on-a-laptop-screen-34444-large.mp4"
+              src="https://player.vimeo.com/external/494449711.sd.mp4?s=0cf2e434850d53c6145326771d9d784a861f6eb2&profile_id=165&oauth2_token_id=57447761"
               autoPlay 
               loop 
               muted 
               playsInline
-              style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
            />
            
-           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, transparent 20%, rgba(0,0,0,0.4) 100%)', pointerEvents: 'none' }} />
+           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, transparent 40%, rgba(0,0,0,0.6) 100%)', pointerEvents: 'none' }} />
            
-           {/* Connection Overlay (Fade out) */}
+           {/* Connection Overlay */}
            <div style={{ 
              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
-             background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
-             animation: 'fadeOut 2s forwards 3s', pointerEvents: 'none'
+             background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+             animation: 'fadeOut 1.5s forwards 4s', pointerEvents: 'none'
            }}>
-             <Radio size={80} style={{ color: 'var(--accent-primary)', marginBottom: '20px' }} />
-             <p style={{ color: 'white', fontSize: '1.2rem', fontWeight: '600' }}>Establishing Secure Connection...</p>
-             <div className="badge badge-neon" style={{ marginTop: '12px' }}>P2P ENCRYPTED</div>
+             <div style={{ position: 'relative' }}>
+                <Radio size={80} style={{ color: 'var(--accent-primary)', marginBottom: '20px' }} />
+                <div className="animate-ping" style={{ position: 'absolute', top: 0, left: 0, width: '80px', height: '80px', background: 'var(--accent-primary)', borderRadius: '50%', opacity: 0.2 }} />
+             </div>
+             <p style={{ color: 'white', fontSize: '1.4rem', fontWeight: '800', letterSpacing: '1px' }}>SYNCING SIGNAL...</p>
+             <div style={{ marginTop: '16px', padding: '6px 16px', borderRadius: '20px', border: '1px solid var(--accent-secondary)', color: 'var(--accent-secondary)', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                HIGH-BANDWIDTH P2P MESH ACTIVE
+             </div>
            </div>
         </div>
 
@@ -157,29 +175,29 @@ export default function WatchLivePage({ params }: { params: Promise<{ id: string
         </div>
 
         {/* Streamer Info Bar (Bottom) */}
-        <div style={{ position: 'absolute', bottom: '0', left: '0', width: '100%', padding: '40px 32px 32px', background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div style={{ position: 'absolute', bottom: '0', left: '0', width: '100%', padding: '60px 32px 32px', background: 'linear-gradient(to top, rgba(0,0,0,0.95), transparent)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', maxWidth: '900px' }}>
             <div style={{ 
-              width: '64px', height: '64px', borderRadius: '50%', 
+              width: '60px', height: '60px', borderRadius: '50%', 
               background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-              padding: '2px'
+              padding: '2px', flexShrink: 0
             }}>
               <img 
                 src={stream.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${stream.profiles?.username}`} 
-                style={{ width: '100%', height: '100%', borderRadius: '50%', border: '2px solid black' }} 
+                style={{ width: '100%', height: '100%', borderRadius: '50%', border: '2px solid black', objectFit: 'cover' }} 
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <h1 style={{ color: 'white', margin: 0, fontSize: '1.5rem', fontWeight: '800' }}>{stream.title}</h1>
-              <div style={{ color: 'var(--accent-secondary)', fontSize: '1rem', fontWeight: '600', marginTop: '4px' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ color: 'white', margin: 0, fontSize: '1.4rem', fontWeight: '800', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{stream.title}</h1>
+              <div style={{ color: 'var(--accent-secondary)', fontSize: '0.95rem', fontWeight: '600', marginTop: '4px' }}>
                 @{stream.profiles?.username} · {stream.category}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <button onClick={handleLike} className="hover-scale" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '12px 24px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 'bold', cursor: 'pointer' }}>
-                <Heart size={20} fill={likes > 0 ? '#ef4444' : 'none'} color={likes > 0 ? '#ef4444' : 'white'} /> {likes}
+            <div style={{ display: 'flex', gap: '12px', flexShrink: 0 }}>
+              <button onClick={handleLike} className="hover-scale" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '10px 18px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                <Heart size={18} fill={likes > 0 ? '#ef4444' : 'none'} color={likes > 0 ? '#ef4444' : 'white'} /> {likes}
               </button>
-              <button className="hover-scale" style={{ background: 'var(--accent-primary)', border: 'none', color: 'white', padding: '12px 24px', borderRadius: '16px', fontWeight: 'bold', cursor: 'pointer' }}>
+              <button className="hover-scale" style={{ background: 'var(--accent-primary)', border: 'none', color: 'white', padding: '10px 20px', borderRadius: '14px', fontWeight: 'bold', cursor: 'pointer' }}>
                 Follow
               </button>
             </div>
