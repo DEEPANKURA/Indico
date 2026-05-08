@@ -7,18 +7,11 @@ import Link from "next/link";
 export default async function Home() {
   const supabase = await createClient();
   
-  const { data: posts, error } = await supabase
-    .from('posts')
-    .select(`
-      id,
-      content,
-      media_urls,
-      like_count,
-      comment_count,
-      created_at,
-      profiles:author_id ( id, username, full_name, avatar_url, is_creator )
-    `)
-    .order('created_at', { ascending: false });
+  const { data: posts, error } = await supabase.rpc('get_viral_feed', { limit_count: 50 });
+
+  if (error) {
+    console.error('Error fetching viral feed:', error);
+  }
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px' }}>
@@ -61,16 +54,16 @@ export default async function Home() {
             key={post.id} 
             post={{
               id: post.id,
-              authorId: post.profiles?.id,
+              authorId: post.author_id,
               author: {
-                name: post.profiles?.full_name || 'Anonymous',
-                handle: `@${post.profiles?.username || 'unknown'}`,
-                avatar: post.profiles?.avatar_url || '',
-                isNew: post.profiles?.is_creator ? false : true,
+                name: post.author_full_name || 'Anonymous',
+                handle: `@${post.author_username || 'unknown'}`,
+                avatar: post.author_avatar_url || '',
+                isNew: post.author_followers_count < 100,
               },
               content: post.content,
               mediaUrl: post.media_urls?.[0] || undefined,
-              mediaType: post.media_urls?.[0]?.includes('mp4') ? 'video' : 'image',
+              mediaType: post.media_urls?.[0]?.toLowerCase().match(/\.(mp4|webm|ogg)/) ? 'video' : 'image',
               likes: post.like_count?.toString() || "0",
               comments: post.comment_count?.toString() || "0",
               shares: "0",

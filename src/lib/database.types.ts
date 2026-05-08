@@ -485,6 +485,24 @@ export type Database = {
         Args: { stream_id: string }
         Returns: undefined
       }
+      get_viral_feed: {
+        Args: { limit_count?: number }
+        Returns: {
+          author_avatar_url: string
+          author_followers_count: number
+          author_full_name: string
+          author_id: string
+          author_is_creator: boolean
+          author_username: string
+          comment_count: number
+          content: string
+          created_at: string
+          id: string
+          like_count: number
+          media_urls: string[]
+          viral_score: number
+        }[]
+      }
       increment_viewer_count: {
         Args: { stream_id: string }
         Returns: undefined
