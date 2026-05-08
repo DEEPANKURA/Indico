@@ -22,13 +22,19 @@ interface PostCardProps {
     content: string;
     mediaUrl?: string;
     mediaType?: 'video' | 'image';
-    likes: string;
-    comments: string;
-    shares: string;
+    likes: string | number;
+    comments: string | number;
+    shares: string | number;
     tags: string[];
     timeAgo: string;
   }
 }
+
+const parseMetric = (val: string | number) => {
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string') return parseInt(val.replace(/,/g, '')) || 0;
+  return 0;
+};
 
 export default function PostCard({ post }: PostCardProps) {
   const [isTipping, setIsTipping] = useState(false);
@@ -69,7 +75,7 @@ export default function PostCard({ post }: PostCardProps) {
     } catch (err) {}
   };
 
-  const [localLikes, setLocalLikes] = useState(parseInt(post.likes.replace(/,/g, '')) || 0);
+  const [localLikes, setLocalLikes] = useState(parseMetric(post.likes));
   const [isLiked, setIsLiked] = useState(false); // We don't have initial state from parent yet
   const handleLike = async () => {
     const wasLiked = isLiked;

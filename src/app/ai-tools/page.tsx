@@ -54,8 +54,8 @@ export default function AIToolsPage() {
       const updatedHistory = [newEntry, ...history.slice(0, 19)];
       setHistory(updatedHistory);
       localStorage.setItem('indico_ai_history', JSON.stringify(updatedHistory));
-    } catch {
-      setOutput('Error connecting to AI. Please try again.');
+    } catch (err: any) {
+      setOutput(`Error: ${err.message || 'Connecting to AI failed. Please try again.'}`);
     }
     setLoading(false);
   };
