@@ -18,6 +18,15 @@ export default function UserProfilePage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isTogglingFollow, setIsTogglingFollow] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
+  const [selectedPost, setSelectedPost] = useState<any>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -147,26 +156,53 @@ export default function UserProfilePage() {
         </div>
       </div>
 
-      {/* Posts */}
+      {/* Posts Grid */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
           <Grid3x3 size={20} style={{ color: 'var(--accent-secondary)' }} />
           <h2 style={{ fontWeight: '700', fontSize: '1.1rem' }}>Posts</h2>
         </div>
+        
         {posts.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(3, 1fr)', 
+            gap: '4px',
+            marginBottom: '40px'
+          }}>
             {posts.map((post) => (
-              <div key={post.id} className="glass-card" style={{ padding: '16px', borderRadius: '14px' }}>
-                {post.media_urls?.[0] && (
-                  <div style={{ marginBottom: '12px', borderRadius: '10px', overflow: 'hidden' }}>
-                    <img src={post.media_urls[0]} alt="" style={{ width: '100%', maxHeight: '300px', objectFit: 'cover' }} />
+              <div 
+                key={post.id} 
+                onClick={() => setSelectedPost(post)}
+                style={{ 
+                  aspectRatio: '1/1', 
+                  background: 'var(--bg-glass)', 
+                  cursor: 'pointer',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  borderRadius: '4px'
+                }}
+              >
+                {post.media_urls?.[0] ? (
+                  post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
+                    <video src={post.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <img src={post.media_urls[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  )
+                ) : (
+                  <div style={{ padding: '8px', fontSize: '0.75rem', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    {post.content.substring(0, 50)}...
                   </div>
                 )}
-                <p style={{ marginBottom: '12px', lineHeight: '1.6', fontSize: '0.95rem' }}>{post.content}</p>
-                <div style={{ display: 'flex', gap: '16px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Heart size={14} /> {post.like_count || 0}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MessageCircle size={14} /> {post.comment_count || 0}</span>
-                  <span style={{ marginLeft: 'auto' }}>{new Date(post.created_at).toLocaleDateString()}</span>
+                
+                {/* Hover Overlay */}
+                <div style={{ 
+                  position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px',
+                  opacity: 0, transition: 'opacity 0.2s', color: 'white'
+                }} onMouseEnter={(e) => e.currentTarget.style.opacity = '1'} onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Heart size={18} fill="white" /> {post.like_count || 0}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MessageCircle size={18} fill="white" /> {post.comment_count || 0}</span>
                 </div>
               </div>
             ))}
@@ -177,6 +213,62 @@ export default function UserProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Post Detail Modal */}
+      {selectedPost && (
+        <div style={{ 
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 1000, 
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' 
+        }} onClick={() => setSelectedPost(null)}>
+          <div className="glass-card" style={{ 
+            width: '100%', maxWidth: '900px', maxHeight: '90vh', 
+            display: 'flex', flexDirection: isMobile ? 'column' : 'row',
+            overflow: 'hidden', borderRadius: '12px'
+          }} onClick={e => e.stopPropagation()}>
+            
+            {/* Media Area */}
+            <div style={{ 
+              flex: 1.5, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              maxHeight: isMobile ? '40vh' : 'none'
+            }}>
+              {selectedPost.media_urls?.[0] ? (
+                selectedPost.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
+                  <video src={selectedPost.media_urls[0]} controls autoPlay style={{ width: '100%', maxHeight: '100%', display: 'block' }} />
+                ) : (
+                  <img src={selectedPost.media_urls[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                )
+              ) : (
+                <div style={{ padding: '40px', color: 'white', textAlign: 'center' }}>
+                  {selectedPost.content}
+                </div>
+              )}
+            </div>
+
+            {/* Info Area */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-light)' }}>
+              <div style={{ padding: '16px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.8rem', overflow: 'hidden' }}>
+                  {profile.avatar_url ? <img src={profile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : profile.username[0].toUpperCase()}
+                </div>
+                <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{profile.username}</div>
+              </div>
+              
+              <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
+                <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5' }}>{selectedPost.content}</p>
+                <div style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  {new Date(selectedPost.created_at).toLocaleDateString()}
+                </div>
+              </div>
+
+              <div style={{ padding: '16px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '16px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Heart size={20} /> {selectedPost.like_count || 0}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MessageCircle size={20} /> {selectedPost.comment_count || 0}</span>
+                <button onClick={() => router.push(`/post/${selectedPost.id}`)} className="btn-secondary" style={{ marginLeft: 'auto', padding: '6px 12px', fontSize: '0.8rem' }}>View Full Post</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
