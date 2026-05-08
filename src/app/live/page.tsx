@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Radio, Users, Eye, Heart, Camera, StopCircle, Play, Loader2, X } from 'lucide-react';
+import { Radio, Users, Eye, Heart, Camera, StopCircle, Play, Loader2, X, MessageSquare, Send } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
 export default function LivePage() {
@@ -18,6 +18,11 @@ export default function LivePage() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const [messages, setMessages] = useState<any[]>([
+    { id: 1, user: 'IndicoBot', text: 'Stream started! Connect with your fans here. 🎤', system: true },
+  ]);
+  const [newChatMsg, setNewChatMsg] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -143,7 +148,19 @@ export default function LivePage() {
     setShowBroadcastPanel(false);
     stopCamera();
     setStreamTitle('');
+    setMessages([{ id: 1, user: 'IndicoBot', text: 'Stream ended. Great job! 🌟', system: true }]);
   };
+
+  const handleSendChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChatMsg.trim()) return;
+    setMessages([...messages, { id: Date.now(), user: 'You', text: newChatMsg }]);
+    setNewChatMsg('');
+  };
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '10px', paddingBottom: '100px' }}>
@@ -170,42 +187,77 @@ export default function LivePage() {
 
       {showBroadcastPanel && (
         <div className="glass-card" style={{ marginBottom: '32px', borderRadius: '20px', overflow: 'hidden', border: '2px solid var(--accent-secondary)' }}>
-          <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000' }}>
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              muted 
-              playsInline 
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: isBroadcasting ? '1fr 300px' : '1fr', background: '#000' }}>
+            <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000' }}>
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                muted 
+                playsInline 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+              />
 
-            {/* Audio Meter */}
-            <div style={{ 
-              position: 'absolute', bottom: '20px', left: '20px', 
-              width: '120px', height: '6px', background: 'rgba(0,0,0,0.5)', 
-              borderRadius: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center'
-            }}>
+              {/* Audio Meter */}
               <div style={{ 
-                height: '100%', width: `${Math.min(100, audioLevel * 2)}%`,
-                background: audioLevel > 30 ? '#10b981' : '#6366f1',
-                transition: 'width 0.1s ease-out'
-              }} />
-              <div style={{ position: 'absolute', right: '4px', fontSize: '10px', color: 'white', opacity: 0.8 }}>MIC</div>
+                position: 'absolute', bottom: '20px', left: '20px', 
+                width: '120px', height: '6px', background: 'rgba(0,0,0,0.5)', 
+                borderRadius: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center'
+              }}>
+                <div style={{ 
+                  height: '100%', width: `${Math.min(100, audioLevel * 2)}%`,
+                  background: audioLevel > 30 ? '#10b981' : '#6366f1',
+                  transition: 'width 0.1s ease-out'
+                }} />
+                <div style={{ position: 'absolute', right: '4px', fontSize: '10px', color: 'white', opacity: 0.8 }}>MIC</div>
+              </div>
+              
+              {isBroadcasting && (
+                <div style={{ position: 'absolute', top: '20px', left: '20px', background: '#ef4444', color: 'white', padding: '4px 12px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white', animation: 'pulse 1.5s infinite' }} />
+                  LIVE
+                </div>
+              )}
+
+              <button 
+                onClick={isBroadcasting ? stopStreaming : () => { setShowBroadcastPanel(false); stopCamera(); }}
+                style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
             </div>
-            
+
+            {/* Streamer Chat Sidebar */}
             {isBroadcasting && (
-              <div style={{ position: 'absolute', top: '20px', left: '20px', background: '#ef4444', color: 'white', padding: '4px 12px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white', animation: 'pulse 1.5s infinite' }} />
-                LIVE
+              <div style={{ background: '#111', borderLeft: '1px solid #222', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ padding: '12px', borderBottom: '1px solid #222', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <MessageSquare size={16} />
+                  <span style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Stream Chat</span>
+                </div>
+                <div style={{ flex: 1, padding: '12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="no-scrollbar">
+                  {messages.map((msg) => (
+                    <div key={msg.id} style={{ fontSize: '0.8rem' }}>
+                      <span style={{ fontWeight: 'bold', color: msg.system ? 'var(--accent-secondary)' : '#a5b4fc' }}>{msg.user}: </span>
+                      <span style={{ color: 'white' }}>{msg.text}</span>
+                    </div>
+                  ))}
+                  <div ref={chatEndRef} />
+                </div>
+                <form onSubmit={handleSendChat} style={{ padding: '12px', borderTop: '1px solid #222' }}>
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Type a message..."
+                      value={newChatMsg}
+                      onChange={(e) => setNewChatMsg(e.target.value)}
+                      style={{ width: '100%', background: '#222', border: '1px solid #333', borderRadius: '8px', padding: '8px 32px 8px 10px', fontSize: '0.8rem', color: 'white' }}
+                    />
+                    <button type="submit" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)' }}>
+                      <Send size={14} />
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
-
-            <button 
-              onClick={isBroadcasting ? stopStreaming : () => { setShowBroadcastPanel(false); stopCamera(); }}
-              style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer' }}
-            >
-              <X size={20} />
-            </button>
           </div>
 
           <div style={{ padding: '24px' }}>
@@ -247,7 +299,12 @@ export default function LivePage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{streamTitle}</h3>
-                  <p style={{ margin: '4px 0 0', color: 'var(--accent-secondary)', fontSize: '0.9rem' }}>{category}</p>
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                    <p style={{ margin: 0, color: 'var(--accent-secondary)', fontSize: '0.9rem' }}>{category}</p>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      <Eye size={14} /> 0 viewers
+                    </span>
+                  </div>
                 </div>
                 <button 
                   onClick={stopStreaming}
