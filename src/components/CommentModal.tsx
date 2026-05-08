@@ -39,13 +39,13 @@ export default function CommentModal({ postId, onClose }: CommentModalProps) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 1000,
+      position: 'fixed', inset: 0, zIndex: 2000,
       background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)',
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center'
     }} onClick={onClose}>
       <div 
         style={{
-          width: '100%', maxWidth: '600px', height: '80vh',
+          width: '100%', maxWidth: '600px', height: '85vh',
           background: 'var(--bg-primary)', borderRadius: '24px 24px 0 0',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           border: '1px solid var(--border-light)', borderBottom: 'none'
@@ -89,7 +89,7 @@ export default function CommentModal({ postId, onClose }: CommentModalProps) {
         </div>
 
         <div style={{ 
-          padding: '16px 20px calc(16px + env(safe-area-inset-bottom, 20px)) 20px', 
+          padding: '16px 20px calc(80px + env(safe-area-inset-bottom, 20px)) 20px', 
           borderTop: '1px solid var(--border-light)', 
           display: 'flex', gap: '12px', alignItems: 'center', 
           background: 'var(--bg-glass)',
