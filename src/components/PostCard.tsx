@@ -136,24 +136,23 @@ export default function PostCard({ post }: PostCardProps) {
       </div>
 
       {post.mediaUrl && (
-        <div style={{ position: 'relative', width: '100%', aspectRatio: '4/5', background: '#000', overflow: 'hidden' }}>
-          {/* Placeholder for video/image using a colored background pattern until next/image setup */}
-          <div style={{ 
-            position: 'absolute', inset: 0, 
-            background: `linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8) 100%), url("${post.mediaUrl}")`,
-            backgroundSize: 'cover', backgroundPosition: 'center'
-          }} />
-          
-          {post.mediaType === 'video' && (
+        <div style={{ position: 'relative', width: '100%', background: '#000', overflow: 'hidden' }}>
+          {post.mediaType === 'video' ? (
+            <video 
+              src={post.mediaUrl} 
+              autoPlay 
+              muted 
+              loop 
+              playsInline 
+              controls
+              style={{ width: '100%', display: 'block' }} 
+            />
+          ) : (
             <div style={{ 
-              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-              width: '64px', height: '64px', borderRadius: '50%',
-              background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'all 0.2s', border: '1px solid rgba(255,255,255,0.4)'
-            }} className="play-btn">
-              <Play size={32} color="white" style={{ marginLeft: '4px' }} />
-            </div>
+              width: '100%', aspectRatio: '4/5',
+              background: `url("${post.mediaUrl}")`,
+              backgroundSize: 'cover', backgroundPosition: 'center'
+            }} />
           )}
         </div>
       )}

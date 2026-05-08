@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { Heart, MessageCircle, Share2, Music2, User } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Music2, User, Volume2, VolumeX } from 'lucide-react';
 import { toggleLikeAction } from '@/app/actions/social';
 
 interface ReelCardProps {
@@ -25,6 +25,7 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes);
+  const [isMuted, setIsMuted] = useState(true);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -65,9 +66,22 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
         src={post.mediaUrl}
         loop
         playsInline
-        muted
+        muted={isMuted}
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        onClick={() => setIsMuted(!isMuted)}
       />
+
+      {/* Mute Toggle Overlay */}
+      <button 
+        onClick={() => setIsMuted(!isMuted)}
+        style={{
+          position: 'absolute', top: '20px', right: '20px',
+          background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: '50%',
+          padding: '10px', color: 'white', cursor: 'pointer', zIndex: 10
+        }}
+      >
+        {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+      </button>
 
       {/* Overlay Content */}
       <div style={{
