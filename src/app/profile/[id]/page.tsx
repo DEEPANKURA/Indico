@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import { Grid3x3, Heart, MessageCircle, DollarSign, Camera, ArrowLeft } from 'lucide-react';
 import { toggleFollowAction } from '@/app/actions/social';
+import FollowsModal from '@/components/FollowsModal';
 
 export default function UserProfilePage() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function UserProfilePage() {
   const [followerCount, setFollowerCount] = useState(0);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [showFollows, setShowFollows] = useState<{ type: 'followers' | 'following', userId: string } | null>(null);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640);
@@ -89,6 +91,13 @@ export default function UserProfilePage() {
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px' }}>
+      {showFollows && (
+        <FollowsModal
+          type={showFollows.type}
+          userId={showFollows.userId}
+          onClose={() => setShowFollows(null)}
+        />
+      )}
       {/* Back button */}
       <button onClick={() => router.back()} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', marginBottom: '16px', background: 'none', border: 'none', cursor: 'pointer' }}>
         <ArrowLeft size={20} /> Back
@@ -142,17 +151,32 @@ export default function UserProfilePage() {
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border-light)' }}>
-          {[
-            { label: 'Posts', value: posts.length },
-            { label: 'Followers', value: followerCount },
-            { label: 'Following', value: profile.following_count || 0 },
-            { label: 'Likes', value: totalLikes },
-          ].map((stat) => (
-            <div key={stat.label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.4rem', fontWeight: '800' }}>{stat.value.toLocaleString()}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{stat.label}</div>
-            </div>
-          ))}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: '800' }}>{posts.length.toLocaleString()}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Posts</div>
+          </div>
+          <div 
+            style={{ textAlign: 'center', cursor: 'pointer' }} 
+            onClick={() => setShowFollows({ type: 'followers', userId: userId })}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            <div style={{ fontSize: '1.4rem', fontWeight: '800' }}>{followerCount.toLocaleString()}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Followers</div>
+          </div>
+          <div 
+            style={{ textAlign: 'center', cursor: 'pointer' }} 
+            onClick={() => setShowFollows({ type: 'following', userId: userId })}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            <div style={{ fontSize: '1.4rem', fontWeight: '800' }}>{(profile.following_count || 0).toLocaleString()}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Following</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: '800' }}>{totalLikes.toLocaleString()}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Likes</div>
+          </div>
         </div>
       </div>
 
