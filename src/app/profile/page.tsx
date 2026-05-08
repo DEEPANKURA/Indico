@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Grid3x3, Heart, MessageCircle, Settings, DollarSign, Camera, BarChart2, Video, Sparkles, Layout } from 'lucide-react';
+import { Grid3x3, Heart, MessageCircle, Settings, DollarSign, Camera, BarChart2, Video, Sparkles, Layout, Trash2 } from 'lucide-react';
+import { deletePostAction } from '@/app/actions/social';
 import EditProfileModal from '@/components/EditProfileModal';
 import FollowsModal from '@/components/FollowsModal';
 
@@ -44,6 +45,18 @@ export default function ProfilePage() {
     setPosts(posts || []);
     setTotalEarnings(earnings?.reduce((s: number, t: any) => s + (t.amount || 0), 0) || 0);
     setLoading(false);
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('Are you sure you want to delete this post? This action cannot be undone.')) return;
+    
+    const res = await deletePostAction(postId);
+    if (res.success) {
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      setSelectedPost(null);
+    } else {
+      alert('Error: ' + res.error);
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -325,10 +338,22 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div style={{ padding: '16px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '16px' }}>
+              <div style={{ padding: '16px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '16px', alignItems: 'center' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Heart size={20} /> {selectedPost.like_count || 0}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MessageCircle size={20} /> {selectedPost.comment_count || 0}</span>
-                <button onClick={() => router.push(`/post/${selectedPost.id}`)} className="btn-secondary" style={{ marginLeft: 'auto', padding: '6px 12px', fontSize: '0.8rem' }}>View Full Post</button>
+                
+                <button 
+                  onClick={() => handleDeletePost(selectedPost.id)}
+                  style={{ 
+                    marginLeft: 'auto', background: 'rgba(239,68,68,0.1)', color: '#ef4444', 
+                    border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' 
+                  }}
+                  title="Delete Post"
+                >
+                  <Trash2 size={20} />
+                </button>
+                
+                <button onClick={() => router.push(`/post/${selectedPost.id}`)} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>View Full</button>
               </div>
             </div>
           </div>

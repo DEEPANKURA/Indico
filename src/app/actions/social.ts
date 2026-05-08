@@ -185,3 +185,33 @@ export async function sendDirectMessageAction(recipientId: string, content: stri
     return { success: false, error: error.message };
   }
 }
+
+export async function deletePostAction(postId: string) {
+  try {
+    const supabase = await getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    // Check ownership
+    const { data: post } = await supabase
+      .from('posts')
+      .select('author_id')
+      .eq('id', postId)
+      .single();
+
+    if (!post) return { success: false, error: 'Post not found' };
+    if (post.author_id !== user.id) return { success: false, error: 'Unauthorized' };
+
+    // Delete from DB
+    const { error } = await supabase.from('posts').delete().eq('id', postId);
+    if (error) throw error;
+
+    revalidatePath('/');
+    revalidatePath('/profile');
+    revalidatePath('/explore');
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

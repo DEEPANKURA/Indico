@@ -1,9 +1,10 @@
 'use client';
 
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Play, DollarSign, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Play, DollarSign, Loader2, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import { tipCreatorAction } from '@/app/actions/tip';
-import { toggleLikeAction, toggleFollowAction } from '@/app/actions/social';
+import { toggleLikeAction, toggleFollowAction, deletePostAction } from '@/app/actions/social';
 import Link from 'next/link';
 import Image from 'next/image';
 import CommentModal from './CommentModal';
@@ -37,9 +38,19 @@ const parseMetric = (val: string | number) => {
 };
 
 export default function PostCard({ post }: PostCardProps) {
+  const supabase = createClient();
   const [isTipping, setIsTipping] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleted, setIsDeleted] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUserId(data.user?.id || null);
+    });
+  }, []);
   
   const handleTip = async () => {
     if (!post.authorId) return;
@@ -105,6 +116,20 @@ export default function PostCard({ post }: PostCardProps) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this post?')) return;
+    setIsDeleting(true);
+    const res = await deletePostAction(post.id);
+    if (res.success) {
+      setIsDeleted(true);
+    } else {
+      alert('Delete failed: ' + res.error);
+      setIsDeleting(false);
+    }
+  };
+
+  if (isDeleted) return null;
+
   return (
     <article className="glass-card animate-fade-in" style={{ marginBottom: '24px', overflow: 'hidden' }}>
       <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -148,6 +173,16 @@ export default function PostCard({ post }: PostCardProps) {
             <button onClick={handleFollow} className={isFollowing ? "btn-secondary" : "btn-primary"} style={{ padding: '6px 16px', fontSize: '0.85rem' }}>
               {isFollowing ? 'Following' : 'Follow'}
             </button>
+          )}
+          {currentUserId === post.authorId && (
+             <button 
+                onClick={handleDelete} 
+                disabled={isDeleting}
+                style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                title="Delete Post"
+             >
+               {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+             </button>
           )}
           <button style={{ color: 'var(--text-secondary)' }}><MoreHorizontal size={20} /></button>
         </div>
