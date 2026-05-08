@@ -301,6 +301,7 @@ export type Database = {
           ai_safety_score: number | null
           author_id: string
           comment_count: number | null
+          community_id: string | null
           content: string | null
           created_at: string
           engagement_score: number | null
@@ -318,6 +319,7 @@ export type Database = {
           ai_safety_score?: number | null
           author_id: string
           comment_count?: number | null
+          community_id?: string | null
           content?: string | null
           created_at?: string
           engagement_score?: number | null
@@ -335,6 +337,7 @@ export type Database = {
           ai_safety_score?: number | null
           author_id?: string
           comment_count?: number | null
+          community_id?: string | null
           content?: string | null
           created_at?: string
           engagement_score?: number | null
@@ -353,6 +356,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
             referencedColumns: ["id"]
           },
         ]
