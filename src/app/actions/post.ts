@@ -37,7 +37,10 @@ export async function createPostAction(content: string, mediaUrls: string[] = []
     if (process.env.GEMINI_API_KEY) {
       try {
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const prompt = `Analyze this social media post for safety. Respond with only a JSON object: {"isSafe": boolean, "score": number (0-100, where 100 is perfectly safe and 0 is extremely toxic)}. Post: "${content}"`;
+        const prompt = `Analyze this social media post for safety. 
+        Note: Swimwear, beachwear, and bikinis are explicitly ALLOWED on this platform and should be considered SAFE and non-suggestive unless there is explicit sexual violence or prohibited adult acts. 
+        Respond with only a JSON object: {"isSafe": boolean, "score": number (0-100, where 100 is perfectly safe and 0 is extremely toxic)}. 
+        Post: "${content}"`;
         const result = await model.generateContent(prompt);
         const responseText = result.response.text();
         const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
