@@ -31,8 +31,12 @@ export default function BottomNav() {
         .eq('is_read', false);
       
       setUnreadCount(count || 0);
+    };
 
-      // Subscribe to new messages and read status changes
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const channel = supabase
         .channel('nav_notifications')
         .on('postgres_changes', { 
@@ -46,30 +50,38 @@ export default function BottomNav() {
         })
         .subscribe();
 
-      fetchUnread();
-
-      const handleManualRefresh = () => {
-        console.log('Manual unread refresh triggered in BottomNav');
-        fetchUnread();
-      };
-
-      window.addEventListener('messages_read', handleManualRefresh);
-
-      // Polling fallback
-      const interval = setInterval(() => {
-        if (document.visibilityState === 'visible') {
-          fetchUnread();
-        }
-      }, 10000);
-
-      return () => {
-        supabase.removeChannel(channel);
-        window.removeEventListener('messages_read', handleManualRefresh);
-        clearInterval(interval);
-      };
+      return channel;
     };
 
-    fetchUnread();
+    let channelInstance: any;
+    
+    const init = async () => {
+      await fetchUnread();
+      channelInstance = await setupSubscription();
+    };
+
+    init();
+
+    const handleManualRefresh = () => {
+      console.log('Manual unread refresh triggered in BottomNav');
+      fetchUnread();
+    };
+
+    window.addEventListener('messages_read', handleManualRefresh);
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchUnread();
+      }
+    }, 10000);
+
+    return () => {
+      if (channelInstance) {
+        supabase.removeChannel(channelInstance);
+      }
+      window.removeEventListener('messages_read', handleManualRefresh);
+      clearInterval(interval);
+    };
   }, []);
 
   return (
