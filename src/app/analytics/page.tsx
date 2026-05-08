@@ -22,6 +22,7 @@ export default function AnalyticsPage() {
     totalComments: 0,
     totalEarnings: 0
   });
+  const [user, setUser] = useState<any>(null);
   const [isLive, setIsLive] = useState(false);
   const supabase = createClient();
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function AnalyticsPage() {
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push('/auth'); return; }
+    setUser(user);
 
     const [{ data: postsData }, { data: profileData }, { data: transactionsData }] = await Promise.all([
       supabase.from('posts').select('id, like_count, comment_count, created_at').eq('author_id', user.id).order('created_at', { ascending: false }),
