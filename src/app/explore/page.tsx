@@ -20,7 +20,7 @@ export default function ExplorePage() {
   const [results, setResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [risingCreators, setRisingCreators] = useState<any[]>([]);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load real rising creators on mount
   useEffect(() => {
