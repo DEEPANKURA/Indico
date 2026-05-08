@@ -481,7 +481,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      decrement_viewer_count: {
+        Args: { stream_id: string }
+        Returns: undefined
+      }
+      increment_viewer_count: {
+        Args: { stream_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       moderation_status: "pending" | "approved" | "flagged" | "rejected"
