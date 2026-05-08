@@ -25,6 +25,8 @@ export default function ExplorePage() {
   const [risingCreators, setRisingCreators] = useState<any[]>([]);
   const [trendingPosts, setTrendingPosts] = useState<any[]>([]);
   const [activeCategory, setActiveCategory] = useState('Trending');
+  const [searchMode, setSearchMode] = useState<'users' | 'posts'>('users');
+  const [postResults, setPostResults] = useState<any[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load real rising creators on mount
@@ -66,52 +68,131 @@ export default function ExplorePage() {
   // Debounced search
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!query.trim()) { setResults([]); return; }
+    if (!query.trim()) { 
+      setResults([]); 
+      setPostResults([]);
+      return; 
+    }
+    
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url, followers_count, bio')
-        .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
-        .limit(10);
-      setResults(data || []);
+      const trimmedQuery = query.trim();
+      
+      // Parallel search for speed
+      const [userRes, postRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url, followers_count, bio')
+          .or(`username.ilike.%${trimmedQuery}%,full_name.ilike.%${trimmedQuery}%`)
+          .limit(10),
+        supabase
+          .from('posts')
+          .select('*, author:profiles(id, username, avatar_url, full_name)')
+          .ilike('content', `%${trimmedQuery}%`)
+          .limit(10)
+      ]);
+
+      setResults(userRes.data || []);
+      
+      // Map posts for PostCard
+      const mapped = (postRes.data || []).map(p => ({
+        ...p,
+        authorId: p.author.id,
+        author: {
+          name: p.author.full_name || p.author.username,
+          handle: p.author.username,
+          avatar: p.author.avatar_url
+        },
+        likes: p.like_count || 0,
+        comments: p.comment_count || 0,
+        timeAgo: new Date(p.created_at).toLocaleDateString()
+      }));
+      setPostResults(mapped);
+      
       setSearching(false);
-    }, 350);
+    }, 400);
+
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px' }}>
-      {/* Quick Categories Bar */}
-      <div style={{ 
-        display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '24px',
-        scrollbarWidth: 'none', msOverflowStyle: 'none'
-      }} className="no-scrollbar">
-        {['Trending', ...categories.map(c => c.label)].map((cat) => (
-          <button 
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            style={{ 
-              padding: '10px 20px', borderRadius: '40px', border: '1px solid var(--border-light)',
-              background: activeCategory === cat ? 'var(--accent-primary)' : 'var(--bg-glass)',
-              color: 'white', whiteSpace: 'nowrap', fontWeight: '700', cursor: 'pointer',
-              transition: 'all 0.2s', fontSize: '0.9rem'
+      {/* Search Header */}
+      <div style={{ position: 'sticky', top: '0', zIndex: 100, background: 'rgba(10, 10, 15, 0.8)', backdropFilter: 'blur(12px)', padding: '10px 0 20px' }}>
+        <div style={{ position: 'relative', marginBottom: '20px' }}>
+          <Search size={20} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+          <input
+            type="text"
+            placeholder="Search creators, topics, or hashtags..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '16px 16px 16px 50px',
+              borderRadius: '16px',
+              border: '1px solid var(--border-light)',
+              background: 'rgba(255, 255, 255, 0.05)',
+              color: 'white',
+              fontSize: '1rem',
+              outline: 'none',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
             }}
-          >
-            {cat}
-          </button>
-        ))}
+          />
+          {searching && (
+            <Loader2 size={18} className="animate-spin" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-neon)' }} />
+          )}
+        </div>
+
+        {/* Quick Categories Bar */}
+        <div style={{ 
+          display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '4px',
+          scrollbarWidth: 'none', msOverflowStyle: 'none'
+        }} className="no-scrollbar">
+          {['Trending', ...categories.map(c => c.label)].map((cat) => (
+            <button 
+              key={cat}
+              onClick={() => { setActiveCategory(cat); setQuery(''); }}
+              style={{ 
+                padding: '8px 18px', borderRadius: '40px', border: '1px solid var(--border-light)',
+                background: activeCategory === cat && !query ? 'var(--accent-primary)' : 'var(--bg-glass)',
+                color: 'white', whiteSpace: 'nowrap', fontWeight: '700', cursor: 'pointer',
+                transition: 'all 0.2s', fontSize: '0.85rem'
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Search Results */}
       {query.trim() && (
-        <div style={{ marginBottom: '32px' }}>
-          <h2 style={{ fontWeight: '700', marginBottom: '14px', fontSize: '1.05rem' }}>
-            {searching ? 'Searching...' : `${results.length} result${results.length !== 1 ? 's' : ''} for "${query}"`}
-          </h2>
-          {results.length > 0 ? (
+        <div style={{ marginTop: '20px' }}>
+          {/* Search Tabs */}
+          <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid var(--border-light)', marginBottom: '20px' }}>
+            <button 
+              onClick={() => setSearchMode('users')}
+              style={{ 
+                padding: '10px 4px', background: 'none', border: 'none', color: searchMode === 'users' ? 'var(--accent-neon)' : 'var(--text-secondary)',
+                fontWeight: '700', borderBottom: searchMode === 'users' ? '2px solid var(--accent-neon)' : 'none', cursor: 'pointer'
+              }}
+            >
+              Users ({results.length})
+            </button>
+            <button 
+              onClick={() => setSearchMode('posts')}
+              style={{ 
+                padding: '10px 4px', background: 'none', border: 'none', color: searchMode === 'posts' ? 'var(--accent-neon)' : 'var(--text-secondary)',
+                fontWeight: '700', borderBottom: searchMode === 'posts' ? '2px solid var(--accent-neon)' : 'none', cursor: 'pointer'
+              }}
+            >
+              Content ({postResults.length})
+            </button>
+          </div>
+
+          {searchMode === 'users' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {results.map((u) => (
+              {results.length > 0 ? results.map((u) => (
                 <div key={u.id} onClick={() => router.push(`/profile/${u.id}`)}
                   style={{ cursor: 'pointer' }}>
                   <div className="glass-card" style={{ padding: '14px 16px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -134,13 +215,23 @@ export default function ExplorePage() {
                     <User size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)' }}>
+                  No users found for "{query}"
+                </div>
+              )}
             </div>
-          ) : !searching ? (
-            <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)' }}>
-              No users found for "{query}"
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {postResults.length > 0 ? postResults.map((post) => (
+                <PostCard key={post.id} post={post} />
+              )) : (
+                <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)' }}>
+                  No content found for "{query}"
+                </div>
+              )}
             </div>
-          ) : null}
+          )}
         </div>
       )}
 
