@@ -88,7 +88,14 @@ export default function CommentModal({ postId, onClose }: CommentModalProps) {
           )}
         </div>
 
-        <div style={{ padding: '20px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--bg-glass)' }}>
+        <div style={{ 
+          padding: '16px 20px calc(16px + env(safe-area-inset-bottom, 20px)) 20px', 
+          borderTop: '1px solid var(--border-light)', 
+          display: 'flex', gap: '12px', alignItems: 'center', 
+          background: 'var(--bg-glass)',
+          position: 'sticky',
+          bottom: 0
+        }}>
           <input
             type="text"
             value={input}
