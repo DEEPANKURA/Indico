@@ -113,3 +113,19 @@ export async function getCommentsAction(postId: string) {
     return { success: false, error: error.message };
   }
 }
+
+export async function searchUsersAction(query: string) {
+  try {
+    const supabase = await getSupabase();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, avatar_url')
+      .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
+      .limit(10);
+
+    if (error) throw error;
+    return { success: true, users: data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

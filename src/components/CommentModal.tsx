@@ -39,8 +39,8 @@ export default function CommentModal({ postId, onClose }: CommentModalProps) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 100,
-      background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)',
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)',
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center'
     }} onClick={onClose}>
       <div 

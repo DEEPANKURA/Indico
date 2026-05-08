@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { MessageSquare, Send, Search, User } from 'lucide-react';
+import { MessageSquare, Send, Search, User, Loader2 } from 'lucide-react';
+import { searchUsersAction } from '@/app/actions/social';
 
 export default function MessagesPage() {
   const supabase = createClient();
@@ -12,6 +13,9 @@ export default function MessagesPage() {
   const [input, setInput] = useState('');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -120,6 +124,27 @@ export default function MessagesPage() {
     }
   };
 
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    const res = await searchUsersAction(query);
+    if (res.success) {
+      setSearchResults(res.users || []);
+    }
+  };
+
+  const startConversation = (user: any) => {
+    setSelectedUser(user);
+    setSearchQuery('');
+    setSearchResults([]);
+    setIsSearching(false);
+  };
+
   if (loading) return <div style={{ textAlign: 'center', padding: '100px', color: 'var(--text-secondary)' }}>Loading conversations...</div>;
 
   return (
@@ -137,35 +162,59 @@ export default function MessagesPage() {
               <Search size={18} style={{ color: 'var(--text-secondary)' }} />
               <input 
                 type="text" 
-                placeholder="Search conversations..." 
+                placeholder="Search people..." 
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
                 style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', width: '100%', fontSize: '0.95rem' }} 
               />
             </div>
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            {conversations.length > 0 ? conversations.map((conv) => (
-              <div key={conv.user.id} onClick={() => setSelectedUser(conv.user)} style={{
-                padding: '16px', cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'center',
-                background: selectedUser?.id === conv.user.id ? 'var(--bg-glass-hover)' : 'transparent',
-                borderLeft: selectedUser?.id === conv.user.id ? '4px solid var(--accent-secondary)' : '4px solid transparent',
-                transition: 'all 0.2s'
-              }}>
-                <div style={{
-                  width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0,
-                  background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', overflow: 'hidden'
-                }}>
-                  {conv.user.avatar_url ? <img src={conv.user.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : conv.user.full_name?.[0]}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: '700', fontSize: '0.95rem' }}>{conv.user.full_name}</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{conv.time}</span>
+            {searchQuery ? (
+              <div style={{ padding: '0 8px' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', padding: '8px 16px', textTransform: 'uppercase' }}>Search Results</div>
+                {searchResults.length > 0 ? searchResults.map((user) => (
+                  <div key={user.id} onClick={() => startConversation(user)} style={{
+                    padding: '12px 16px', cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'center',
+                    borderRadius: '12px', transition: 'all 0.2s'
+                  }} className="hover-glass">
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', overflow: 'hidden' }}>
+                      {user.avatar_url ? <img src={user.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : user.full_name?.[0]}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{user.full_name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>@{user.username}</div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conv.lastMsg}</div>
-                </div>
+                )) : (
+                  <div style={{ padding: '20px', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>No users found</div>
+                )}
               </div>
-            )) : (
+            ) : conversations.length > 0 ? (
+              conversations.map((conv) => (
+                <div key={conv.user.id} onClick={() => setSelectedUser(conv.user)} style={{
+                  padding: '16px', cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'center',
+                  background: selectedUser?.id === conv.user.id ? 'var(--bg-glass-hover)' : 'transparent',
+                  borderLeft: selectedUser?.id === conv.user.id ? '4px solid var(--accent-secondary)' : '4px solid transparent',
+                  transition: 'all 0.2s'
+                }}>
+                  <div style={{
+                    width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0,
+                    background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', overflow: 'hidden'
+                  }}>
+                    {conv.user.avatar_url ? <img src={conv.user.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : conv.user.full_name?.[0]}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: '700', fontSize: '0.95rem' }}>{conv.user.full_name}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{conv.time}</span>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conv.lastMsg}</div>
+                  </div>
+                </div>
+              ))
+            ) : (
               <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                 No messages yet.
               </div>
