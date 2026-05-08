@@ -1,9 +1,6 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import styles from './page.module.css';
 
@@ -16,7 +13,14 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+
+  // Do NOT use useRouter here — after signIn the session cookie must be
+  // committed before Next.js router navigates. A full page reload ensures
+  // the middleware picks up the new cookie and doesn't redirect back to /auth.
+  const redirectHome = () => {
+    window.location.href = '/';
+  };
+
   const supabase = createClient();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -44,16 +48,22 @@ export default function AuthPage() {
         });
 
         if (signUpError) throw signUpError;
-        setMessage('Check your email to confirm your account!');
+        setMessage('✅ Check your email to confirm your account, then sign in.');
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (signInError) throw signInError;
-        router.push('/');
-        router.refresh();
+
+        // Wait for session to be stored in cookies, then do a hard redirect
+        // so the server-side middleware sees the session on the next request.
+        if (data.session) {
+          redirectHome();
+        } else {
+          throw new Error('Sign-in succeeded but no session was returned. Please try again.');
+        }
       }
     } catch (err: any) {
       const msg = err?.message || err?.error_description || err?.msg || JSON.stringify(err);
