@@ -49,7 +49,7 @@ export default function ExplorePage() {
       setResults(data || []);
       setSearching(false);
     }, 350);
-    return () => clearTimeout(debounceRef.current);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
   return (
