@@ -77,7 +77,11 @@ export default function ProfilePage() {
         <EditProfileModal
           profile={profile || {}}
           onClose={() => setShowEdit(false)}
-          onSaved={() => { setShowEdit(false); fetchData(); }}
+          onSaved={() => { 
+            setShowEdit(false); 
+            router.refresh(); 
+            fetchData(); 
+          }}
         />
       )}
 

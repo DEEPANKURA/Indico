@@ -37,7 +37,11 @@ export default function EditProfileModal({ profile, onClose, onSaved }: EditProf
     fd.append('avatar', file);
     const result = await uploadAvatarAction(fd);
     setAvatarUploading(false);
-    if (!result.success) setError(result.error || 'Avatar upload failed');
+    if (result.success) {
+      if (result.avatarUrl) setAvatarPreview(result.avatarUrl);
+    } else {
+      setError(result.error || 'Avatar upload failed');
+    }
   };
 
   const handleSave = async () => {

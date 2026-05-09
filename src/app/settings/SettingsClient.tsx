@@ -38,6 +38,7 @@ export default function SettingsClient({ profile, email }: Props) {
     if (result.success) {
       if (result.avatarUrl) setAvatarPreview(result.avatarUrl);
       setMessage({ type: 'success', text: 'Profile picture updated!' });
+      router.refresh();
     } else {
       setMessage({ type: 'error', text: result.error || 'Upload failed' });
     }
@@ -53,9 +54,12 @@ export default function SettingsClient({ profile, email }: Props) {
     fd.append('website', website);
     const result = await updateProfileAction(fd);
     setSaving(false);
-    setMessage(result.success
-      ? { type: 'success', text: 'Profile saved successfully!' }
-      : { type: 'error', text: result.error || 'Failed to save' });
+    if (result.success) {
+      setMessage({ type: 'success', text: 'Profile saved successfully!' });
+      router.refresh();
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to save' });
+    }
   };
 
   const handleSignOut = async () => {
