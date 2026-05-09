@@ -1,35 +1,25 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
-
-async function getSupabase() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
-          try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {}
-        },
-      },
-    }
-  );
-}
 
 export async function updateProfileAction(formData: FormData) {
   try {
-    const supabase = await getSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = await createClient();
+    const { data, error: userError } = await supabase.auth.getUser();
+    const user = data?.user;
     if (!user) return { success: false, error: 'Unauthorized' };
 
     const fullName = formData.get('full_name') as string;
-    const username = formData.get('username') as string;
+    let username = formData.get('username') as string;
     const bio = formData.get('bio') as string;
     const website = formData.get('website') as string;
+
+    // Ensure username is not empty and remove @ if present
+    username = username?.replace('@', '').trim();
+    if (!username) {
+      username = user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 5)}`;
+    }
 
     const { error } = await supabase
       .from('profiles')
@@ -47,21 +37,28 @@ export async function updateProfileAction(formData: FormData) {
     revalidatePath('/settings');
     return { success: true };
   } catch (err: any) {
+    console.error('Update Profile Error:', err);
     return { success: false, error: err.message };
   }
 }
 
 export async function uploadAvatarAction(formData: FormData) {
   try {
-    const supabase = await getSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = await createClient();
+    const { data, error: userError } = await supabase.auth.getUser();
+    const user = data?.user;
     if (!user) return { success: false, error: 'Unauthorized' };
 
     const file = formData.get('avatar') as File;
     if (!file || file.size === 0) return { success: false, error: 'No file provided' };
 
-    const ext = file.name.split('.').pop();
-    const filePath = `${user.id}/avatar.${ext}`;
+    // File size limit: 2MB
+    if (file.size > 2 * 1024 * 1024) {
+      return { success: false, error: 'File size too large. Max 2MB allowed.' };
+    }
+
+    const ext = file.name.split('.').pop() || 'jpg';
+    const filePath = `${user.id}/avatar_${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
@@ -72,7 +69,7 @@ export async function uploadAvatarAction(formData: FormData) {
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
     const avatarUrlWithVersion = `${publicUrl}?v=${Date.now()}`;
 
-    const username = user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 5)}`;
+    let username = user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 5)}`;
 
     const { error: updateError } = await supabase
       .from('profiles')
@@ -84,11 +81,14 @@ export async function uploadAvatarAction(formData: FormData) {
       });
 
     if (updateError) throw updateError;
+    
     revalidatePath('/profile');
     revalidatePath('/settings');
-    revalidatePath('/'); // Also revalidate home for stories
+    revalidatePath('/');
+    
     return { success: true, avatarUrl: avatarUrlWithVersion };
   } catch (err: any) {
+    console.error('Avatar Upload Error:', err);
     return { success: false, error: err.message };
   }
 }
