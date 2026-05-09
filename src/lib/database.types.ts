@@ -367,6 +367,56 @@ export type Database = {
           },
         ]
       }
+      stories: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          media_type: string
+          media_url: string
+          mentions: string[] | null
+          overlay_text: string | null
+          text_color: string | null
+          text_x: number | null
+          text_y: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          media_type: string
+          media_url: string
+          mentions?: string[] | null
+          overlay_text?: string | null
+          text_color?: string | null
+          text_x?: number | null
+          text_y?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          mentions?: string[] | null
+          overlay_text?: string | null
+          text_color?: string | null
+          text_x?: number | null
+          text_y?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stories_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

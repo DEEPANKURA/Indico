@@ -33,8 +33,14 @@ export async function updateProfileAction(formData: FormData) {
 
     const { error } = await supabase
       .from('profiles')
-      .update({ full_name: fullName, username, bio, website, updated_at: new Date().toISOString() })
-      .eq('id', user.id);
+      .upsert({ 
+        id: user.id,
+        full_name: fullName, 
+        username, 
+        bio, 
+        website, 
+        updated_at: new Date().toISOString() 
+      });
 
     if (error) throw error;
     revalidatePath('/profile');
@@ -67,8 +73,11 @@ export async function uploadAvatarAction(formData: FormData) {
 
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
-      .eq('id', user.id);
+      .upsert({ 
+        id: user.id,
+        avatar_url: publicUrl, 
+        updated_at: new Date().toISOString() 
+      });
 
     if (updateError) throw updateError;
     revalidatePath('/profile');
@@ -116,6 +125,44 @@ export async function uploadMediaAction(formData: FormData) {
     revalidatePath('/');
     revalidatePath('/profile');
     return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+export async function createStoryAction(formData: FormData) {
+  try {
+    const supabase = await getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const mediaUrl = formData.get('media_url') as string;
+    const mediaType = formData.get('media_type') as string;
+    const overlayText = formData.get('overlay_text') as string;
+    const textColor = formData.get('text_color') as string;
+    const textX = parseFloat(formData.get('text_x') as string || '50');
+    const textY = parseFloat(formData.get('text_y') as string || '50');
+    const mentionsStr = formData.get('mentions') as string;
+    const mentions = mentionsStr ? mentionsStr.split(',') : [];
+
+    const { data, error } = await supabase
+      .from('stories')
+      .insert({
+        user_id: user.id,
+        media_url: mediaUrl,
+        media_type: mediaType,
+        overlay_text: overlayText,
+        text_color: textColor,
+        text_x: textX,
+        text_y: textY,
+        mentions: mentions,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      })
+      .select('*, profiles:user_id(username, avatar_url)')
+      .single();
+
+    if (error) throw error;
+    revalidatePath('/');
+    return { success: true, story: data };
   } catch (err: any) {
     return { success: false, error: err.message };
   }

@@ -36,6 +36,7 @@ export default function SettingsClient({ profile, email }: Props) {
     const result = await uploadAvatarAction(fd);
     setUploadingAvatar(false);
     if (result.success) {
+      if (result.avatarUrl) setAvatarPreview(result.avatarUrl);
       setMessage({ type: 'success', text: 'Profile picture updated!' });
     } else {
       setMessage({ type: 'error', text: result.error || 'Upload failed' });
@@ -78,16 +79,27 @@ export default function SettingsClient({ profile, email }: Props) {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: 'var(--bg-glass)', padding: '4px', borderRadius: '12px' }}>
+      <div style={{ 
+        display: 'flex', 
+        gap: '4px', 
+        marginBottom: '24px', 
+        background: 'var(--bg-glass)', 
+        padding: '4px', 
+        borderRadius: '12px',
+        border: '1px solid var(--border-light)',
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+      }}>
         {tabs.map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
             flex: 1, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
             background: activeTab === tab.id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'transparent',
             color: 'white', fontWeight: activeTab === tab.id ? '700' : '500', fontSize: '0.85rem',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+            minWidth: 'fit-content', whiteSpace: 'nowrap'
           }}>
             <tab.icon size={16} />
-            <span className="hide-on-mobile">{tab.label}</span>
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
