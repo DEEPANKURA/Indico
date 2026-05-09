@@ -17,8 +17,19 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Indico",
+    startupImage: "/icon.jpg",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "application-name": "Indico",
+    "apple-mobile-web-app-title": "Indico",
+    "theme-color": "#8a2be2",
+    "msapplication-navbutton-color": "#8a2be2",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    "msapplication-starturl": "/",
   },
   formatDetection: {
     telephone: false,
@@ -37,6 +48,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link rel="apple-touch-icon" href="/icon.jpg" />
       </head>
       <body suppressHydrationWarning>
         <div className="app-layout">
