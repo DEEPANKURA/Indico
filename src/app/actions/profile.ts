@@ -54,9 +54,9 @@ export async function uploadAvatarAction(formData: FormData) {
       return { success: false, error: 'No valid image file provided' };
     }
 
-    // File size limit: 2MB (Next.js config also updated to 4MB to be safe)
-    if (file.size > 2 * 1024 * 1024) {
-      return { success: false, error: 'File size too large. Max 2MB allowed.' };
+    // File size limit: 10MB (Next.js config also updated to 12MB to be safe)
+    if (file.size > 10 * 1024 * 1024) {
+      return { success: false, error: 'File size too large. Max 10MB allowed.' };
     }
 
     const ext = file.name.split('.').pop() || 'jpg';
