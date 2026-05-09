@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Indico",
-    startupImage: "/icon.jpg",
+    startupImage: "/icon.png",
   },
   other: {
     "mobile-web-app-capable": "yes",
@@ -48,7 +48,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-        <link rel="apple-touch-icon" href="/icon.jpg" />
+        <link rel="apple-touch-icon" href="/icon.png" />
       </head>
       <body suppressHydrationWarning>
         <div className="app-layout">
