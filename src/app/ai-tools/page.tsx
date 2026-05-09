@@ -127,7 +127,7 @@ export default function AIChatPage() {
               padding: '14px 18px', 
               borderRadius: (msg.role === 'user' ? '20px 4px 20px 20px' : '4px 20px 20px 20px') as any,
               background: (msg.role === 'user' ? 'var(--accent-primary)' : 'var(--bg-secondary)') as any,
-              color: 'white',
+              color: msg.role === 'user' ? 'white' : 'var(--text-primary)',
               fontSize: '0.95rem',
               lineHeight: '1.6',
               boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -163,7 +163,7 @@ export default function AIChatPage() {
             onClick={() => handleSend(action.prompt)}
             style={{ 
               padding: '8px 16px', borderRadius: '20px', background: 'var(--bg-glass)', 
-              border: '1px solid var(--border-light)', color: 'white', whiteSpace: 'nowrap',
+              border: '1px solid var(--border-light)', color: 'var(--text-primary)', whiteSpace: 'nowrap',
               fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
             }}
           >
@@ -182,7 +182,7 @@ export default function AIChatPage() {
             placeholder="Ask me anything or say 'Generate image of...'"
             style={{ 
               width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border-light)',
-              borderRadius: '24px', padding: '16px 50px 16px 20px', color: 'white', outline: 'none',
+              borderRadius: '24px', padding: '16px 50px 16px 20px', color: 'var(--text-primary)', outline: 'none',
               fontSize: '1rem'
             }}
           />
