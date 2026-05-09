@@ -4,6 +4,7 @@ import { Info } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import Link from "next/link";
 import Stories from "@/components/Stories";
+import NotificationBell from "@/components/NotificationBell";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -16,6 +17,14 @@ export default async function Home() {
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px' }}>
+      {/* Top Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h1 className="text-gradient-primary" style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0 }}>Indico</h1>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <NotificationBell />
+        </div>
+      </div>
+
       {/* Stories */}
       <Stories />
 
