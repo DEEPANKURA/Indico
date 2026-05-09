@@ -110,7 +110,7 @@ export default function AIChatPage() {
           <div key={i} style={{ 
             display: 'flex', 
             gap: '12px', 
-            flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+            flexDirection: (msg.role === 'user' ? 'row-reverse' : 'row') as any,
             alignItems: 'flex-start',
             animation: 'fadeIn 0.3s ease-out'
           }}>
@@ -125,8 +125,8 @@ export default function AIChatPage() {
             <div style={{ 
               maxWidth: '80%', 
               padding: '14px 18px', 
-              borderRadius: msg.role === 'user' ? '20px 4px 20px 20px' : '4px 20px 20px 20px',
-              background: msg.role === 'user' ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+              borderRadius: (msg.role === 'user' ? '20px 4px 20px 20px' : '4px 20px 20px 20px') as any,
+              background: (msg.role === 'user' ? 'var(--accent-primary)' : 'var(--bg-secondary)') as any,
               color: 'white',
               fontSize: '0.95rem',
               lineHeight: '1.6',
@@ -200,14 +200,14 @@ export default function AIChatPage() {
           </button>
         </form>
       </div>
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
+      `}} />
     </div>
   );
 }
