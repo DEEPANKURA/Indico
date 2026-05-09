@@ -11,7 +11,7 @@ export async function getNotificationsAction() {
 
   const { data, error } = await supabase
     .from('notifications')
-    .select('*, profiles:actor_id(full_name, avatar_url, username)')
+    .select('*, actor:actor_id(full_name, avatar_url, username)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(50);

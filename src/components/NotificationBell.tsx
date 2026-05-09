@@ -78,7 +78,7 @@ export default function NotificationBell() {
             </div>
           ) : (
             notifications.map((n) => {
-              const profile = Array.isArray(n.profiles) ? n.profiles[0] : n.profiles;
+              const profile = Array.isArray(n.actor) ? n.actor[0] : n.actor;
               return (
                 <div key={n.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '8px', borderRadius: '8px', background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.05)' }}>
                   <div style={{ 
