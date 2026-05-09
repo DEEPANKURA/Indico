@@ -71,10 +71,13 @@ export async function uploadAvatarAction(formData: FormData) {
 
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
+    const username = user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 5)}`;
+
     const { error: updateError } = await supabase
       .from('profiles')
       .upsert({ 
         id: user.id,
+        username: username,
         avatar_url: publicUrl, 
         updated_at: new Date().toISOString() 
       });
