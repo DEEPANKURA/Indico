@@ -14,10 +14,20 @@ export async function POST(req: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-    const result = await model.generateContent(prompt);
     
-    const text = result.response.text();
+    // Try Flash first (fastest/free), fallback to Pro if needed
+    let text = "";
+    try {
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const result = await model.generateContent(prompt);
+      text = result.response.text();
+    } catch (e) {
+      console.warn("Flash model failed, falling back to Pro...", e);
+      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+      const result = await model.generateContent(prompt);
+      text = result.response.text();
+    }
+    
     if (!text) throw new Error('Empty response from Gemini');
 
     return NextResponse.json({ result: text });
