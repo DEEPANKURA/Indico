@@ -17,7 +17,7 @@ export async function getNotificationsAction() {
     .limit(50);
 
   if (error) return { success: false, error: error.message };
-  return { success: true, notifications: data };
+  return { success: true, notifications: data as any[] };
 }
 
 export async function markNotificationsAsReadAction() {
