@@ -163,6 +163,7 @@ export default function CommentModal({ postId, onClose }: CommentModalProps) {
             </button>
           </div>
         </div>
+      </div>
     </div>
   );
 }
