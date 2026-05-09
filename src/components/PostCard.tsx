@@ -247,14 +247,21 @@ export default function PostCard({ post }: PostCardProps) {
               loop 
               playsInline 
               controls
-              style={{ width: '100%', display: 'block' }} 
+              style={{ width: '100%', height: 'auto', display: 'block' }} 
             />
           ) : (
-            <div style={{ 
-              width: '100%', aspectRatio: '4/5',
-              background: `url("${post.mediaUrl}")`,
-              backgroundSize: 'cover', backgroundPosition: 'center'
-            }} />
+            <img 
+              src={post.mediaUrl} 
+              alt="Post content" 
+              style={{ 
+                width: '100%', 
+                height: 'auto', 
+                maxHeight: '80vh', 
+                objectFit: 'contain',
+                display: 'block',
+                background: '#000'
+              }} 
+            />
           )}
         </div>
       )}
