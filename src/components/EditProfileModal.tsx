@@ -48,11 +48,13 @@ export default function EditProfileModal({ profile, onClose, onSaved }: EditProf
           setAvatarPreview(`${result.avatarUrl}&t=${Date.now()}`);
         }
       } else {
+        console.error('Avatar upload failed:', result.error);
         setError(result.error || 'Avatar upload failed');
         // Revert preview on error
         setAvatarPreview(profile.avatar_url || null);
       }
     } catch (err: any) {
+      console.error('Unexpected avatar upload error:', err);
       setError(err.message || 'An unexpected error occurred');
       setAvatarPreview(profile.avatar_url || null);
     } finally {

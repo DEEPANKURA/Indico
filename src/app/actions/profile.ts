@@ -49,10 +49,12 @@ export async function uploadAvatarAction(formData: FormData) {
     const user = data?.user;
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    const file = formData.get('avatar') as File;
-    if (!file || file.size === 0) return { success: false, error: 'No file provided' };
+    const file = formData.get('avatar');
+    if (!file || !(file instanceof File) || file.size === 0) {
+      return { success: false, error: 'No valid image file provided' };
+    }
 
-    // File size limit: 2MB
+    // File size limit: 2MB (Next.js config also updated to 4MB to be safe)
     if (file.size > 2 * 1024 * 1024) {
       return { success: false, error: 'File size too large. Max 2MB allowed.' };
     }
