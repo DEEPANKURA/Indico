@@ -24,7 +24,6 @@ export default function Sidebar() {
     { icon: Video,    label: 'Studio',   href: '/studio' },
     { icon: BarChart2, label: 'Analytics', href: '/analytics' },
     { icon: DollarSign, label: 'Monetize', href: '/monetize' },
-    { icon: Sparkles,  label: 'AI Tools', href: '/ai-tools', neon: true },
   ];
 
   return (
