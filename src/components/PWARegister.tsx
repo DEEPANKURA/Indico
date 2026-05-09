@@ -10,6 +10,18 @@ export default function PWARegister() {
         .then(async (reg) => {
           console.log('SW registered:', reg);
           
+          // Force reload when new SW takes over
+          reg.onupdatefound = () => {
+            const newWorker = reg.installing;
+            if (newWorker) {
+              newWorker.onstatechange = () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  window.location.reload();
+                }
+              };
+            }
+          };
+          
           // Request notification permission
           if ('Notification' in window) {
             const permission = await Notification.requestPermission();
