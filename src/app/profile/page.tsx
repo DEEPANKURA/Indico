@@ -212,7 +212,6 @@ export default function ProfilePage() {
             { label: 'Analytics', icon: BarChart2, href: '/analytics', color: '#06b6d4' },
             { label: 'Studio', icon: Video, href: '/studio', color: '#8b5cf6' },
             { label: 'Monetize', icon: DollarSign, href: '/monetize', color: '#10b981' },
-            { label: 'AI Tools', icon: Sparkles, href: '/ai-tools', color: 'var(--accent-neon)' },
           ].map((tool) => (
             <a key={tool.label} href={tool.href} style={{ textDecoration: 'none' }}>
               <div className="glass-card" style={{ 
