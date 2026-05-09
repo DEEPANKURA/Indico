@@ -63,47 +63,89 @@ export default function NotificationBell() {
       </button>
 
       {showDropdown && (
-        <div className="glass-panel" style={{ 
-          position: 'absolute', top: '55px', right: 0, width: '320px', maxHeight: '480px',
-          overflowY: 'auto', zIndex: 100, padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px'
+        <div style={{ 
+          position: 'absolute', top: '55px', right: 0, width: '360px', maxHeight: '520px',
+          background: 'var(--bg-secondary)', border: '1px solid var(--border-light)',
+          borderRadius: '16px', boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
+          overflowY: 'auto', zIndex: 1000, display: 'flex', flexDirection: 'column',
+          animation: 'slideIn 0.2s ease-out'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem' }}>Notifications</h3>
-            <button onClick={() => setShowDropdown(false)}><X size={18} /></button>
+          <div style={{ 
+            padding: '16px 20px', borderBottom: '1px solid var(--border-light)', 
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 10
+          }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800' }}>Activity</h3>
+            <button onClick={() => setShowDropdown(false)} style={{ color: 'var(--text-secondary)' }}>
+              <X size={20} />
+            </button>
           </div>
 
-          {notifications.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
-              No notifications yet
-            </div>
-          ) : (
-            notifications.map((n) => {
-              const profile = Array.isArray(n.actor) ? n.actor[0] : n.actor;
-              return (
-                <div key={n.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '8px', borderRadius: '8px', background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.05)' }}>
-                  <div style={{ 
-                    width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
-                    background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))'
-                  }}>
-                    {profile?.avatar_url ? <img src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '0.8rem' }}>{profile?.full_name?.[0] || '?'}</div>}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '0.85rem', margin: 0 }}>
-                      <span style={{ fontWeight: '700' }}>{profile?.full_name || 'Someone'}</span>{' '}
-                      {n.type === 'like' && 'liked your post'}
-                      {n.type === 'comment' && 'commented on your post'}
-                      {n.type === 'follow' && 'started following you'}
-                      {n.type === 'reply' && 'replied to your comment'}
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                      {getIcon(n.type)}
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(n.created_at).toLocaleDateString()}</span>
+          <div style={{ padding: '8px 0' }}>
+            {notifications.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
+                <Bell size={40} style={{ marginBottom: '12px', opacity: 0.3 }} />
+                <p style={{ margin: 0 }}>No activity yet</p>
+              </div>
+            ) : (
+              notifications.map((n) => {
+                const profile = Array.isArray(n.actor) ? n.actor[0] : n.actor;
+                return (
+                  <div key={n.id} style={{ 
+                    display: 'flex', gap: '12px', alignItems: 'center', padding: '12px 20px',
+                    background: n.is_read ? 'transparent' : 'rgba(var(--accent-primary-rgb), 0.05)',
+                    transition: 'background 0.2s',
+                    cursor: 'pointer'
+                  }} className="notification-item">
+                    {/* Avatar */}
+                    <div style={{ 
+                      width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+                      border: '1px solid var(--border-light)',
+                      background: 'var(--bg-glass)'
+                    }}>
+                      {profile?.avatar_url ? (
+                        <img src={profile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-primary)', color: 'white', fontWeight: 'bold' }}>
+                          {profile?.full_name?.[0] || '?'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: '0.9rem', margin: 0, lineHeight: '1.4' }}>
+                        <span style={{ fontWeight: '700' }}>{profile?.username || 'user'}</span>{' '}
+                        {n.type === 'like' && 'liked your post.'}
+                        {n.type === 'comment' && 'commented on your post.'}
+                        {n.type === 'follow' && 'started following you.'}
+                        {n.type === 'reply' && 'replied to your comment.'}
+                        <span style={{ color: 'var(--text-muted)', marginLeft: '6px', fontSize: '0.8rem' }}>
+                          {new Date(n.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                        </span>
+                      </p>
+                    </div>
+
+                    {/* Action Button / Icon */}
+                    <div style={{ flexShrink: 0 }}>
+                      {n.type === 'follow' ? (
+                        <button style={{ 
+                          background: 'var(--accent-primary)', color: 'white', border: 'none',
+                          borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700'
+                        }}>
+                          Follow
+                        </button>
+                      ) : n.type === 'like' ? (
+                        <Heart size={18} fill="var(--accent-neon)" color="var(--accent-neon)" />
+                      ) : (
+                        <div style={{ color: 'var(--text-muted)' }}>{getIcon(n.type)}</div>
+                      )}
                     </div>
                   </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
       )}
     </div>
