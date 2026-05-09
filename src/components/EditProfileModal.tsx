@@ -21,6 +21,7 @@ export default function EditProfileModal({ profile, onClose, onSaved }: EditProf
   const [username, setUsername] = useState(profile.username || '');
   const [bio, setBio] = useState(profile.bio || '');
   const [website, setWebsite] = useState(profile.website || '');
+  const [isSaved, setIsSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,38 +31,57 @@ export default function EditProfileModal({ profile, onClose, onSaved }: EditProf
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarPreview(URL.createObjectURL(file));
+    
+    // Set local preview immediately for optimistic UI
+    const localUrl = URL.createObjectURL(file);
+    setAvatarPreview(localUrl);
     setAvatarUploading(true);
     setError(null);
-    const fd = new FormData();
-    fd.append('avatar', file);
-    const result = await uploadAvatarAction(fd);
-    setAvatarUploading(false);
-    if (result.success) {
-      if (result.avatarUrl) {
-        // Append extra timestamp to force browser image refresh
-        const forceRefreshUrl = `${result.avatarUrl}&t=${Date.now()}`;
-        setAvatarPreview(forceRefreshUrl);
+    
+    try {
+      const fd = new FormData();
+      fd.append('avatar', file);
+      const result = await uploadAvatarAction(fd);
+      
+      if (result.success) {
+        if (result.avatarUrl) {
+          setAvatarPreview(`${result.avatarUrl}&t=${Date.now()}`);
+        }
+      } else {
+        setError(result.error || 'Avatar upload failed');
+        // Revert preview on error
+        setAvatarPreview(profile.avatar_url || null);
       }
-    } else {
-      setError(result.error || 'Avatar upload failed');
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred');
+      setAvatarPreview(profile.avatar_url || null);
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
   const handleSave = async () => {
     setSaving(true);
     setError(null);
-    const fd = new FormData();
-    fd.append('full_name', fullName);
-    fd.append('username', username);
-    fd.append('bio', bio);
-    fd.append('website', website);
-    const result = await updateProfileAction(fd);
-    setSaving(false);
-    if (result.success) {
-      onSaved();
-    } else {
-      setError(result.error || 'Failed to save');
+    try {
+      const fd = new FormData();
+      fd.append('full_name', fullName);
+      fd.append('username', username);
+      fd.append('bio', bio);
+      fd.append('website', website);
+      const result = await updateProfileAction(fd);
+      if (result.success) {
+        setIsSaved(true);
+        setTimeout(() => {
+          onSaved();
+        }, 800);
+      } else {
+        setError(result.error || 'Failed to save profile changes');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Connection error. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -164,9 +184,9 @@ export default function EditProfileModal({ profile, onClose, onSaved }: EditProf
 
         <div style={{ display: 'flex', gap: '12px' }}>
           <button onClick={onClose} className="btn-secondary" style={{ flex: 1 }}>Cancel</button>
-          <button onClick={handleSave} disabled={saving} className="btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-            {saving ? 'Saving...' : 'Save Changes'}
+          <button onClick={handleSave} disabled={saving || isSaved} className="btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: isSaved ? '#10b981' : undefined }}>
+            {saving ? <Loader2 size={16} className="animate-spin" /> : isSaved ? <Check size={16} /> : <Check size={16} />}
+            {saving ? 'Saving...' : isSaved ? 'Saved!' : 'Save Changes'}
           </button>
         </div>
       </div>

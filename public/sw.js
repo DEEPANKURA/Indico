@@ -1,4 +1,4 @@
-const CACHE_NAME = 'indico-v2';
+const CACHE_NAME = 'indico-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
@@ -30,10 +30,25 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
+    fetch(event.request)
+      .then((response) => {
+        // If successful, clone it and put it in cache
+        if (response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        // If network fails, try to get from cache
+        return caches.match(event.request);
+      })
   );
 });
 

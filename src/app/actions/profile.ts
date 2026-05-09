@@ -67,22 +67,34 @@ export async function uploadAvatarAction(formData: FormData) {
     if (uploadError) throw uploadError;
 
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    // Add a cache-buster to the URL itself
     const avatarUrlWithVersion = `${publicUrl}?v=${Date.now()}`;
 
-    let username = user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 5)}`;
-
+    // ROOT CAUSE FIX: Use .update() instead of .upsert() if possible, 
+    // or ensure we don't overwrite other fields by only targeting specific columns.
     const { error: updateError } = await supabase
       .from('profiles')
-      .upsert({ 
-        id: user.id,
-        username: username,
+      .update({ 
         avatar_url: avatarUrlWithVersion, 
         updated_at: new Date().toISOString() 
-      });
+      })
+      .eq('id', user.id);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      // If update fails (e.g. profile doesn't exist yet), try upsert as fallback
+      const username = user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 5)}`;
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert({ 
+          id: user.id,
+          username: username,
+          avatar_url: avatarUrlWithVersion, 
+          updated_at: new Date().toISOString() 
+        });
+      if (upsertError) throw upsertError;
+    }
 
-    // ROOT CAUSE FIX: Update Auth Metadata so all components see the change
+    // Update Auth Metadata so all components see the change
     await supabase.auth.updateUser({
       data: { avatar_url: avatarUrlWithVersion }
     });
