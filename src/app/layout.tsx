@@ -3,6 +3,7 @@ import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import RightSidebar from "@/components/RightSidebar";
 import BottomNav from "@/components/BottomNav";
+import PWARegister from "@/components/PWARegister";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -13,6 +14,15 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Indico | The Creator-First Social Media Platform",
   description: "A next-generation creator-first social media app where new creators can go viral easily based on content quality, watch time, and shares instead of follower count.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Indico",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({
@@ -38,6 +48,7 @@ export default function RootLayout({
         </div>
         {/* Bottom nav shown only on mobile via CSS */}
         <BottomNav />
+        <PWARegister />
       </body>
     </html>
   );
