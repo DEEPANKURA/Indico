@@ -104,15 +104,12 @@ export default function Sidebar() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: '14px',
                   padding: '12px', borderRadius: '12px',
-                  color: item.neon ? 'var(--accent-neon)' : 'var(--text-secondary)',
+                  color: 'var(--text-secondary)',
                   transition: 'all var(--transition-fast)',
                   whiteSpace: 'nowrap',
                 }}>
                 <item.icon size={22} style={{ flexShrink: 0 }} />
                 <span className="sidebar-label" style={{ fontWeight: '500' }}>{item.label}</span>
-                {item.neon && (
-                  <span className="badge badge-primary sidebar-label" style={{ marginLeft: 'auto' }}>NEW</span>
-                )}
               </Link>
             ))}
           </div>
