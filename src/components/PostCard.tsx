@@ -128,6 +128,23 @@ export default function PostCard({ post }: PostCardProps) {
     }
   };
 
+  useEffect(() => {
+    const checkLike = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('post_id', post.id)
+        .eq('user_id', user.id)
+        .single();
+      
+      if (data) setIsLiked(true);
+    };
+    checkLike();
+  }, [post.id]);
+
   if (isDeleted) return null;
 
   return (
@@ -203,7 +220,6 @@ export default function PostCard({ post }: PostCardProps) {
             <video 
               src={post.mediaUrl} 
               autoPlay 
-              muted 
               loop 
               playsInline 
               controls

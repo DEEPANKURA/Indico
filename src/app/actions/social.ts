@@ -75,7 +75,7 @@ export async function toggleFollowAction(targetUserId: string) {
   }
 }
 
-export async function addCommentAction(postId: string, content: string) {
+export async function addCommentAction(postId: string, content: string, parentId?: string) {
   try {
     const supabase = await getSupabase();
     const { data: { user } } = await supabase.auth.getUser();
@@ -86,7 +86,8 @@ export async function addCommentAction(postId: string, content: string) {
       .insert({ 
         post_id: postId, 
         user_id: user.id,
-        content: content
+        content: content,
+        parent_id: parentId
       })
       .select('*, profiles:user_id(full_name, avatar_url, username)')
       .single();
@@ -105,7 +106,7 @@ export async function getCommentsAction(postId: string) {
       .from('comments')
       .select('*, profiles:user_id(full_name, avatar_url, username)')
       .eq('post_id', postId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true }); // Ascending for logical flow
 
     if (error) throw error;
     return { success: true, comments: data };

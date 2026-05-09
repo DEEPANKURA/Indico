@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Heart, MessageCircle, Share2, Music2, User, Volume2, VolumeX } from 'lucide-react';
 import { toggleLikeAction } from '@/app/actions/social';
+import { createClient } from '@/utils/supabase/client';
 import CommentModal from './CommentModal';
 import ShareModal from './ShareModal';
 
@@ -24,12 +25,30 @@ interface ReelCardProps {
 }
 
 export default function ReelCard({ post, isActive }: ReelCardProps) {
+  const supabase = createClient();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
+
+  useEffect(() => {
+    const checkLike = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('post_id', post.id)
+        .eq('user_id', user.id)
+        .single();
+      
+      if (data) setLiked(true);
+    };
+    checkLike();
+  }, [post.id]);
 
   useEffect(() => {
     if (videoRef.current) {
