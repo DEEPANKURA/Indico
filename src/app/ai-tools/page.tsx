@@ -1,245 +1,213 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Sparkles, Shield, Wand2, Hash, FileText, BarChart2, Loader2, Copy, Check, RotateCcw, Save, Trash2, History, LayoutGrid, Zap, Compass } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Sparkles, Send, Loader2, User, Bot, Camera, Image as ImageIcon, Wand2, Hash, Lightbulb, BarChart2 } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client';
 
-const tools = [
-  { id: 'caption', icon: FileText, label: 'Caption Generator', desc: 'Generate viral captions for your posts', color: '#8b5cf6', prompt: 'Generate 3 viral social media captions for a post about: ', placeholder: 'e.g. A sunset photo at the beach with friends' },
-  { id: 'hashtags', icon: Hash, label: 'Hashtag Suggester', desc: 'Get trending hashtags for your content', color: '#06b6d4', prompt: 'Suggest 15 trending hashtags for content about: ', placeholder: 'e.g. Personal finance tips for Gen Z' },
-  { id: 'hook', icon: Wand2, label: 'Hook Writer', desc: 'Write scroll-stopping opening lines', color: '#ec4899', prompt: 'Write 3 scroll-stopping hooks for a post about: ', placeholder: 'e.g. Why I quit my 9-5 to become a creator' },
-  { id: 'moderation', icon: Shield, label: 'Content Checker', desc: 'Check if your content is safe to post', color: '#10b981', prompt: 'Analyze this content for safety and community guidelines compliance. Highlight any risks: ', placeholder: 'Paste the text you want to check here...' },
-  { id: 'analytics', icon: BarChart2, label: 'Growth Advisor', desc: 'Get personalized growth tips', color: '#f97316', prompt: 'Give me 5 specific growth tips for a creator who posts about: ', placeholder: 'e.g. Cooking Italian food for beginners' },
-  { id: 'script', icon: Zap, label: 'Script Assistant', desc: 'Write a script for your next reel/video', color: '#facc15', prompt: 'Write a 60-second video script for a reel about: ', placeholder: 'e.g. 3 simple morning routine hacks' },
-  { id: 'strategy', icon: Compass, label: 'Content Strategy', desc: 'Get a 7-day content plan', color: '#3b82f6', prompt: 'Create a detailed 7-day content strategy for a creator focused on: ', placeholder: 'e.g. Building a sustainable fashion brand' },
-];
-
-export default function AIToolsPage() {
-  const [activeTool, setActiveTool] = useState(tools[0]);
+export default function AIChatPage() {
+  const supabase = createClient();
+  const [messages, setMessages] = useState<{role: 'user' | 'assistant' | 'system', content: string, type?: 'image' | 'text'}[]>([
+    { role: 'assistant', content: "Hi! I'm your Indico Creator Assistant. I've analyzed your profile and I'm ready to help you grow. Want some post ideas, captions, or a new AI-generated image?" }
+  ]);
   const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [history, setHistory] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'tools' | 'history'>('tools');
+  const [profile, setProfile] = useState<any>(null);
+  const [recentPosts, setRecentPosts] = useState<any[]>([]);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const savedHistory = localStorage.getItem('indico_ai_history');
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory));
-    }
+    const fetchData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      const { data: posts } = await supabase.from('posts').select('content, like_count').eq('author_id', user.id).limit(5).order('created_at', { ascending: false });
+      
+      setProfile(profile);
+      setRecentPosts(posts || []);
+    };
+    fetchData();
   }, []);
 
-  const handleGenerate = async () => {
-    if (!input.trim()) return;
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async (customPrompt?: string) => {
+    const text = customPrompt || input;
+    if (!text.trim()) return;
+
+    const userMessage = { role: 'user' as const, content: text };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
     setLoading(true);
-    setOutput('');
+
     try {
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: activeTool.prompt + input }),
-      });
-      const data = await res.json();
-      const resultText = data.result || 'No result generated.';
-      setOutput(resultText);
-      
-      // Save to history
-      const newEntry = {
-        id: Date.now(),
-        tool: activeTool.label,
-        input: input.substring(0, 50) + (input.length > 50 ? '...' : ''),
-        output: resultText,
-        timestamp: new Date().toISOString()
-      };
-      const updatedHistory = [newEntry, ...history.slice(0, 19)];
-      setHistory(updatedHistory);
-      localStorage.setItem('indico_ai_history', JSON.stringify(updatedHistory));
-    } catch (err: any) {
-      setOutput(`Error: ${err.message || 'Connecting to AI failed. Please try again.'}`);
+      // Check if it's an image generation request
+      if (text.toLowerCase().includes('generate image') || text.toLowerCase().includes('create an image')) {
+        const prompt = text.replace(/generate image|create an image/gi, '').trim();
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&seed=${Date.now()}`;
+        
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: `I've generated an image based on your request: "${prompt}"`,
+          type: 'image' as const 
+        }, {
+          role: 'assistant',
+          content: imageUrl,
+          type: 'image' as const
+        }]);
+      } else {
+        // Build context for Gemini
+        const context = `
+          You are an AI assistant for a creator on the Indico social platform.
+          Creator Profile: ${profile?.full_name} (@${profile?.username})
+          Bio: ${profile?.bio || 'No bio'}
+          Stats: ${profile?.followers_count} followers, ${profile?.following_count} following.
+          Recent Posts: ${recentPosts.map(p => p.content).join(' | ')}
+          
+          Goal: Help the creator with ideas, captions, tags, and growth strategies.
+          Be encouraging, trendy, and specific.
+        `;
+
+        const res = await fetch('/api/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: context + "\n\nUser: " + text }),
+        });
+        const data = await res.json();
+        setMessages(prev => [...prev, { role: 'assistant', content: data.result || 'Sorry, I couldn't process that.' }]);
+      }
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'assistant', content: "Error connecting to AI service." }]);
     }
     setLoading(false);
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(output);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const clearHistory = () => {
-    setHistory([]);
-    localStorage.removeItem('indico_ai_history');
-  };
+  const quickActions = [
+    { label: 'Viral Caption', icon: Wand2, prompt: 'Generate a viral caption for my next post about building a community' },
+    { label: 'Content Ideas', icon: Lightbulb, prompt: 'Give me 3 content ideas based on my profile' },
+    { label: 'Suggest Tags', icon: Hash, prompt: 'Suggest trending tags for my recent posts' },
+    { label: 'Generate Image', icon: ImageIcon, prompt: 'Generate image of a futuristic neon city' },
+  ];
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '10px', paddingBottom: '100px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-            <Sparkles size={32} style={{ color: 'var(--accent-neon)' }} />
-            <h1 style={{ fontSize: '2.2rem', fontWeight: '900', margin: 0 }}>Creator AI</h1>
-          </div>
-          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '1rem' }}>Supercharge your viral potential with Gemini AI</p>
+    <div style={{ maxWidth: '800px', margin: '0 auto', height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-neon))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Sparkles size={24} color="white" />
         </div>
-        
-        <div style={{ display: 'flex', background: 'var(--bg-glass)', borderRadius: '12px', padding: '4px', border: '1px solid var(--border-light)' }}>
-          <button 
-            onClick={() => setActiveTab('tools')}
-            style={{ 
-              padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-              background: activeTab === 'tools' ? 'rgba(255,255,255,0.1)' : 'transparent',
-              color: activeTab === 'tools' ? 'white' : 'var(--text-secondary)',
-              display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700'
-            }}
-          >
-            <LayoutGrid size={18} /> Tools
-          </button>
-          <button 
-            onClick={() => setActiveTab('history')}
-            style={{ 
-              padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-              background: activeTab === 'history' ? 'rgba(255,255,255,0.1)' : 'transparent',
-              color: activeTab === 'history' ? 'white' : 'var(--text-secondary)',
-              display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700'
-            }}
-          >
-            <History size={18} /> History
-          </button>
+        <div>
+          <h1 style={{ fontSize: '1.2rem', fontWeight: '900', margin: 0 }}>Indico AI Assistant</h1>
+          <div style={{ fontSize: '0.8rem', color: 'var(--accent-neon)', fontWeight: 'bold' }}>ONLINE • ANALYZING PROFILE</div>
         </div>
       </div>
 
-      {activeTab === 'tools' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '32px' }}>
-          {/* Tool List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {tools.map((tool) => (
-              <button 
-                key={tool.id} 
-                onClick={() => { setActiveTool(tool); setOutput(''); setInput(''); }}
-                style={{
-                  padding: '16px', borderRadius: '20px', border: `1px solid ${activeTool.id === tool.id ? tool.color : 'var(--border-light)'}`,
-                  background: activeTool.id === tool.id ? `${tool.color}15` : 'var(--bg-glass)',
-                  cursor: 'pointer', textAlign: 'left', display: 'flex', gap: '14px', alignItems: 'center',
-                  color: 'white', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  boxShadow: activeTool.id === tool.id ? `0 8px 24px -10px ${tool.color}` : 'none',
-                  transform: activeTool.id === tool.id ? 'translateX(4px)' : 'none'
-                }}
-              >
-                <div style={{ 
-                  width: '40px', height: '40px', borderRadius: '12px', background: `${tool.color}20`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <tool.icon size={22} style={{ color: tool.color }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: '800', fontSize: '0.95rem' }}>{tool.label}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{tool.desc}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Workbench */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div className="glass-card" style={{ padding: '24px', borderRadius: '24px', border: `1px solid ${activeTool.color}30` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: activeTool.color }} />
-                <h2 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>{activeTool.label}</h2>
-              </div>
-              
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={activeTool.placeholder}
-                style={{
-                  width: '100%', padding: '16px', borderRadius: '16px', minHeight: '140px',
-                  background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-light)',
-                  color: 'white', outline: 'none', resize: 'none', fontFamily: 'inherit',
-                  fontSize: '1rem', boxSizing: 'border-box', marginBottom: '20px',
-                  lineHeight: '1.6'
-                }}
-              />
-
-              <button
-                onClick={handleGenerate}
-                disabled={loading || !input.trim()}
-                className="hover-scale"
-                style={{
-                  width: '100%', padding: '16px', borderRadius: '16px', border: 'none',
-                  background: `linear-gradient(135deg, ${activeTool.color}, ${activeTool.color}cc)`,
-                  color: 'white', fontWeight: '800', fontSize: '1rem', cursor: input.trim() ? 'pointer' : 'not-allowed',
-                  opacity: input.trim() ? 1 : 0.6,
-                  display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px',
-                  boxShadow: `0 8px 20px -8px ${activeTool.color}`
-                }}
-              >
-                {loading ? <><Loader2 size={20} className="animate-spin" /> Magically working...</> : <><Sparkles size={20} /> Generate Content</>}
-              </button>
+      {/* Chat Area */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 0', display: 'flex', flexDirection: 'column', gap: '20px' }} className="no-scrollbar">
+        {messages.map((msg, i) => (
+          <div key={i} style={{ 
+            display: 'flex', 
+            gap: '12px', 
+            flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+            alignItems: 'flex-start',
+            animation: 'fadeIn 0.3s ease-out'
+          }}>
+            <div style={{ 
+              width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+              background: msg.role === 'user' ? 'var(--accent-secondary)' : 'var(--bg-glass)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-light)'
+            }}>
+              {msg.role === 'user' ? <User size={18} /> : <Bot size={18} className="text-gradient" />}
             </div>
+            
+            <div style={{ 
+              maxWidth: '80%', 
+              padding: '14px 18px', 
+              borderRadius: msg.role === 'user' ? '20px 4px 20px 20px' : '4px 20px 20px 20px',
+              background: msg.role === 'user' ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+              color: 'white',
+              fontSize: '0.95rem',
+              lineHeight: '1.6',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              border: msg.role === 'assistant' ? '1px solid var(--border-light)' : 'none'
+            }}>
+              {msg.type === 'image' && msg.content.startsWith('http') ? (
+                <div style={{ borderRadius: '12px', overflow: 'hidden', marginTop: '8px' }}>
+                  <img src={msg.content} style={{ width: '100%', display: 'block' }} alt="AI Generated" />
+                  <a href={msg.content} download target="_blank" rel="noopener noreferrer" style={{ display: 'block', padding: '10px', background: 'rgba(255,255,255,0.1)', textAlign: 'center', color: 'white', textDecoration: 'none', fontSize: '0.8rem' }}>Download Image</a>
+                </div>
+              ) : (
+                msg.content
+              )}
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--bg-glass)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Bot size={18} className="animate-pulse" />
+            </div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Thinking...</div>
+          </div>
+        )}
+        <div ref={chatEndRef} />
+      </div>
 
-            {output && (
-              <div className="glass-card animate-fade-in" style={{ padding: '24px', borderRadius: '24px', border: `1px solid ${activeTool.color}50`, background: 'rgba(255,255,255,0.02)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <span style={{ fontWeight: '800', fontSize: '0.9rem', color: activeTool.color, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Check size={16} /> Generated Result
-                  </span>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={handleCopy} style={{ background: 'var(--bg-glass)', border: '1px solid var(--border-light)', color: 'white', cursor: 'pointer', padding: '6px 14px', borderRadius: '10px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied!' : 'Copy'}
-                    </button>
-                    <button onClick={() => setOutput('')} style={{ background: 'rgba(239,68,68,0.1)', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px 10px', borderRadius: '10px' }}>
-                      <RotateCcw size={16} />
-                    </button>
-                  </div>
-                </div>
-                <div style={{ 
-                  lineHeight: '1.8', whiteSpace: 'pre-wrap', fontSize: '1rem', 
-                  color: 'rgba(255,255,255,0.9)', padding: '16px', background: 'rgba(0,0,0,0.3)',
-                  borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'
-                }}>
-                  {output}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="glass-card" style={{ padding: '32px', borderRadius: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800' }}>Recent Generations</h2>
-            {history.length > 0 && (
-              <button onClick={clearHistory} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Trash2 size={16} /> Clear All
-              </button>
-            )}
-          </div>
-          
-          {history.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {history.map((entry) => (
-                <div key={entry.id} style={{ padding: '16px', borderRadius: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-light)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: '800', color: 'var(--accent-secondary)', fontSize: '0.9rem' }}>{entry.tool}</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{new Date(entry.timestamp).toLocaleDateString()}</span>
-                  </div>
-                  <div style={{ color: 'white', fontSize: '0.9rem', marginBottom: '10px', opacity: 0.8 }}>"{entry.input}"</div>
-                  <button 
-                    onClick={() => { setOutput(entry.output); setActiveTab('tools'); setActiveTool(tools.find(t => t.label === entry.tool) || tools[0]); }}
-                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', fontWeight: '700', fontSize: '0.85rem', padding: 0 }}
-                  >
-                    Restore Generation
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-              <History size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
-              <p>No history yet. Start generating content to see it here!</p>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Quick Actions */}
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '10px 0' }} className="no-scrollbar">
+        {quickActions.map((action, i) => (
+          <button 
+            key={i} 
+            onClick={() => handleSend(action.prompt)}
+            style={{ 
+              padding: '8px 16px', borderRadius: '20px', background: 'var(--bg-glass)', 
+              border: '1px solid var(--border-light)', color: 'white', whiteSpace: 'nowrap',
+              fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+            }}
+          >
+            <action.icon size={14} /> {action.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Input Area */}
+      <div style={{ padding: '20px 0 40px' }}>
+        <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} style={{ position: 'relative' }}>
+          <input 
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask me anything or say 'Generate image of...'"
+            style={{ 
+              width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border-light)',
+              borderRadius: '24px', padding: '16px 50px 16px 20px', color: 'white', outline: 'none',
+              fontSize: '1rem'
+            }}
+          />
+          <button 
+            type="submit" 
+            disabled={loading || !input.trim()}
+            style={{ 
+              position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+              background: 'var(--accent-primary)', border: 'none', color: 'white',
+              width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', opacity: input.trim() ? 1 : 0.5
+            }}
+          >
+            <Send size={18} />
+          </button>
+        </form>
+      </div>
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 }
