@@ -58,13 +58,13 @@ export default function AIChatPage() {
           type: 'image' as const
         }]);
       } else {
-        // Build context for Gemini
+        // Build context for Gemini with safety checks
         const context = `
           You are an AI assistant for a creator on the Indico social platform.
-          Creator Profile: ${profile?.full_name} (@${profile?.username})
-          Bio: ${profile?.bio || 'No bio'}
-          Stats: ${profile?.followers_count} followers, ${profile?.following_count} following.
-          Recent Posts: ${recentPosts.map(p => p.content).join(' | ')}
+          Creator Profile: ${profile?.full_name || 'Creator'} (@${profile?.username || 'user'})
+          Bio: ${profile?.bio || 'No bio provided'}
+          Stats: ${profile?.followers_count || 0} followers, ${profile?.following_count || 0} following.
+          Recent Posts: ${recentPosts?.length ? recentPosts.map(p => p.content).join(' | ') : 'No posts yet'}
           
           Goal: Help the creator with ideas, captions, tags, and growth strategies.
           Be encouraging, trendy, and specific.
@@ -75,8 +75,13 @@ export default function AIChatPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: context + "\n\nUser: " + text }),
         });
+        
         const data = await res.json();
-        setMessages(prev => [...prev, { role: 'assistant', content: data.result || "Sorry, I couldn't process that." }]);
+        if (data.error) {
+          setMessages(prev => [...prev, { role: 'assistant', content: `AI System: ${data.error}` }]);
+        } else {
+          setMessages(prev => [...prev, { role: 'assistant', content: data.result || "I'm having trouble thinking right now. Please try again." }]);
+        }
       }
     } catch (err) {
       setMessages(prev => [...prev, { role: 'assistant', content: "Error connecting to AI service." }]);
