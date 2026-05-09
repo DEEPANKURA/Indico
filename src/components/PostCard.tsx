@@ -1,7 +1,7 @@
 'use client';
 
 import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Play, DollarSign, Loader2, Trash2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { tipCreatorAction } from '@/app/actions/tip';
 import { toggleLikeAction, toggleFollowAction, deletePostAction } from '@/app/actions/social';
@@ -46,10 +46,32 @@ export default function PostCard({ post }: PostCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
 
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setCurrentUserId(data.user?.id || null);
     });
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (videoRef.current) {
+            if (entry.isIntersecting) {
+              videoRef.current.play().catch(() => {});
+            } else {
+              videoRef.current.pause();
+            }
+          }
+        });
+      },
+      { threshold: 0.6 }
+    );
+
+    if (videoRef.current) observer.observe(videoRef.current);
+    return () => observer.disconnect();
   }, []);
   
   const handleTip = async () => {
@@ -218,8 +240,10 @@ export default function PostCard({ post }: PostCardProps) {
         <div style={{ position: 'relative', width: '100%', background: '#000', overflow: 'hidden' }}>
           {post.mediaType === 'video' ? (
             <video 
+              ref={videoRef}
               src={post.mediaUrl} 
               autoPlay 
+              muted 
               loop 
               playsInline 
               controls

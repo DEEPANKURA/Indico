@@ -106,7 +106,7 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
         src={post.mediaUrl}
         loop
         playsInline
-        muted={isMuted}
+        muted={!isActive || isMuted}
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         onClick={() => setIsMuted(!isMuted)}
       />
