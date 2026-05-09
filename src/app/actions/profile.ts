@@ -70,6 +70,7 @@ export async function uploadAvatarAction(formData: FormData) {
     if (uploadError) throw uploadError;
 
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    const avatarUrlWithVersion = `${publicUrl}?v=${Date.now()}`;
 
     const username = user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 5)}`;
 
@@ -78,14 +79,15 @@ export async function uploadAvatarAction(formData: FormData) {
       .upsert({ 
         id: user.id,
         username: username,
-        avatar_url: publicUrl, 
+        avatar_url: avatarUrlWithVersion, 
         updated_at: new Date().toISOString() 
       });
 
     if (updateError) throw updateError;
     revalidatePath('/profile');
     revalidatePath('/settings');
-    return { success: true, avatarUrl: publicUrl };
+    revalidatePath('/'); // Also revalidate home for stories
+    return { success: true, avatarUrl: avatarUrlWithVersion };
   } catch (err: any) {
     return { success: false, error: err.message };
   }
