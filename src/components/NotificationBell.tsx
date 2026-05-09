@@ -12,7 +12,7 @@ export default function NotificationBell() {
   useEffect(() => {
     const fetchNotifications = async () => {
       const res = await getNotificationsAction();
-      if (res.success) {
+      if (res.success && res.notifications) {
         setNotifications(res.notifications);
         setUnreadCount(res.notifications.filter((n: any) => !n.is_read).length);
       }
@@ -77,29 +77,32 @@ export default function NotificationBell() {
               No notifications yet
             </div>
           ) : (
-            notifications.map((n) => (
-              <div key={n.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '8px', borderRadius: '8px', background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.05)' }}>
-                <div style={{ 
-                  width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
-                  background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))'
-                }}>
-                  {n.profiles?.avatar_url ? <img src={n.profiles.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '0.8rem' }}>{n.profiles?.full_name?.[0]}</div>}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '0.85rem', margin: 0 }}>
-                    <span style={{ fontWeight: '700' }}>{n.profiles?.full_name}</span>{' '}
-                    {n.type === 'like' && 'liked your post'}
-                    {n.type === 'comment' && 'commented on your post'}
-                    {n.type === 'follow' && 'started following you'}
-                    {n.type === 'reply' && 'replied to your comment'}
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                    {getIcon(n.type)}
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(n.created_at).toLocaleDateString()}</span>
+            notifications.map((n) => {
+              const profile = Array.isArray(n.profiles) ? n.profiles[0] : n.profiles;
+              return (
+                <div key={n.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '8px', borderRadius: '8px', background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.05)' }}>
+                  <div style={{ 
+                    width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+                    background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))'
+                  }}>
+                    {profile?.avatar_url ? <img src={profile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '0.8rem' }}>{profile?.full_name?.[0] || '?'}</div>}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: '0.85rem', margin: 0 }}>
+                      <span style={{ fontWeight: '700' }}>{profile?.full_name || 'Someone'}</span>{' '}
+                      {n.type === 'like' && 'liked your post'}
+                      {n.type === 'comment' && 'commented on your post'}
+                      {n.type === 'follow' && 'started following you'}
+                      {n.type === 'reply' && 'replied to your comment'}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                      {getIcon(n.type)}
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(n.created_at).toLocaleDateString()}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
