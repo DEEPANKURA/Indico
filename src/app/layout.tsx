@@ -30,6 +30,8 @@ export const metadata: Metadata = {
     "msapplication-navbutton-color": "#8a2be2",
     "apple-mobile-web-app-status-bar-style": "black-translucent",
     "msapplication-starturl": "/",
+    "msapplication-TileColor": "#0a0a0f",
+    "msapplication-TileImage": "/icon-512x512.png",
   },
   formatDetection: {
     telephone: false,

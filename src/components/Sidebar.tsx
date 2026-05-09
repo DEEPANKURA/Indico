@@ -38,15 +38,16 @@ export default function Sidebar() {
     }}>
       {/* Logo */}
       <div className="sidebar-logo" style={{ padding: '0 24px', marginBottom: '32px' }}>
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
-            width: '32px', height: '32px', flexShrink: 0,
-            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-neon))',
-            borderRadius: '8px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontWeight: 'bold', fontSize: '18px',
+            width: '36px', height: '36px', flexShrink: 0,
+            borderRadius: '10px',
+            overflow: 'hidden',
             boxShadow: 'var(--shadow-neon)',
-          }}>I</div>
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}>
+            <img src="/icon.png" alt="Indico Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
           <span className="sidebar-logo-text" style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '-0.5px', whiteSpace: 'nowrap' }}>
             Indico
           </span>

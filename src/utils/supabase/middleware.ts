@@ -2,7 +2,19 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Public routes — never redirect to /auth even if unauthenticated
-const PUBLIC_ROUTES = ['/', '/auth', '/explore', '/trending']
+const PUBLIC_ROUTES = [
+  '/', 
+  '/auth', 
+  '/explore', 
+  '/trending', 
+  '/manifest.json', 
+  '/sw.js', 
+  '/icon.png', 
+  '/icon-192x192.png', 
+  '/icon-512x512.png',
+  '/screenshot-home.png',
+  '/screenshot-profile.png'
+]
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
