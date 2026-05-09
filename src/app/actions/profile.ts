@@ -95,7 +95,7 @@ export async function uploadAvatarAction(formData: FormData) {
 
 export async function uploadMediaAction(formData: FormData) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -136,7 +136,7 @@ export async function uploadMediaAction(formData: FormData) {
 }
 export async function createStoryAction(formData: FormData) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
