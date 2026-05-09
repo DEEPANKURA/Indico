@@ -103,7 +103,7 @@ export default function ProfilePage() {
           {/* Avatar */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="avatar"
+              <img src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} alt="avatar"
                 style={{ width: '88px', height: '88px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--accent-secondary)', boxShadow: 'var(--shadow-neon)' }} />
             ) : (
               <div style={{

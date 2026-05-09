@@ -81,6 +81,11 @@ export async function uploadAvatarAction(formData: FormData) {
       });
 
     if (updateError) throw updateError;
+
+    // ROOT CAUSE FIX: Update Auth Metadata so all components see the change
+    await supabase.auth.updateUser({
+      data: { avatar_url: avatarUrlWithVersion }
+    });
     
     revalidatePath('/profile');
     revalidatePath('/settings');

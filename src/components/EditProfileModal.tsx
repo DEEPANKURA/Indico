@@ -38,7 +38,11 @@ export default function EditProfileModal({ profile, onClose, onSaved }: EditProf
     const result = await uploadAvatarAction(fd);
     setAvatarUploading(false);
     if (result.success) {
-      if (result.avatarUrl) setAvatarPreview(result.avatarUrl);
+      if (result.avatarUrl) {
+        // Append extra timestamp to force browser image refresh
+        const forceRefreshUrl = `${result.avatarUrl}&t=${Date.now()}`;
+        setAvatarPreview(forceRefreshUrl);
+      }
     } else {
       setError(result.error || 'Avatar upload failed');
     }

@@ -85,7 +85,7 @@ export default function NotificationBell() {
                     width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
                     background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))'
                   }}>
-                    {profile?.avatar_url ? <img src={profile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '0.8rem' }}>{profile?.full_name?.[0] || '?'}</div>}
+                    {profile?.avatar_url ? <img src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '0.8rem' }}>{profile?.full_name?.[0] || '?'}</div>}
                   </div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: '0.85rem', margin: 0 }}>
