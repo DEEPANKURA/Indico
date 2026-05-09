@@ -76,7 +76,7 @@ export default function AIChatPage() {
           body: JSON.stringify({ prompt: context + "\n\nUser: " + text }),
         });
         const data = await res.json();
-        setMessages(prev => [...prev, { role: 'assistant', content: data.result || 'Sorry, I couldn't process that.' }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: data.result || "Sorry, I couldn't process that." }]);
       }
     } catch (err) {
       setMessages(prev => [...prev, { role: 'assistant', content: "Error connecting to AI service." }]);
