@@ -81,11 +81,27 @@ export default function MessagesPage() {
           event: 'INSERT', 
           schema: 'public', 
           table: 'messages'
-        }, (payload) => {
+        }, async (payload) => {
           const newMsg = payload.new;
           if ((newMsg.sender_id === selectedUser.id && newMsg.recipient_id === currentUser.id) ||
               (newMsg.sender_id === currentUser.id && newMsg.recipient_id === selectedUser.id)) {
-            setMessages(prev => [...prev, newMsg]);
+            
+            // Fetch post if shared
+            let postData = null;
+            if (newMsg.post_id) {
+              const { data: post } = await supabase.from('posts').select('*, author:profiles(username, avatar_url)').eq('id', newMsg.post_id).single();
+              postData = post;
+            }
+            
+            setMessages(prev => {
+              const isDuplicate = prev.some(m => m.id === newMsg.id || (m.content === newMsg.content && m.sender_id === newMsg.sender_id && m.isOptimistic));
+              if (isDuplicate && !prev.some(m => m.id === newMsg.id)) {
+                return prev.map(m => (m.content === newMsg.content && m.sender_id === newMsg.sender_id && m.isOptimistic) ? { ...newMsg, posts: postData } : m);
+              }
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, { ...newMsg, posts: postData }];
+            });
+
             if (newMsg.sender_id === selectedUser.id) markAsRead(newMsg.id);
           }
           fetchConversations(currentUser.id);
@@ -193,6 +209,8 @@ export default function MessagesPage() {
 
     const optimisticMsg = { 
       ...newMsg, 
+      id: Math.random().toString(),
+      isOptimistic: true,
       created_at: new Date().toISOString(),
       sender: {
         id: currentUser.id,
@@ -207,7 +225,7 @@ export default function MessagesPage() {
     const { error } = await supabase.from('messages').insert(newMsg);
     if (error) {
       alert('Failed to send message: ' + error.message);
-      setMessages(prev => prev.filter(m => m !== optimisticMsg));
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
     } else {
       fetchConversations(currentUser.id);
     }
@@ -330,7 +348,7 @@ export default function MessagesPage() {
           flex: 1, 
           display: (!selectedUser && isMobile) ? 'none' : 'flex', 
           flexDirection: 'column', 
-          background: 'rgba(0,0,0,0.2)',
+          background: '#0a0a0f',
           minWidth: 0
         }}>
           {selectedUser ? (
@@ -358,9 +376,12 @@ export default function MessagesPage() {
                   <div key={i} style={{ display: 'flex', justifyContent: msg.sender_id === currentUser.id ? 'flex-end' : 'flex-start', width: '100%' }}>
                     <div style={{
                       maxWidth: '75%', padding: msg.message_type === 'sticker' ? '0' : '12px 16px', 
-                      borderRadius: msg.sender_id === currentUser.id ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                      background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === currentUser.id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'var(--bg-glass)'),
-                      fontSize: '0.95rem', lineHeight: '1.5', boxShadow: msg.message_type === 'sticker' ? 'none' : '0 4px 12px rgba(0,0,0,0.1)',
+                      borderRadius: msg.sender_id === currentUser.id ? '20px 20px 4px 20px' : '20px 20px 20px 20px',
+                      background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === currentUser.id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'rgba(255,255,255,0.15)'),
+                      color: msg.sender_id === currentUser.id ? '#ffffff' : 'var(--text-primary)',
+                      fontSize: '0.95rem', lineHeight: '1.5', 
+                      boxShadow: msg.message_type === 'sticker' ? 'none' : '0 4px 15px rgba(0,0,0,0.2)',
+                      border: msg.sender_id === currentUser.id ? 'none' : '1px solid rgba(255,255,255,0.1)',
                       display: 'flex', flexDirection: 'column', gap: '8px'
                     }}>
                       {msg.post_id && msg.posts && (

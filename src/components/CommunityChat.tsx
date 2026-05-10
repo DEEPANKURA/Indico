@@ -40,24 +40,21 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
         filter: `community_id=eq.${communityId}`
       }, async (payload) => {
         const newMsg = payload.new;
-        // Fetch sender profile and post if shared
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username, avatar_url, full_name')
-          .eq('id', newMsg.sender_id)
-          .single();
         
-        let postData = null;
-        if (newMsg.post_id) {
-          const { data: post } = await supabase
-            .from('posts')
-            .select('*, author:profiles(username, avatar_url)')
-            .eq('id', newMsg.post_id)
-            .single();
-          postData = post;
-        }
-        
-        setMessages(prev => [...prev, { ...newMsg, sender: profile, post: postData }]);
+        const [profRes, postRes] = await Promise.all([
+          supabase.from('profiles').select('username, avatar_url, full_name').eq('id', newMsg.sender_id).single(),
+          newMsg.post_id ? supabase.from('posts').select('*, author:profiles(username, avatar_url)').eq('id', newMsg.post_id).single() : Promise.resolve({ data: null })
+        ]);
+
+        setMessages(prev => {
+          // Remove optimistic version (random ID) if it matches the incoming real message
+          const isDuplicate = prev.some(m => m.id === newMsg.id || (m.content === newMsg.content && m.sender_id === newMsg.sender_id && m.isOptimistic));
+          if (isDuplicate && !prev.some(m => m.id === newMsg.id)) {
+             return prev.map(m => (m.content === newMsg.content && m.sender_id === newMsg.sender_id && m.isOptimistic) ? { ...newMsg, sender: profRes.data, post: postRes.data } : m);
+          }
+          if (prev.some(m => m.id === newMsg.id)) return prev;
+          return [...prev, { ...newMsg, sender: profRes.data, post: postRes.data }];
+        });
       })
       .subscribe();
 
@@ -92,18 +89,34 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
       sticker_url: stickerUrl || null
     };
 
+    const optimisticMsg = {
+      ...newMsg,
+      id: Math.random().toString(),
+      isOptimistic: true,
+      created_at: new Date().toISOString(),
+      sender: {
+        username: user.user_metadata?.username || user.email?.split('@')[0],
+        full_name: user.user_metadata?.full_name || 'Me',
+        avatar_url: user.user_metadata?.avatar_url
+      }
+    };
+
+    setMessages(prev => [...prev, optimisticMsg]);
     if (!stickerUrl) setInput('');
     setShowStickers(false);
 
     const { error } = await supabase.from('messages').insert(newMsg);
-    if (error) alert('Failed to send: ' + error.message);
+    if (error) {
+      alert('Failed to send: ' + error.message);
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+    }
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: '40px' }}><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="glass-card" style={{ height: '500px', display: 'flex', flexDirection: 'column', borderRadius: '24px', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(0,0,0,0.2)' }}>
+    <div className="glass-card" style={{ height: '550px', display: 'flex', flexDirection: 'column', borderRadius: '24px', overflow: 'hidden', background: '#0f0f14', border: '1px solid rgba(255,255,255,0.1)' }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(0,0,0,0.4)' }}>
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '100px' }}>
             No messages yet. Start the conversation!
@@ -115,17 +128,18 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
             flexDirection: 'column', 
             alignItems: msg.sender_id === user?.id ? 'flex-end' : 'flex-start' 
           }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               {msg.sender?.full_name || msg.sender?.username || 'User'}
             </div>
             <div style={{
               maxWidth: '85%', 
-              padding: msg.message_type === 'sticker' ? '0' : '10px 14px',
-              borderRadius: msg.sender_id === user?.id ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-              background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === user?.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.08)'),
-              color: 'white',
-              fontSize: '0.9rem',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+              padding: msg.message_type === 'sticker' ? '0' : '12px 16px',
+              borderRadius: msg.sender_id === user?.id ? '20px 20px 4px 20px' : '20px 20px 20px 20px',
+              background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === user?.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.15)'),
+              color: msg.sender_id === user?.id ? '#ffffff' : 'var(--text-primary)',
+              fontSize: '0.95rem',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+              border: msg.sender_id === user?.id ? 'none' : '1px solid rgba(255,255,255,0.1)'
             }}>
               {msg.message_type === 'sticker' ? (
                 <img src={msg.sticker_url} style={{ width: '100px', height: '100px' }} />
