@@ -157,7 +157,9 @@ export default function CommunitiesPage() {
           </div>
         ) : filteredCommunities.length > 0 ? (
           filteredCommunities.map((comm) => {
-            const isMember = comm.community_members?.some((m: any) => m.user_id === user?.id);
+            const membership = comm.community_members?.find((m: any) => m.user_id === user?.id);
+            const isJoined = membership?.status === 'joined';
+            const isPending = membership?.status === 'pending';
             return (
               <div key={comm.id} className="glass-card animate-fade-in" style={{ 
                 padding: '24px', borderRadius: '24px', position: 'relative', overflow: 'hidden',
@@ -218,19 +220,20 @@ export default function CommunitiesPage() {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!isMember) handleJoin(comm.id);
+                      if (!membership) handleJoin(comm.id);
                     }}
-                    className={isMember ? "btn-secondary" : "btn-primary"} 
+                    className={isJoined ? "btn-secondary" : isPending ? "btn-secondary" : "btn-primary"} 
                     style={{ 
                       marginLeft: '16px', padding: '10px 24px', flexShrink: 0, borderRadius: '14px',
-                      background: isMember ? 'rgba(255,255,255,0.05)' : (comm.color || 'var(--accent-primary)'),
-                      border: isMember ? '1px solid var(--border-light)' : 'none',
-                      color: isMember ? 'var(--text-secondary)' : 'white',
-                      fontWeight: '700', fontSize: '0.9rem'
+                      background: isJoined ? 'rgba(255,255,255,0.05)' : isPending ? 'rgba(245,158,11,0.1)' : (comm.color || 'var(--accent-primary)'),
+                      border: isJoined ? '1px solid var(--border-light)' : isPending ? '1px solid #f59e0b' : 'none',
+                      color: isJoined ? 'var(--text-secondary)' : isPending ? '#f59e0b' : 'white',
+                      fontWeight: '700', fontSize: '0.9rem',
+                      cursor: (isJoined || isPending) ? 'default' : 'pointer'
                     }}
-                    disabled={isMember}
+                    disabled={isJoined || isPending}
                   >
-                    {isMember ? 'Joined' : 'Join Community'}
+                    {isJoined ? 'Joined' : isPending ? 'Pending' : comm.is_public ? 'Join' : 'Request'}
                   </button>
                 </div>
               </div>
