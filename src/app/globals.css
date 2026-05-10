@@ -129,6 +129,22 @@ button {
   border-color: rgba(138, 43, 226, 0.3);
 }
 
+.hover-glass {
+  transition: all var(--transition-fast);
+}
+
+.hover-glass:hover {
+  background: var(--bg-glass-hover) !important;
+}
+
+.hover-scale {
+  transition: transform var(--transition-fast);
+}
+
+.hover-scale:hover {
+  transform: scale(1.1);
+}
+
 /* Neon Text */
 .text-gradient {
   background: linear-gradient(90deg, var(--accent-secondary), var(--accent-neon));

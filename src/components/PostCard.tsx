@@ -1,6 +1,6 @@
 'use client';
 
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Play, DollarSign, Loader2, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Play, DollarSign, Loader2, Trash2, Music, Volume2, VolumeX } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { tipCreatorAction } from '@/app/actions/tip';
@@ -28,6 +28,9 @@ interface PostCardProps {
     shares: string | number;
     tags: string[];
     timeAgo: string;
+    musicUrl?: string;
+    musicTitle?: string;
+    musicArtist?: string;
   }
 }
 
@@ -45,6 +48,8 @@ export default function PostCard({ post }: PostCardProps) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+  const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -229,6 +234,45 @@ export default function PostCard({ post }: PostCardProps) {
 
       <div style={{ padding: '0 16px 12px 16px' }}>
         <p style={{ marginBottom: '12px', fontSize: '0.95rem', lineHeight: '1.6' }}>{post.content}</p>
+        
+        {post.musicUrl && (
+          <div style={{ 
+            display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px',
+            background: 'rgba(var(--accent-primary-rgb), 0.05)', borderRadius: '12px',
+            border: '1px solid rgba(var(--accent-primary-rgb), 0.1)',
+            marginBottom: '16px', cursor: 'pointer'
+          }} onClick={() => {
+            if (audioRef.current) {
+              if (isPlayingMusic) audioRef.current.pause();
+              else audioRef.current.play();
+              setIsPlayingMusic(!isPlayingMusic);
+            }
+          }}>
+            <audio ref={audioRef} src={post.musicUrl} loop />
+            <div style={{ 
+              width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+            }}>
+              {isPlayingMusic ? <Volume2 size={16} color="white" /> : <Music size={16} color="white" />}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.musicTitle}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{post.musicArtist}</div>
+            </div>
+            {isPlayingMusic && (
+              <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end', height: '12px' }}>
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="music-bar" style={{ 
+                    width: '3px', background: 'var(--accent-neon)', 
+                    height: '100%', borderRadius: '10px',
+                    animation: `musicBar 0.8s ease-in-out infinite alternate ${i * 0.2}s`
+                  }} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
           {post.tags?.map((tag, i) => (
             <span key={i} className="text-gradient" style={{ fontWeight: '600', fontSize: '0.9rem' }}>#{tag}</span>

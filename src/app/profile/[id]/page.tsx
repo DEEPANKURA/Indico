@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
-import { Grid3x3, Heart, MessageCircle, DollarSign, Camera, ArrowLeft } from 'lucide-react';
+import { Grid3x3, Heart, MessageCircle, DollarSign, Camera, ArrowLeft, Music } from 'lucide-react';
 import { toggleFollowAction } from '@/app/actions/social';
 import FollowsModal from '@/components/FollowsModal';
 
@@ -41,7 +41,7 @@ export default function UserProfilePage() {
 
       const [{ data: profileData }, { data: postsData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
-        supabase.from('posts').select('id, content, like_count, comment_count, created_at, media_urls').eq('author_id', userId).order('created_at', { ascending: false }),
+        supabase.from('posts').select('id, content, like_count, comment_count, created_at, media_urls, music_url, music_title, music_artist').eq('author_id', userId).order('created_at', { ascending: false }),
       ]);
 
       if (!profileData) {
@@ -218,6 +218,12 @@ export default function UserProfilePage() {
                     {post.content.substring(0, 50)}...
                   </div>
                 )}
+
+                {post.music_url && (
+                  <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
+                    <Music size={14} color="white" />
+                  </div>
+                )}
                 
                 {/* Hover Overlay */}
                 <div style={{ 
@@ -253,7 +259,7 @@ export default function UserProfilePage() {
             {/* Media Area */}
             <div style={{ 
               flex: 1.5, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              maxHeight: isMobile ? '40vh' : 'none'
+              maxHeight: isMobile ? '40vh' : 'none', position: 'relative'
             }}>
               {selectedPost.media_urls?.[0] ? (
                 selectedPost.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
@@ -279,8 +285,23 @@ export default function UserProfilePage() {
               
               <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
                 <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5' }}>{selectedPost.content}</p>
-                <div style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  {new Date(selectedPost.created_at).toLocaleDateString()}
+                <div style={{ marginTop: '12px' }}>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '16px' }}>{new Date(selectedPost.created_at).toLocaleDateString()}</div>
+                  
+                  {selectedPost.music_url && (
+                    <div style={{ 
+                      display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px',
+                      background: 'rgba(var(--accent-primary-rgb), 0.05)', borderRadius: '12px',
+                      marginBottom: '16px'
+                    }}>
+                      <Music size={16} color="var(--accent-primary)" />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedPost.music_title}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{selectedPost.music_artist}</div>
+                      </div>
+                      <audio autoPlay src={selectedPost.music_url} loop />
+                    </div>
+                  )}
                 </div>
               </div>
 

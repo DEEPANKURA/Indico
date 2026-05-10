@@ -6,7 +6,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-export async function createPostAction(content: string, mediaUrls: string[] = [], communityId?: string) {
+export async function createPostAction(
+  content: string, 
+  mediaUrls: string[] = [], 
+  communityId?: string,
+  musicInfo?: { url: string; title: string; artist: string }
+) {
   try {
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -59,7 +64,10 @@ export async function createPostAction(content: string, mediaUrls: string[] = []
       media_urls: mediaUrls,
       ai_safety_score: aiSafetyScore,
       is_flagged: isFlagged,
-      community_id: communityId || null
+      community_id: communityId || null,
+      music_url: musicInfo?.url || null,
+      music_title: musicInfo?.title || null,
+      music_artist: musicInfo?.artist || null
     });
 
     if (insertError) throw insertError;

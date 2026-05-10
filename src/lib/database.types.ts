@@ -19,6 +19,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          parent_id: string | null
           post_id: string
           user_id: string
         }
@@ -26,6 +27,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          parent_id?: string | null
           post_id: string
           user_id: string
         }
@@ -33,10 +35,18 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          parent_id?: string | null
           post_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "comments_post_id_fkey"
             columns: ["post_id"]
@@ -166,6 +176,80 @@ export type Database = {
           },
         ]
       }
+      group_members: {
+        Row: {
+          group_id: string
+          joined_at: string | null
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          joined_at?: string | null
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          joined_at?: string | null
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          creator_id: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          creator_id: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          creator_id?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       likes: {
         Row: {
           created_at: string
@@ -245,33 +329,59 @@ export type Database = {
       }
       messages: {
         Row: {
+          community_id: string | null
           content: string
           created_at: string | null
+          group_id: string | null
           id: string
           is_read: boolean | null
+          message_type: string | null
           post_id: string | null
-          recipient_id: string
+          recipient_id: string | null
           sender_id: string
+          sticker_url: string | null
         }
         Insert: {
+          community_id?: string | null
           content: string
           created_at?: string | null
+          group_id?: string | null
           id?: string
           is_read?: boolean | null
+          message_type?: string | null
           post_id?: string | null
-          recipient_id: string
+          recipient_id?: string | null
           sender_id: string
+          sticker_url?: string | null
         }
         Update: {
+          community_id?: string | null
           content?: string
           created_at?: string | null
+          group_id?: string | null
           id?: string
           is_read?: boolean | null
+          message_type?: string | null
           post_id?: string | null
-          recipient_id?: string
+          recipient_id?: string | null
           sender_id?: string
+          sticker_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "messages_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "messages_post_id_fkey"
             columns: ["post_id"]
@@ -298,7 +408,7 @@ export type Database = {
       notifications: {
         Row: {
           actor_id: string
-          created_at: string
+          created_at: string | null
           id: string
           is_read: boolean | null
           target_id: string | null
@@ -307,7 +417,7 @@ export type Database = {
         }
         Insert: {
           actor_id: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           is_read?: boolean | null
           target_id?: string | null
@@ -316,7 +426,7 @@ export type Database = {
         }
         Update: {
           actor_id?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           is_read?: boolean | null
           target_id?: string | null
@@ -333,35 +443,6 @@ export type Database = {
           },
           {
             foreignKeyName: "notifications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      push_subscriptions: {
-        Row: {
-          created_at: string
-          id: string
-          subscription: Json
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          subscription: Json
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          subscription?: Json
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "push_subscriptions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -386,6 +467,9 @@ export type Database = {
           moderation_status:
             | Database["public"]["Enums"]["moderation_status"]
             | null
+          music_artist: string | null
+          music_title: string | null
+          music_url: string | null
           updated_at: string
         }
         Insert: {
@@ -404,6 +488,9 @@ export type Database = {
           moderation_status?:
             | Database["public"]["Enums"]["moderation_status"]
             | null
+          music_artist?: string | null
+          music_title?: string | null
+          music_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -422,6 +509,9 @@ export type Database = {
           moderation_status?:
             | Database["public"]["Enums"]["moderation_status"]
             | null
+          music_artist?: string | null
+          music_title?: string | null
+          music_url?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -437,56 +527,6 @@ export type Database = {
             columns: ["community_id"]
             isOneToOne: false
             referencedRelation: "communities"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      stories: {
-        Row: {
-          created_at: string
-          expires_at: string
-          id: string
-          media_type: string
-          media_url: string
-          mentions: string[] | null
-          overlay_text: string | null
-          text_color: string | null
-          text_x: number | null
-          text_y: number | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          expires_at: string
-          id?: string
-          media_type: string
-          media_url: string
-          mentions?: string[] | null
-          overlay_text?: string | null
-          text_color?: string | null
-          text_x?: number | null
-          text_y?: number | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          expires_at?: string
-          id?: string
-          media_type?: string
-          media_url?: string
-          mentions?: string[] | null
-          overlay_text?: string | null
-          text_color?: string | null
-          text_x?: number | null
-          text_y?: number | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stories_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -538,6 +578,94 @@ export type Database = {
           website_url?: string | null
         }
         Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          created_at: string | null
+          id: string
+          subscription: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          subscription: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          subscription?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stories: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          media_type: string | null
+          media_url: string
+          mentions: string[] | null
+          music_artist: string | null
+          music_title: string | null
+          music_url: string | null
+          overlay_text: string | null
+          text_color: string | null
+          text_x: number | null
+          text_y: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          media_type?: string | null
+          media_url: string
+          mentions?: string[] | null
+          music_artist?: string | null
+          music_title?: string | null
+          music_url?: string | null
+          overlay_text?: string | null
+          text_color?: string | null
+          text_x?: number | null
+          text_y?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          media_type?: string | null
+          media_url?: string
+          mentions?: string[] | null
+          music_artist?: string | null
+          music_title?: string | null
+          music_url?: string | null
+          overlay_text?: string | null
+          text_color?: string | null
+          text_x?: number | null
+          text_y?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stories_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {
@@ -630,6 +758,11 @@ export type Database = {
       increment_viewer_count: {
         Args: { stream_id: string }
         Returns: undefined
+      }
+      is_group_admin: { Args: { target_group_id: string }; Returns: boolean }
+      is_member_of_group: {
+        Args: { target_group_id: string }
+        Returns: boolean
       }
     }
     Enums: {

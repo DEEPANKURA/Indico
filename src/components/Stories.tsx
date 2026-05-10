@@ -6,6 +6,8 @@ import { createClient } from '@/utils/supabase/client';
 import Image from 'next/image';
 import { createStoryAction } from '@/app/actions/profile';
 import { User } from '@supabase/supabase-js';
+import MusicSelector from './MusicSelector';
+import { Music as MusicIcon, Volume2, VolumeX } from 'lucide-react';
 
 interface Story {
   id: string;
@@ -22,6 +24,9 @@ interface Story {
     username: string;
     avatar_url: string;
   };
+  music_url?: string;
+  music_title?: string;
+  music_artist?: string;
 }
 
 interface StoryGroup {
@@ -45,6 +50,10 @@ export default function Stories() {
   const [textColor, setTextColor] = useState('#ffffff');
   const [textPosition, setTextPosition] = useState({ x: 50, y: 50 });
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedMusic, setSelectedMusic] = useState<any>(null);
+  const [showMusicSelector, setShowMusicSelector] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,6 +146,11 @@ export default function Stories() {
       formData.append('text_color', textColor);
       formData.append('text_x', textPosition.x.toString());
       formData.append('text_y', textPosition.y.toString());
+      if (selectedMusic) {
+        formData.append('music_url', selectedMusic.audio);
+        formData.append('music_title', selectedMusic.name);
+        formData.append('music_artist', selectedMusic.artist_name);
+      }
 
       const result = await createStoryAction(formData);
       
@@ -161,6 +175,7 @@ export default function Stories() {
         setEditorFile(null);
         setEditorPreview(null);
         setOverlayText('');
+        setSelectedMusic(null);
       } else {
         throw new Error(result.error);
       }
@@ -290,8 +305,10 @@ export default function Stories() {
               <button style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', padding: '10px', borderRadius: '50%', cursor: 'pointer' }}>
                 <Type size={24} />
               </button>
-              <button style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', padding: '10px', borderRadius: '50%', cursor: 'pointer' }}>
-                <AtSign size={24} />
+              <button 
+                onClick={() => setShowMusicSelector(true)}
+                style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', padding: '10px', borderRadius: '50%', cursor: 'pointer' }}>
+                <MusicIcon size={24} />
               </button>
             </div>
           </div>
@@ -323,6 +340,23 @@ export default function Stories() {
                   fontFamily: 'inherit'
                 }}
               />
+
+              {selectedMusic && (
+                <div style={{
+                  position: 'absolute', bottom: '20px', left: '20px', right: '20px',
+                  background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
+                  padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px'
+                }}>
+                  <MusicIcon size={16} color="var(--accent-primary)" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: 'white', fontSize: '0.8rem', fontWeight: 'bold' }}>{selectedMusic.name}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.7rem' }}>{selectedMusic.artist_name}</div>
+                  </div>
+                  <button onClick={() => setSelectedMusic(null)} style={{ color: 'white' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -339,6 +373,13 @@ export default function Stories() {
               {isUploading ? 'Sharing...' : 'Share to Story'}
             </button>
           </div>
+
+          {showMusicSelector && (
+            <MusicSelector 
+              onSelect={(track) => setSelectedMusic(track)}
+              onClose={() => setShowMusicSelector(false)}
+            />
+          )}
         </div>
       )}
 
@@ -387,6 +428,26 @@ export default function Stories() {
                 </div>
               </div>
             </div>
+
+            {/* Music Info Indicator */}
+            {storyGroups[activeGroupIndex].stories[activeStoryIndex].music_url && (
+              <div style={{ 
+                position: 'absolute', top: '80px', left: '16px', right: '16px',
+                display: 'flex', alignItems: 'center', gap: '8px', zIndex: 10,
+                color: 'white', background: 'rgba(0,0,0,0.3)', padding: '6px 12px',
+                borderRadius: '20px', width: 'fit-content'
+              }}>
+                <MusicIcon size={14} className="animate-pulse" />
+                <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>
+                  {storyGroups[activeGroupIndex].stories[activeStoryIndex].music_title} - {storyGroups[activeGroupIndex].stories[activeStoryIndex].music_artist}
+                </span>
+                <audio 
+                  autoPlay={isPlaying} 
+                  src={storyGroups[activeGroupIndex].stories[activeStoryIndex].music_url} 
+                  loop 
+                />
+              </div>
+            )}
 
             {/* Media Content */}
             <div style={{ width: '100%', height: '100%', position: 'relative' }}>

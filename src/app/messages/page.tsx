@@ -2,9 +2,27 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { MessageSquare, Send, Search, User, Loader2, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Send, Search, User, Loader2, ArrowLeft, Smile, X, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { searchUsersAction } from '@/app/actions/social';
+
+const STICKERS = [
+  'https://fonts.gstatic.com/s/e/notoemoji/latest/1f600/512.gif',
+  'https://fonts.gstatic.com/s/e/notoemoji/latest/1f60d/512.gif',
+  'https://fonts.gstatic.com/s/e/notoemoji/latest/1f929/512.gif',
+  'https://fonts.gstatic.com/s/e/notoemoji/latest/1f973/512.gif',
+  'https://fonts.gstatic.com/s/e/notoemoji/latest/1f60e/512.gif',
+  'https://fonts.gstatic.com/s/e/notoemoji/latest/1f914/512.gif',
+  'https://fonts.gstatic.com/s/e/notoemoji/latest/1f631/512.gif',
+  'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44b/512.gif',
+  'https://fonts.gstatic.com/s/e/notoemoji/latest/1f680/512.gif',
+  'https://fonts.gstatic.com/s/e/notoemoji/latest/2728/512.gif',
+];
+
+const normalizeJoin = (val: any) => {
+  if (Array.isArray(val)) return val[0];
+  return val;
+};
 
 export default function MessagesPage() {
   const supabase = createClient();
@@ -20,6 +38,7 @@ export default function MessagesPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
+  const [showStickers, setShowStickers] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640);
@@ -33,50 +52,59 @@ export default function MessagesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setCurrentUser(user);
-      fetchConversations(user.id);
     };
     init();
+  }, []);
 
+  useEffect(() => {
+    if (currentUser) {
+      fetchConversations(currentUser.id);
+    }
+  }, [currentUser?.id]);
+
+  useEffect(() => {
     const handleManualRefresh = () => {
-      console.log('Manual unread refresh triggered');
       if (currentUser) fetchConversations(currentUser.id);
     };
 
     window.addEventListener('messages_read', handleManualRefresh);
-
-    return () => {
-      window.removeEventListener('messages_read', handleManualRefresh);
-    };
+    return () => window.removeEventListener('messages_read', handleManualRefresh);
   }, [currentUser]);
 
   useEffect(() => {
     if (selectedUser && currentUser) {
       fetchMessages(selectedUser.id);
       
-      // Subscribe to new messages
       const channel = supabase
-        .channel('realtime_messages')
+        .channel('realtime_messages_' + selectedUser.id)
         .on('postgres_changes', { 
           event: 'INSERT', 
           schema: 'public', 
-          table: 'messages',
-          filter: `recipient_id=eq.${currentUser.id}` 
-        }, (payload) => {
-          if (payload.new.sender_id === selectedUser.id) {
-            setMessages(prev => [...prev, payload.new]);
+          table: 'messages'
+        }, async (payload) => {
+          const newMsg = payload.new;
+          if ((newMsg.sender_id === selectedUser.id && newMsg.recipient_id === currentUser.id) ||
+              (newMsg.sender_id === currentUser.id && newMsg.recipient_id === selectedUser.id)) {
             
-            // Mark as read immediately if chat is open
-            supabase
-              .from('messages')
-              .update({ is_read: true })
-              .eq('id', payload.new.id)
-              .then(() => {
-                fetchConversations(currentUser.id);
-                window.dispatchEvent(new Event('messages_read'));
-              });
-          } else {
-            fetchConversations(currentUser.id);
+            // Fetch post if shared
+            let postData = null;
+            if (newMsg.post_id) {
+              const { data: post } = await supabase.from('posts').select('*, author:profiles(username, avatar_url)').eq('id', newMsg.post_id).single();
+              postData = post;
+            }
+            
+            setMessages(prev => {
+              const isDuplicate = prev.some(m => m.id === newMsg.id || (m.content === newMsg.content && m.sender_id === newMsg.sender_id && m.isOptimistic));
+              if (isDuplicate && !prev.some(m => m.id === newMsg.id)) {
+                return prev.map(m => (m.content === newMsg.content && m.sender_id === newMsg.sender_id && m.isOptimistic) ? { ...newMsg, posts: postData } : m);
+              }
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, { ...newMsg, posts: postData }];
+            });
+
+            if (newMsg.sender_id === selectedUser.id) markAsRead(newMsg.id);
           }
+          fetchConversations(currentUser.id);
         })
         .subscribe();
 
@@ -86,42 +114,50 @@ export default function MessagesPage() {
     }
   }, [selectedUser, currentUser]);
 
+  const markAsRead = async (msgId: string) => {
+    await supabase.from('messages').update({ is_read: true }).eq('id', msgId);
+    window.dispatchEvent(new Event('messages_read'));
+  };
+
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages]);
 
   const fetchConversations = async (userId: string) => {
-    // This is a simplified way to get conversations. 
-    // In a production app, you'd have a separate conversations table or a more complex query.
-    const { data, error } = await supabase
+    const { data: dmData } = await supabase
       .from('messages')
       .select(`
         sender_id,
         recipient_id,
         content,
+        message_type,
         created_at,
         sender:profiles!sender_id(id, username, full_name, avatar_url),
         recipient:profiles!recipient_id(id, username, full_name, avatar_url)
       `)
       .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+      .is('group_id', null)
       .order('created_at', { ascending: false });
 
-    if (data) {
-      const convs: any[] = [];
-      const seen = new Set();
-      data.forEach(msg => {
-        const otherUser = msg.sender_id === userId ? msg.recipient : msg.sender;
-        if (!seen.has(otherUser.id)) {
+    const convs: any[] = [];
+    const seen = new Set();
+
+    if (dmData) {
+      (dmData as any[]).forEach(msg => {
+        const otherUser = msg.sender_id === userId ? normalizeJoin(msg.recipient) : normalizeJoin(msg.sender);
+        if (otherUser && !seen.has(otherUser.id)) {
           convs.push({
             user: otherUser,
-            lastMsg: msg.content,
-            time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
+            lastMsg: msg.message_type === 'sticker' ? 'Sent a sticker' : (msg.content || ''),
+            time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+            timestamp: msg.created_at ? new Date(msg.created_at).getTime() : 0
           });
           seen.add(otherUser.id);
         }
       });
-      setConversations(convs);
     }
+
+    setConversations(convs.sort((a, b) => b.timestamp - a.timestamp));
     setLoading(false);
   };
 
@@ -134,39 +170,62 @@ export default function MessagesPage() {
 
     if (data) setMessages(data);
 
-    // Mark as read
     try {
-      const { error } = await supabase
+      const { data: unread } = await supabase
         .from('messages')
-        .update({ is_read: true })
+        .select('id')
         .eq('recipient_id', currentUser.id)
         .eq('sender_id', otherUserId)
-        .eq('is_read', false); // Only update unread ones to trigger less events
-      
-      if (!error) {
-        window.dispatchEvent(new Event('messages_read'));
+        .eq('is_read', false)
+        .limit(1);
+
+      if (unread && unread.length > 0) {
+        const { error } = await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('recipient_id', currentUser.id)
+          .eq('sender_id', otherUserId)
+          .eq('is_read', false);
+        
+        if (!error) {
+          window.dispatchEvent(new Event('messages_read'));
+        }
       }
     } catch (e) {
       console.error('Error marking messages as read:', e);
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || !selectedUser || !currentUser) return;
+  const handleSend = async (stickerUrl?: string) => {
+    if ((!input.trim() && !stickerUrl) || !selectedUser || !currentUser) return;
 
-    const newMsg = {
+    const newMsg: any = {
       sender_id: currentUser.id,
       recipient_id: selectedUser.id,
-      content: input
+      content: stickerUrl ? '' : input,
+      message_type: stickerUrl ? 'sticker' : 'text',
+      sticker_url: stickerUrl || null
     };
 
-    // Optimistic update
-    setMessages(prev => [...prev, { ...newMsg, created_at: new Date().toISOString() }]);
-    setInput('');
+    const optimisticMsg = { 
+      ...newMsg, 
+      id: Math.random().toString(),
+      isOptimistic: true,
+      created_at: new Date().toISOString(),
+      sender: {
+        id: currentUser.id,
+        full_name: currentUser.user_metadata?.full_name || currentUser.email || 'Me',
+        avatar_url: currentUser.user_metadata?.avatar_url
+      }
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+    if (!stickerUrl) setInput('');
+    setShowStickers(false);
 
     const { error } = await supabase.from('messages').insert(newMsg);
     if (error) {
-      alert('Failed to send message');
+      alert('Failed to send message: ' + error.message);
+      setMessages(prev => prev.filter(m => m !== optimisticMsg));
     } else {
       fetchConversations(currentUser.id);
     }
@@ -196,7 +255,7 @@ export default function MessagesPage() {
   if (loading) return <div style={{ textAlign: 'center', padding: '100px', color: 'var(--text-secondary)' }}>Loading conversations...</div>;
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', paddingTop: '10px' }}>
+    <div style={{ padding: '10px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
         <MessageSquare size={28} style={{ color: 'var(--accent-secondary)' }} />
         <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>Messages</h1>
@@ -206,40 +265,28 @@ export default function MessagesPage() {
         borderRadius: '16px', overflow: 'hidden', display: 'flex', height: '75vh',
         position: 'relative'
       }}>
-        {/* Sidebar - hidden on mobile when a chat is selected */}
+        {/* Sidebar */}
         <div style={{ 
-          width: selectedUser ? '320px' : '100%', 
+          width: selectedUser ? (isMobile ? '100%' : '320px') : '100%', 
           borderRight: '1px solid var(--border-light)', 
           display: (selectedUser && isMobile) ? 'none' : 'flex', 
           flexDirection: 'column',
-          flexShrink: 0
+          flexShrink: 0,
+          minWidth: 0
         }}>
           <div style={{ padding: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-glass)', borderRadius: '12px', padding: '10px 16px' }}>
-              <Search size={18} style={{ color: 'var(--text-secondary)' }} />
-              <input 
-                type="text" 
-                placeholder="Search people..." 
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-                style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', width: '100%', fontSize: '0.95rem' }} 
-              />
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-glass)', borderRadius: '12px', padding: '10px 16px' }}>
+                <Search size={18} style={{ color: 'var(--text-secondary)' }} />
+                <input 
+                  type="text" 
+                  placeholder="Search people..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', width: '100%', fontSize: '0.95rem' }} 
+                />
+              </div>
             </div>
-            <button 
-              onClick={async () => {
-                if (!currentUser) return;
-                await supabase.from('messages').update({ is_read: true }).eq('recipient_id', currentUser.id).eq('is_read', false);
-                window.dispatchEvent(new Event('messages_read'));
-                fetchConversations(currentUser.id);
-              }}
-              style={{ 
-                marginTop: '12px', width: '100%', padding: '8px', borderRadius: '8px', 
-                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-light)',
-                color: 'var(--text-secondary)', fontSize: '0.8rem', cursor: 'pointer'
-              }}
-            >
-              Mark all as read
-            </button>
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {searchQuery ? (
@@ -282,7 +329,9 @@ export default function MessagesPage() {
                       <span style={{ fontWeight: '700', fontSize: '0.95rem' }}>{conv.user.full_name}</span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{conv.time}</span>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conv.lastMsg}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {conv.lastMsg}
+                    </div>
                   </div>
                 </div>
               ))
@@ -294,23 +343,27 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* Chat area - hidden on mobile when no chat is selected */}
+        {/* Chat area */}
         <div style={{ 
           flex: 1, 
           display: (!selectedUser && isMobile) ? 'none' : 'flex', 
           flexDirection: 'column', 
-          background: 'rgba(0,0,0,0.2)',
-          width: '100%'
+          background: '#ffffff',
+          minWidth: 0
         }}>
           {selectedUser ? (
             <>
-              <div style={{ padding: '16px', borderBottom: '1px solid var(--border-light)', display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--bg-glass)' }}>
-                {typeof window !== 'undefined' && window.innerWidth < 640 && (
-                  <button onClick={() => setSelectedUser(null)} style={{ marginRight: '8px', color: 'var(--text-secondary)' }}>
+              <div style={{ padding: '16px', borderBottom: '1px solid #eeeeee', display: 'flex', gap: '12px', alignItems: 'center', background: '#ffffff' }}>
+                {isMobile && (
+                  <button onClick={() => setSelectedUser(null)} style={{ marginRight: '8px', color: '#666666', background: 'none', border: 'none' }}>
                     <ArrowLeft size={24} />
                   </button>
                 )}
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', overflow: 'hidden' }}>
+                <div style={{ 
+                  width: '40px', height: '40px', borderRadius: '50%', 
+                  background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', overflow: 'hidden' 
+                }}>
                   {selectedUser.avatar_url ? <img src={selectedUser.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : selectedUser.full_name?.[0]}
                 </div>
                 <div>
@@ -318,13 +371,17 @@ export default function MessagesPage() {
                   <div style={{ fontSize: '0.8rem', color: 'var(--accent-neon)' }}>Online</div>
                 </div>
               </div>
-              <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', background: '#f8f9fa' }}>
                 {messages.map((msg, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: msg.sender_id === currentUser.id ? 'flex-end' : 'flex-start' }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: msg.sender_id === currentUser.id ? 'flex-end' : 'flex-start', width: '100%' }}>
                     <div style={{
-                      maxWidth: '75%', padding: '12px 16px', borderRadius: msg.sender_id === currentUser.id ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                      background: msg.sender_id === currentUser.id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'var(--bg-glass)',
-                      fontSize: '0.95rem', lineHeight: '1.5', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      maxWidth: '75%', padding: msg.message_type === 'sticker' ? '0' : '12px 16px', 
+                      borderRadius: msg.sender_id === currentUser.id ? '20px 20px 4px 20px' : '20px 20px 20px 20px',
+                      background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === currentUser.id ? 'var(--accent-primary)' : '#e4e6eb'),
+                      color: msg.sender_id === currentUser.id ? '#ffffff' : '#000000',
+                      fontSize: '0.95rem', lineHeight: '1.5', 
+                      boxShadow: msg.message_type === 'sticker' ? 'none' : '0 2px 8px rgba(0,0,0,0.05)',
+                      border: 'none',
                       display: 'flex', flexDirection: 'column', gap: '8px'
                     }}>
                       {msg.post_id && msg.posts && (
@@ -348,36 +405,94 @@ export default function MessagesPage() {
                           </div>
                         </div>
                       )}
-                      <div>{msg.content}</div>
+                      {msg.message_type === 'sticker' ? (
+                        <img src={msg.sticker_url} style={{ width: '120px', height: '120px' }} alt="sticker" />
+                      ) : (
+                        <div>{msg.content}</div>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
-              <div style={{ padding: '20px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--bg-glass)' }}>
+              <div style={{ 
+                padding: '12px 16px', 
+                borderTop: '1px solid #eeeeee', 
+                display: 'flex', 
+                gap: '8px', 
+                alignItems: 'center', 
+                background: '#ffffff', 
+                position: 'relative',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}>
+                <button 
+                  onClick={() => setShowStickers(!showStickers)}
+                  style={{ color: '#666666', background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexShrink: 0 }}
+                >
+                  <Smile size={24} />
+                </button>
+                
+                {showStickers && (
+                  <div className="glass-card" style={{ 
+                    position: 'absolute', bottom: '100%', left: '12px', width: '260px', 
+                    padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px',
+                    borderRadius: '16px', marginBottom: '12px', zIndex: 100,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.4)', border: '1px solid var(--border-light)'
+                  }}>
+                    {STICKERS.map((s, i) => (
+                      <img 
+                        key={i} src={s} 
+                        style={{ width: '100%', cursor: 'pointer', borderRadius: '8px' }} 
+                        className="hover-scale"
+                        onClick={() => handleSend(s)}
+                      />
+                    ))}
+                  </div>
+                )}
+
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="Type a message..."
-                  style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-light)', borderRadius: '24px', padding: '12px 20px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem' }}
+                  style={{ 
+                    flex: 1, 
+                    minWidth: 0,
+                    background: '#f0f2f5', 
+                    border: 'none', 
+                    borderRadius: '24px', 
+                    padding: '10px 16px', 
+                    color: '#000000', 
+                    outline: 'none', 
+                    fontSize: '0.9rem' 
+                  }}
                 />
                 <button 
-                  onClick={handleSend}
+                  onClick={() => handleSend()}
                   className="btn-primary" 
-                  style={{ width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  style={{ 
+                    width: '40px', 
+                    height: '40px', 
+                    borderRadius: '50%', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    flexShrink: 0,
+                    padding: 0
+                  }}
                 >
-                  <Send size={20} />
+                  <Send size={18} />
                 </button>
               </div>
             </>
           ) : (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', padding: '20px', textAlign: 'center' }}>
               <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--bg-glass)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
                 <MessageSquare size={40} />
               </div>
-              <h3>Your Messages</h3>
-              <p>Select a conversation to start chatting</p>
+              <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>Your Messages</h3>
+              <p style={{ maxWidth: '300px' }}>Select a friend to start sharing moments and stickers!</p>
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Compass, Search, Flame, Music, Gamepad2, Camera, Palette, BookOpen, Dumbbell, User, Loader2, PlayCircle, TrendingUp } from 'lucide-react';
+import { Compass, Search, Flame, Music, Gamepad2, Camera, Palette, BookOpen, Dumbbell, User, Loader2, PlayCircle, TrendingUp, ArrowLeft } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import PostCard from '@/components/PostCard';
 import { useRouter } from 'next/navigation';
@@ -24,6 +24,7 @@ export default function ExplorePage() {
   const [searching, setSearching] = useState(false);
   const [risingCreators, setRisingCreators] = useState<any[]>([]);
   const [trendingPosts, setTrendingPosts] = useState<any[]>([]);
+  const [selectedPost, setSelectedPost] = useState<any>(null);
   const [activeCategory, setActiveCategory] = useState('Trending');
   const [searchMode, setSearchMode] = useState<'users' | 'posts'>('users');
   const [postResults, setPostResults] = useState<any[]>([]);
@@ -58,7 +59,10 @@ export default function ExplorePage() {
         },
         likes: p.like_count || 0,
         comments: p.comment_count || 0,
-        timestamp: new Date(p.created_at).toLocaleDateString()
+        timestamp: new Date(p.created_at).toLocaleDateString(),
+        musicUrl: p.music_url,
+        musicTitle: p.music_title,
+        musicArtist: p.music_artist
       }));
       setTrendingPosts(mappedPosts);
     };
@@ -105,7 +109,10 @@ export default function ExplorePage() {
         },
         likes: p.like_count || 0,
         comments: p.comment_count || 0,
-        timeAgo: new Date(p.created_at).toLocaleDateString()
+        timeAgo: new Date(p.created_at).toLocaleDateString(),
+        musicUrl: p.music_url,
+        musicTitle: p.music_title,
+        musicArtist: p.music_artist
       }));
       setPostResults(mapped);
       
@@ -273,14 +280,49 @@ export default function ExplorePage() {
                 </div>
               </div>
 
-              {/* Trending Posts Feed */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h2 style={{ fontWeight: '800', fontSize: '1.2rem', margin: '8px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {/* Trending Posts Grid */}
+              <div>
+                <h2 style={{ fontWeight: '800', fontSize: '1.2rem', margin: '24px 0 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <TrendingUp size={20} style={{ color: 'var(--accent-neon)' }} /> Popular Right Now
                 </h2>
-                {trendingPosts.map((post) => (
-                  <PostCard key={post.id} post={post} />
-                ))}
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(3, 1fr)', 
+                  gap: '4px',
+                  margin: '0 -16px' 
+                }}>
+                  {trendingPosts.map((post) => (
+                    <div 
+                      key={post.id} 
+                      onClick={() => setSelectedPost(post)}
+                      style={{ 
+                        aspectRatio: '1/1', 
+                        position: 'relative', 
+                        cursor: 'pointer',
+                        overflow: 'hidden',
+                        background: '#000'
+                      }}
+                      className="hover-scale"
+                    >
+                      {post.media_urls?.[0] ? (
+                        <>
+                          {post.media_urls[0].includes('mp4') ? (
+                            <video src={post.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                          ) : (
+                            <img src={post.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          )}
+                          {post.media_urls[0].includes('mp4') && (
+                            <PlayCircle size={20} color="white" style={{ position: 'absolute', top: '8px', right: '8px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />
+                          )}
+                        </>
+                      ) : (
+                        <div style={{ padding: '8px', fontSize: '0.7rem', color: '#666', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {post.content}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (
@@ -291,6 +333,81 @@ export default function ExplorePage() {
              </div>
           )}
         </>
+      )}
+
+      {/* Full Screen Post Modal */}
+      {selectedPost && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(0,0,0,0.98)', zIndex: 10000,
+          display: 'flex', flexDirection: 'column',
+          animation: 'fadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}>
+          <div style={{ 
+            padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.5), transparent)',
+            position: 'absolute', top: 0, width: '100%', zIndex: 10
+          }}>
+            <button onClick={() => setSelectedPost(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+              <ArrowLeft size={28} />
+            </button>
+            <div style={{ color: 'white', fontWeight: 'bold' }}>Trending Content</div>
+            <div style={{ width: '28px' }} />
+          </div>
+
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 0 120px 0' }}>
+            {selectedPost.media_urls?.[0] ? (
+               <div style={{ width: '100%', maxHeight: '70vh', position: 'relative' }}>
+                  {selectedPost.media_urls[0].includes('mp4') ? (
+                    <video src={selectedPost.media_urls[0]} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain' }} controls autoPlay loop />
+                  ) : (
+                    <img src={selectedPost.media_urls[0]} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain' }} />
+                  )}
+               </div>
+            ) : (
+              <div style={{ padding: '40px', color: 'white', textAlign: 'center', fontSize: '1.2rem' }}>
+                {selectedPost.content}
+              </div>
+            )}
+          </div>
+
+          <div style={{ 
+            position: 'absolute', bottom: 0, width: '100%', padding: '30px 20px',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <img src={selectedPost.author.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedPost.author.handle}`} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid white' }} />
+              <div>
+                <div style={{ color: 'white', fontWeight: 'bold' }}>{selectedPost.author.name}</div>
+                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>@{selectedPost.author.handle}</div>
+              </div>
+            </div>
+
+            {selectedPost.musicUrl && (
+              <div style={{ 
+                display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px',
+                background: 'rgba(255,255,255,0.1)', borderRadius: '12px',
+                marginBottom: '16px', color: 'white'
+              }}>
+                <Music size={16} color="var(--accent-primary)" />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedPost.musicTitle}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)' }}>{selectedPost.musicArtist}</div>
+                </div>
+                <audio autoPlay src={selectedPost.musicUrl} loop />
+              </div>
+            )}
+
+            <p style={{ color: 'white', marginBottom: '20px', fontSize: '0.95rem' }}>{selectedPost.content}</p>
+            <button 
+              onClick={() => { setSelectedPost(null); router.push(`/post/${selectedPost.id}`); }}
+              className="btn-primary" 
+              style={{ width: '100%', padding: '14px', borderRadius: '12px', fontWeight: '800' }}
+            >
+              View Full Interaction & Comments
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

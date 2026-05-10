@@ -179,6 +179,9 @@ export async function createStoryAction(formData: FormData) {
         text_x: textX,
         text_y: textY,
         mentions: mentions,
+        music_url: formData.get('music_url') as string || null,
+        music_title: formData.get('music_title') as string || null,
+        music_artist: formData.get('music_artist') as string || null,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       })
       .select('*, profiles:user_id(username, avatar_url)')

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Users, Globe, Lock, ArrowLeft, Loader2, MessageSquare, Shield, Settings, Info } from 'lucide-react';
 import PostCard from '@/components/PostCard';
 import CreatePost from '@/components/CreatePost';
+import CommunityChat from '@/components/CommunityChat';
 import { joinCommunityAction } from '@/app/actions/communities';
 
 export default function CommunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -70,7 +71,10 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
       tags: [],
       timeAgo: new Date(p.created_at).toLocaleDateString(),
       mediaUrl: p.media_urls?.[0],
-      mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image'
+      mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
+      musicUrl: p.music_url,
+      musicTitle: p.music_title,
+      musicArtist: p.music_artist
     })) || [];
 
     setPosts(mappedPosts);
@@ -204,7 +208,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border-light)', marginBottom: '24px', gap: '32px' }}>
-        {['Feed', 'Members', 'About'].map((tab) => (
+        {['Feed', 'Chat', 'Members', 'About'].map((tab) => (
           <button 
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -225,9 +229,13 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
           {isMember && <CreatePost communityId={id} onPostCreated={fetchCommunityData} />}
           
           {posts.length > 0 ? (
-            posts.map(post => (
-              <PostCard key={post.id} post={post} />
-            ))
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {posts.map(post => (
+                  <PostCard key={post.id} post={post} />
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="glass-card" style={{ padding: '60px 40px', textAlign: 'center', borderRadius: '24px' }}>
               <div style={{ 
@@ -243,6 +251,21 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         </div>
       )}
 
+      {activeTab === 'Chat' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {!isMember ? (
+            <div className="glass-card" style={{ padding: '40px', textAlign: 'center', borderRadius: '24px' }}>
+              <Lock size={32} style={{ marginBottom: '16px', color: 'var(--text-secondary)' }} />
+              <h3 style={{ marginBottom: '8px' }}>Chat is for members only</h3>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Join this community to participate in the conversation!</p>
+              <button onClick={handleJoin} className="btn-primary" style={{ padding: '10px 24px', borderRadius: '12px' }}>Join Community</button>
+            </div>
+          ) : (
+            <CommunityChat communityId={id} />
+          )}
+        </div>
+      )}
+
       {activeTab === 'Members' && (
         <div className="glass-card" style={{ padding: '24px', borderRadius: '24px' }}>
           <h2 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -250,7 +273,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {members.map((member, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', borderRadius: '12px' }} className="hover-glass">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <img 
                     src={member.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.profiles?.username}`} 
@@ -261,11 +284,22 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>@{member.profiles?.username}</div>
                   </div>
                 </div>
-                {member.user_id === community.creator_id && (
-                  <span style={{ fontSize: '0.7rem', background: 'rgba(139,92,246,0.1)', color: 'var(--accent-secondary)', padding: '4px 10px', borderRadius: '20px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Shield size={12} /> OWNER
-                  </span>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {member.user_id === community.creator_id && (
+                    <span style={{ fontSize: '0.7rem', background: 'rgba(139,92,246,0.1)', color: 'var(--accent-secondary)', padding: '4px 10px', borderRadius: '20px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Shield size={12} /> OWNER
+                    </span>
+                  )}
+                  {member.user_id !== user?.id && (
+                    <button 
+                      onClick={() => router.push(`/messages?userId=${member.user_id}`)}
+                      className="btn-secondary" 
+                      style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px' }}
+                    >
+                      Message
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

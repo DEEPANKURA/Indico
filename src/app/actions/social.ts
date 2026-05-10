@@ -3,10 +3,11 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { Database } from '@/lib/database.types';
 
 async function getSupabase() {
   const cookieStore = await cookies();
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -32,7 +33,7 @@ export async function toggleLikeAction(postId: string) {
       .select('id')
       .eq('post_id', postId)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (existingLike) {
       await supabase.from('likes').delete().eq('id', existingLike.id);
@@ -56,13 +57,16 @@ export async function toggleFollowAction(targetUserId: string) {
 
     const { data: existingFollow } = await supabase
       .from('follows')
-      .select('id')
+      .select('*')
       .eq('follower_id', user.id)
       .eq('following_id', targetUserId)
-      .single();
+      .maybeSingle();
 
     if (existingFollow) {
-      await supabase.from('follows').delete().eq('id', existingFollow.id);
+      await supabase
+        .from('follows')
+        .delete()
+        .match({ follower_id: user.id, following_id: targetUserId });
       revalidatePath('/profile/' + targetUserId);
       return { success: true, following: false };
     } else {
@@ -198,7 +202,7 @@ export async function deletePostAction(postId: string) {
       .from('posts')
       .select('author_id')
       .eq('id', postId)
-      .single();
+      .maybeSingle();
 
     if (!post) return { success: false, error: 'Post not found' };
     if (post.author_id !== user.id) return { success: false, error: 'Unauthorized' };
@@ -211,6 +215,54 @@ export async function deletePostAction(postId: string) {
     revalidatePath('/profile');
     revalidatePath('/explore');
 
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getJoinedCommunitiesAction() {
+  try {
+    const supabase = await getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const { data, error } = await supabase
+      .from('community_members')
+      .select('communities(*)')
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+    
+    // Normalize data
+    const communities = data?.map(d => {
+      const comm = Array.isArray(d.communities) ? d.communities[0] : (d.communities as any);
+      return comm;
+    }).filter(Boolean);
+
+    return { success: true, communities };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function sendCommunityMessageAction(communityId: string, content: string, postId?: string) {
+  try {
+    const supabase = await getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const { error } = await supabase
+      .from('messages')
+      .insert({
+        sender_id: user.id,
+        community_id: communityId,
+        content: content,
+        post_id: postId || null
+      });
+
+    if (error) throw error;
+    revalidatePath(`/communities/${communityId}`);
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

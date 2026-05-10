@@ -1,10 +1,11 @@
 'use client';
 
-import { Send, Image as ImageIcon, Loader2, X, Video } from 'lucide-react';
+import { Send, Image as ImageIcon, Loader2, X, Video, Music as MusicIcon } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { createPostAction } from '@/app/actions/post';
+import MusicSelector from './MusicSelector';
 
 export default function CreatePost({ 
   communityId, 
@@ -17,6 +18,8 @@ export default function CreatePost({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [selectedMusic, setSelectedMusic] = useState<any>(null);
+  const [showMusicSelector, setShowMusicSelector] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
@@ -72,7 +75,13 @@ export default function CreatePost({
     setError(null);
 
     try {
-      const result = await createPostAction(content, mediaUrls, communityId);
+      const musicInfo = selectedMusic ? {
+        url: selectedMusic.audio,
+        title: selectedMusic.name,
+        artist: selectedMusic.artist_name
+      } : undefined;
+
+      const result = await createPostAction(content, mediaUrls, communityId, musicInfo);
       
       if (!result.success) {
         throw new Error(result.error);
@@ -80,6 +89,7 @@ export default function CreatePost({
       
       setContent('');
       setMediaUrls([]);
+      setSelectedMusic(null);
       
       if (onPostCreated) {
         onPostCreated();
@@ -138,6 +148,23 @@ export default function CreatePost({
         </div>
       )}
 
+      {selectedMusic && (
+        <div style={{ 
+          display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', 
+          background: 'rgba(var(--accent-primary-rgb), 0.1)', borderRadius: '12px',
+          marginBottom: '12px', border: '1px solid rgba(var(--accent-primary-rgb), 0.2)'
+        }}>
+          <MusicIcon size={16} color="var(--accent-primary)" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedMusic.name}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{selectedMusic.artist_name}</div>
+          </div>
+          <button onClick={() => setSelectedMusic(null)} style={{ color: 'var(--text-muted)' }}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {error && <p style={{ color: '#fca5a5', fontSize: '14px', marginBottom: '12px' }}>{error}</p>}
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -158,6 +185,15 @@ export default function CreatePost({
             {isUploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}
             <span>{isUploading ? 'Uploading...' : 'Add Media'}</span>
           </button>
+          
+          <button 
+            onClick={() => setShowMusicSelector(true)}
+            disabled={isSubmitting}
+            style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}
+          >
+            <MusicIcon size={20} />
+            <span>{selectedMusic ? 'Change Music' : 'Add Music'}</span>
+          </button>
         </div>
         <button
           onClick={handlePost}
@@ -169,6 +205,13 @@ export default function CreatePost({
           <span>{isSubmitting ? 'Posting...' : 'Post'}</span>
         </button>
       </div>
+
+      {showMusicSelector && (
+        <MusicSelector 
+          onSelect={(track) => setSelectedMusic(track)} 
+          onClose={() => setShowMusicSelector(false)} 
+        />
+      )}
     </div>
   );
 }

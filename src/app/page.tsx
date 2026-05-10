@@ -81,7 +81,10 @@ export default async function Home() {
               comments: post.comment_count?.toString() || "0",
               shares: "0",
               tags: [],
-              timeAgo: new Date(post.created_at).toLocaleDateString()
+              timeAgo: new Date(post.created_at).toLocaleDateString(),
+              musicUrl: post.music_url,
+              musicTitle: post.music_title,
+              musicArtist: post.music_artist
             }} 
           />
         ))}
