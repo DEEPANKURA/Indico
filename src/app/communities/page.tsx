@@ -15,6 +15,7 @@ export default function CommunitiesPage() {
   const [search, setSearch] = useState('');
   const [user, setUser] = useState<any>(null);
   const [isLive, setIsLive] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const supabase = createClient();
   const router = useRouter();
@@ -25,9 +26,12 @@ export default function CommunitiesPage() {
     
     const res = await getCommunitiesAction();
     if (res.success) {
+      console.log('Fetched communities:', res.communities);
       setCommunities(res.communities || []);
+      setError(null);
     } else {
       console.error('Failed to fetch communities:', res.error);
+      setError(res.error);
     }
     setLoading(false);
   };
@@ -156,6 +160,12 @@ export default function CommunitiesPage() {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
             <Loader2 className="animate-spin" size={40} style={{ marginBottom: '16px', color: 'var(--accent-primary)' }} />
             <span>Finding the best communities...</span>
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '60px', color: '#ef4444', background: 'rgba(239,68,68,0.1)', borderRadius: '24px', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <h3 style={{ marginBottom: '8px' }}>Connection Error</h3>
+            <p>{error}</p>
+            <button onClick={fetchCommunities} className="btn-secondary" style={{ marginTop: '16px', padding: '8px 20px', borderRadius: '10px' }}>Retry</button>
           </div>
         ) : filteredCommunities.length > 0 ? (
           filteredCommunities.map((comm) => {
