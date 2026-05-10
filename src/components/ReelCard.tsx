@@ -29,7 +29,7 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
 
@@ -66,7 +66,17 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
   useEffect(() => {
     if (videoRef.current) {
       if (isActive) {
-        videoRef.current.play().catch(() => {});
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // Browser blocked unmuted autoplay
+            setIsMuted(true);
+            if (videoRef.current) {
+              videoRef.current.muted = true;
+              videoRef.current.play().catch(e => console.error("Video play failed even muted", e));
+            }
+          });
+        }
       } else {
         videoRef.current.pause();
         videoRef.current.currentTime = 0;
