@@ -231,17 +231,26 @@ export async function inviteMemberAction(communityId: string, userId: string) {
 }
 
 export async function getCommunitiesAction() {
+  console.log('getCommunitiesAction: started');
   try {
+    console.log('getCommunitiesAction: getting supabase client');
     const supabase = await getSupabase();
+    console.log('getCommunitiesAction: supabase client ready, fetching data');
+    
     const { data, error } = await supabase
       .from('communities')
       .select('*, community_members(user_id, status)')
       .order('member_count', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('getCommunitiesAction: supabase error:', error);
+      throw error;
+    }
+    
+    console.log('getCommunitiesAction: successfully fetched', data?.length || 0, 'communities');
     return { success: true, communities: data || [] };
   } catch (error: any) {
-    console.error('getCommunitiesAction error:', error);
+    console.error('getCommunitiesAction: exception:', error);
     return { success: false, error: error.message };
   }
 }

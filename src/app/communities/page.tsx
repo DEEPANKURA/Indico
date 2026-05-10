@@ -21,19 +21,32 @@ export default function CommunitiesPage() {
   const router = useRouter();
 
   const fetchCommunities = async () => {
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
-    setUser(currentUser);
-    
-    const res = await getCommunitiesAction();
-    if (res.success) {
-      console.log('Fetched communities:', res.communities);
-      setCommunities(res.communities || []);
-      setError(null);
-    } else {
-      console.error('Failed to fetch communities:', res.error);
-      setError(res.error);
+    try {
+      setLoading(true);
+      // Fetch user and communities in parallel to avoid one blocking the other
+      const [userRes, commsRes] = await Promise.all([
+        supabase.auth.getUser(),
+        getCommunitiesAction()
+      ]);
+
+      if (userRes.data?.user) {
+        setUser(userRes.data.user);
+      }
+
+      if (commsRes.success) {
+        console.log('Fetched communities:', commsRes.communities);
+        setCommunities(commsRes.communities || []);
+        setError(null);
+      } else {
+        console.error('Failed to fetch communities:', commsRes.error);
+        setError(commsRes.error || 'Failed to connect to the server');
+      }
+    } catch (err: any) {
+      console.error('Error in fetchCommunities:', err);
+      setError('An unexpected error occurred while loading communities.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
