@@ -11,7 +11,8 @@ export async function createPostAction(
   content: string, 
   mediaUrls: string[] = [], 
   communityId?: string,
-  musicInfo?: { url: string; title: string; artist: string; startTime?: number }
+  musicInfo?: { url: string; title: string; artist: string; startTime?: number; volume?: number },
+  videoEditing?: { volume?: number; trimStart?: number; trimEnd?: number }
 ) {
   try {
     const cookieStore = await cookies();
@@ -69,7 +70,11 @@ export async function createPostAction(
       music_url: musicInfo?.url || null,
       music_title: musicInfo?.title || null,
       music_artist: musicInfo?.artist || null,
-      music_start_time: musicInfo?.startTime || 0
+      music_start_time: musicInfo?.startTime || 0,
+      music_volume: musicInfo?.volume ?? 0.5,
+      video_volume: videoEditing?.volume ?? 1.0,
+      video_trim_start: videoEditing?.trimStart ?? 0,
+      video_trim_end: videoEditing?.trimEnd ?? null
     });
 
     if (insertError) throw insertError;
