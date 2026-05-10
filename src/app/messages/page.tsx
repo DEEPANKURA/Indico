@@ -56,19 +56,23 @@ export default function MessagesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setCurrentUser(user);
-      fetchConversations(user.id);
     };
     init();
+  }, []); // Run only once on mount
 
+  useEffect(() => {
+    if (currentUser) {
+      fetchConversations(currentUser.id);
+    }
+  }, [currentUser?.id]); // Only run when user ID actually changes
+
+  useEffect(() => {
     const handleManualRefresh = () => {
       if (currentUser) fetchConversations(currentUser.id);
     };
 
     window.addEventListener('messages_read', handleManualRefresh);
-
-    return () => {
-      window.removeEventListener('messages_read', handleManualRefresh);
-    };
+    return () => window.removeEventListener('messages_read', handleManualRefresh);
   }, [currentUser]);
 
   useEffect(() => {
@@ -220,14 +224,27 @@ export default function MessagesPage() {
 
     // Mark as read
     try {
-      await supabase
+      // First check if there are unread messages to avoid redundant updates and events
+      const { data: unread } = await supabase
         .from('messages')
-        .update({ is_read: true })
+        .select('id')
         .eq('recipient_id', currentUser.id)
         .eq('sender_id', otherUserId)
-        .eq('is_read', false);
-      
-      window.dispatchEvent(new Event('messages_read'));
+        .eq('is_read', false)
+        .limit(1);
+
+      if (unread && unread.length > 0) {
+        const { error } = await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('recipient_id', currentUser.id)
+          .eq('sender_id', otherUserId)
+          .eq('is_read', false);
+        
+        if (!error) {
+          window.dispatchEvent(new Event('messages_read'));
+        }
+      }
     } catch (e) {
       console.error('Error marking messages as read:', e);
     }
