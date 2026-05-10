@@ -1,102 +1,77 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { useRouter } from 'next/navigation';
-import {
-  joinCommunityAction,
-  leaveCommunityAction,
-  getPendingRequestsAction,
-  handleJoinRequestAction,
-  getFollowingListForInviteAction,
-  inviteMemberAction,
-  deleteCommunityAction
-} from '@/app/actions/communities';
-import {
-  Users, Globe, Lock, ArrowLeft, Loader2, MessageSquare,
-  Shield, Settings, Info, Check, X, UserPlus,
-  LogOut, ShieldCheck, Mail
-} from 'lucide-react';
+import { Users, Shield, Settings, Plus, Send, X, UserPlus, LogOut, Check, Trash2, Camera, UserMinus, ShieldCheck } from 'lucide-react';
 import PostCard from '@/components/PostCard';
-import CreatePost from '@/components/CreatePost';
 import CommunityChat from '@/components/CommunityChat';
+import { getFollowingListForInviteAction, inviteToCommunityAction, kickMemberAction, setMemberRoleAction, deleteCommunityAction, leaveCommunityAction } from '@/app/actions/communities';
 
-interface Profile {
+type Member = {
+  id: string;
+  user_id: string;
+  role: 'owner' | 'moderator' | 'member';
+  status: 'joined' | 'pending';
+  profiles: {
+    username: string;
+    avatar_url: string;
+    full_name: string;
+  };
+};
+
+type Profile = {
   id: string;
   username: string;
-  avatar_url: string | null;
-  full_name: string | null;
-}
+  avatar_url: string;
+  full_name: string;
+};
 
-interface Community {
-  id: string;
-  name: string;
-  description: string | null;
-  is_public: boolean | null;
-  color: string | null;
-  member_count: number | null;
-  creator_id: string;
-  created_at: string | null;
-  creator?: {
-    username: string;
-    avatar_url: string | null;
-  };
-}
-
-interface Member {
-  user_id: string;
-  status: 'pending' | 'joined' | 'invited' | 'rejected' | null;
-  role: 'owner' | 'moderator' | 'member' | null;
-  profiles: Profile | null;
-}
-
-export default function CommunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const [community, setCommunity] = useState<Community | null>(null);
+export default function CommunityPage() {
+  const { id } = useParams();
+  const router = useRouter();
+  const supabase = createClient();
+  const [community, setCommunity] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [isMember, setIsMember] = useState(false);
-  const [membershipStatus, setMembershipStatus] = useState<'joined' | 'pending' | 'invited' | 'rejected' | 'none'>('none');
+  const [membershipStatus, setMembershipStatus] = useState<'joined' | 'pending' | 'none'>('none');
   const [userRole, setUserRole] = useState<'owner' | 'moderator' | 'member' | null>(null);
-  const [activeTab, setActiveTab] = useState('Feed');
-  const [user, setUser] = useState<any>(null);
-  const [pendingRequests, setPendingRequests] = useState<Member[]>([]);
-  const [inviteList, setInviteList] = useState<Profile[]>([]);
+  const [activeTab, setActiveTab] = useState<'posts' | 'chat' | 'members' | 'settings'>('posts');
   const [showInviteModal, setShowInviteModal] = useState(false);
-
-  const supabase = createClient();
-  const router = useRouter();
+  const [inviteList, setInviteList] = useState<Profile[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<Member[]>([]);
 
   const fetchCommunityData = async () => {
     try {
-      setLoading(true);
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      setUser(currentUser);
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
 
-      // Fetch community details
+      // Fetch community info
       const { data: commData } = await supabase
         .from('communities')
-        .select('*, creator:profiles!communities_creator_id_fkey(username, avatar_url)')
+        .select('*')
         .eq('id', id)
         .single();
-
+      
       if (!commData) {
         router.push('/communities');
         return;
       }
-
       setCommunity(commData);
 
       // Fetch members
-      const { data: memData } = await supabase
+      const { data: memberData } = await supabase
         .from('community_members')
-        .select('user_id, status, role, profiles(username, avatar_url, full_name)')
+        .select('*, profiles(username, avatar_url, full_name)')
         .eq('community_id', id);
-
-      const castMembers = (memData as unknown as Member[]) || [];
+      
+      const castMembers = (memberData as unknown as Member[]) || [];
       setMembers(castMembers);
 
+      // Check current user status
       const currentMember = castMembers.find(m => m.user_id === currentUser?.id);
       setIsMember(currentMember?.status === 'joined');
       setMembershipStatus(currentMember?.status || 'none');
@@ -115,7 +90,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         setPendingRequests((reqData as unknown as Member[]) || []);
 
         // Also fetch following list for invite
-        const inviteRes = await getFollowingListForInviteAction(id);
+        const inviteRes = await getFollowingListForInviteAction(id as string);
         if (inviteRes.success && inviteRes.users) {
           setInviteList(inviteRes.users as unknown as Profile[]);
         }
@@ -148,6 +123,10 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         musicTitle: p.music_title,
         musicArtist: p.music_artist,
         musicStartTime: p.music_start_time,
+        musicVolume: p.music_volume,
+        videoVolume: p.video_volume,
+        videoTrimStart: p.video_trim_start,
+        videoTrimEnd: p.video_trim_end,
       })) || [];
 
       setPosts(mappedPosts);
@@ -176,347 +155,292 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [id]);
+  }, [id, currentUser?.id]);
 
   const handleJoin = async () => {
-    const res = await joinCommunityAction(id);
-    if (res.success) {
-      fetchCommunityData();
+    if (!currentUser) {
+      router.push('/auth');
+      return;
     }
+    const { error } = await supabase
+      .from('community_members')
+      .insert({
+        community_id: id as string,
+        user_id: currentUser.id,
+        status: community.is_private ? 'pending' : 'joined',
+        role: 'member'
+      });
+    
+    if (error) alert(error.message);
+    else fetchCommunityData();
   };
 
   const handleLeave = async () => {
-    if (confirm('Are you sure you want to leave this community?')) {
-      const res = await leaveCommunityAction(id);
-      if (res.success) {
-        await fetchCommunityData();
-        setActiveTab('Feed');
-        alert('You have left the community.');
-      } else {
-        alert('Failed to leave community: ' + res.error);
-      }
-    }
+    if (!confirm('Are you sure you want to leave this community?')) return;
+    const res = await leaveCommunityAction(id as string);
+    if (res.success) fetchCommunityData();
+    else alert(res.error);
   };
 
-  const handleDelete = async () => {
-    if (confirm('CRITICAL: Are you sure you want to PERMANENTLY DELETE this community? This action cannot be undone.')) {
-      const res = await deleteCommunityAction(id);
-      if (res.success) {
-        router.push('/communities');
-        alert('Community deleted successfully.');
-      } else {
-        alert('Failed to delete community: ' + res.error);
-      }
-    }
-  };
-
-  const handleRequestAction = async (userId: string, accept: boolean) => {
-    const res = await handleJoinRequestAction(id, userId, accept);
-    if (res.success) {
-      fetchCommunityData();
-    }
+  const handleAcceptRequest = async (userId: string) => {
+    const { error } = await supabase
+      .from('community_members')
+      .update({ status: 'joined' })
+      .eq('community_id', id)
+      .eq('user_id', userId);
+    
+    if (error) alert(error.message);
+    else fetchCommunityData();
   };
 
   const handleInvite = async (userId: string) => {
-    const res = await inviteMemberAction(id, userId);
+    const res = await inviteToCommunityAction(id as string, userId);
     if (res.success) {
+      alert('Invited successfully!');
       fetchCommunityData();
-      setInviteList(prev => prev.filter(u => u.id !== userId));
+    } else {
+      alert(res.error);
     }
   };
 
-  if (loading) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80vh', color: 'var(--text-secondary)' }}>
-      <Loader2 className="animate-spin" size={40} style={{ marginBottom: '16px' }} />
-      <span>Loading Community...</span>
-    </div>
-  );
+  const handleKick = async (userId: string) => {
+    if (!confirm('Kick this member?')) return;
+    const res = await kickMemberAction(id as string, userId);
+    if (res.success) fetchCommunityData();
+    else alert(res.error);
+  };
 
-  if (!community) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80vh', color: 'var(--text-secondary)' }}>
-      <Info size={40} style={{ marginBottom: '16px' }} />
-      <span>Community not found</span>
+  const handleToggleRole = async (userId: string, currentRole: string) => {
+    const nextRole = currentRole === 'moderator' ? 'member' : 'moderator';
+    const res = await setMemberRoleAction(id as string, userId, nextRole);
+    if (res.success) fetchCommunityData();
+    else alert(res.error);
+  };
+
+  const handleDeleteCommunity = async () => {
+    if (!confirm('PERMANENTLY DELETE this community? This cannot be undone.')) return;
+    const res = await deleteCommunityAction(id as string);
+    if (res.success) router.push('/communities');
+    else alert(res.error);
+  };
+
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '100px' }}>
+      <div className="animate-spin" style={{ width: '40px', height: '40px', border: '4px solid var(--accent-primary)', borderTopColor: 'transparent', borderRadius: '50%' }} />
     </div>
   );
 
   return (
-    <div style={{ maxWidth: '680px', margin: '0 auto', paddingBottom: '100px' }}>
+    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
       {/* Community Header */}
-      <div style={{ position: 'relative', marginBottom: '24px' }}>
-        <button
-          onClick={() => router.push('/communities')}
-          style={{
-            position: 'absolute', top: '10px', left: '-50px',
-            background: 'var(--bg-glass)', border: '1px solid var(--border-light)',
-            padding: '8px', borderRadius: '50%', color: 'white', cursor: 'pointer'
-          }}
-          className="hover-scale"
-        >
-          <ArrowLeft size={20} />
-        </button>
-
-        <div className="glass-card" style={{
-          padding: '40px 24px 24px', borderRadius: '24px', overflow: 'hidden',
-          borderTop: `8px solid ${community.color || 'var(--accent-primary)'}`
-        }}>
-          <div style={{
-            position: 'absolute', top: 0, right: 0, width: '200px', height: '200px',
-            background: community.color || 'var(--accent-primary)', opacity: 0.1, borderRadius: '50%', filter: 'blur(60px)'
-          }} />
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                <h1 style={{ fontSize: '2.2rem', fontWeight: '900', margin: 0 }}>{community.name}</h1>
-                {community.is_public ? <Globe size={20} style={{ color: '#10b981' }} /> : <Lock size={20} style={{ color: '#f59e0b' }} />}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Users size={16} /> {members.filter(m => m.status === 'joined').length || community.member_count} members
-                </span>
-                <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--border-light)' }} />
-                <span>Founded {community.created_at ? new Date(community.created_at).toLocaleDateString() : 'Recently'}</span>
-              </div>
+      <div className="glass-card" style={{ borderRadius: '24px', overflow: 'hidden', marginBottom: '24px' }}>
+        <div style={{ height: '200px', background: community.cover_url ? `url(${community.cover_url})` : 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', backgroundSize: 'cover', backgroundPosition: 'center' }} />
+        <div style={{ padding: '24px', marginTop: '-60px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '16px' }}>
+            <div style={{ 
+              width: '120px', height: '120px', borderRadius: '30px', 
+              background: 'var(--bg-secondary)', border: '4px solid var(--bg-primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '3rem', overflow: 'hidden'
+            }}>
+              {community.name?.[0].toUpperCase()}
             </div>
-            {membershipStatus === 'none' ? (
-              <button onClick={handleJoin} className="btn-primary" style={{ padding: '12px 24px', borderRadius: '16px', fontWeight: '800', whiteSpace: 'nowrap' }}>
-                {community.is_public ? 'Join' : 'Request'}
-              </button>
-            ) : membershipStatus === 'pending' ? (
-              <button className="btn-secondary" style={{ padding: '12px 24px', borderRadius: '16px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', cursor: 'default', fontSize: '0.9rem' }}>
-                Pending
-              </button>
-            ) : (
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end', zIndex: 5, position: 'relative' }}>
-                {userRole && ['owner', 'moderator'].includes(userRole) && (
-                  <button
-                    onClick={() => setShowInviteModal(true)}
-                    className="btn-primary"
-                    style={{ padding: '10px 16px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', border: 'none', cursor: 'pointer' }}
-                  >
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {!isMember && membershipStatus === 'none' && (
+                <button onClick={handleJoin} className="btn-primary" style={{ padding: '10px 24px' }}>
+                  {community.is_private ? 'Request to Join' : 'Join Community'}
+                </button>
+              )}
+              {membershipStatus === 'pending' && (
+                <button disabled className="btn-secondary" style={{ padding: '10px 24px', opacity: 0.7 }}>
+                  Request Pending
+                </button>
+              )}
+              {isMember && (
+                <>
+                  <button onClick={() => setShowInviteModal(true)} className="btn-secondary" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <UserPlus size={18} /> Invite
                   </button>
-                )}
-                <button
-                  onClick={handleLeave}
-                  className="btn-secondary"
-                  style={{ 
-                    padding: '10px 16px', borderRadius: '14px', background: 'rgba(239,68,68,0.1)', 
-                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem',
-                    border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: 'pointer'
-                  }}
-                  title="Leave Community"
-                >
-                  <LogOut size={18} /> Leave
-                </button>
-                {userRole === 'owner' && (
-                  <button 
-                    onClick={() => setActiveTab('Moderation')}
-                    className="btn-secondary" 
-                    style={{ padding: '10px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', border: activeTab === 'Moderation' ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)', cursor: 'pointer' }}
-                    title="Manage Community"
-                  >
-                    <Settings size={20} />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          <p style={{ marginTop: '20px', color: 'var(--text-primary)', fontSize: '1.05rem', lineHeight: '1.6', maxWidth: '90%' }}>
-            {community.description}
-          </p>
-
-          <div style={{ marginTop: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ display: 'flex', marginLeft: '4px' }}>
-              {members.filter(m => m.status === 'joined').slice(0, 5).map((m, i) => (
-                <img
-                  key={i}
-                  src={m.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${m.profiles?.username}`}
-                  style={{
-                    width: '32px', height: '32px', borderRadius: '50%',
-                    border: '2px solid var(--bg-primary)', marginLeft: i === 0 ? 0 : '-12px'
-                  }}
-                  alt={m.profiles?.username || 'member'}
-                />
-              ))}
-              {members.filter(m => m.status === 'joined').length > 5 && (
-                <div style={{
-                  width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-glass-hover)',
-                  border: '2px solid var(--bg-primary)', marginLeft: '-12px', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: '800'
-                }}>
-                  +{members.filter(m => m.status === 'joined').length - 5}
-                </div>
+                  {userRole !== 'owner' && (
+                    <button onClick={handleLeave} style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer' }}>
+                      Leave
+                    </button>
+                  )}
+                </>
               )}
             </div>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              {community.creator?.username ? `Created by @${community.creator.username}` : 'Community managed by Indico'}
-            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <h1 style={{ fontSize: '2rem', fontWeight: '900', margin: 0 }}>{community.name}</h1>
+            {community.is_private && <Shield size={20} style={{ color: 'var(--accent-secondary)' }} />}
+          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', marginBottom: '20px', maxWidth: '600px' }}>{community.description}</p>
+          <div style={{ display: 'flex', gap: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              <Users size={18} /> <strong>{members.filter(m => m.status === 'joined').length}</strong> Members
+            </div>
           </div>
         </div>
-      </div>
 
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-light)', marginBottom: '24px', gap: '32px', overflowX: 'auto' }} className="no-scrollbar">
-        {['Feed', 'Chat', 'Members', 'About', ...(userRole && ['owner', 'moderator'].includes(userRole) ? ['Moderation'] : [])].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: '12px 4px', borderBottom: activeTab === tab ? '3px solid var(--accent-secondary)' : 'none',
-              background: 'none', color: activeTab === tab ? 'white' : 'var(--text-secondary)',
-              fontWeight: '700', fontSize: '1rem', cursor: 'pointer', transition: 'all 0.2s',
-              display: 'flex', alignItems: 'center', gap: '8px'
-            }}
-          >
-            {tab}
-            {tab === 'Chat' && isMember && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} className="animate-pulse" />}
-          </button>
-        ))}
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderTop: '1px solid var(--border-light)', padding: '0 24px' }}>
+          {(['posts', 'chat', 'members'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: '16px 24px', border: 'none', background: 'none', color: activeTab === tab ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', borderBottom: `2px solid ${activeTab === tab ? 'var(--accent-primary)' : 'transparent'}`,
+                transition: 'all 0.2s', textTransform: 'capitalize'
+              }}
+            >
+              {tab}
+            </button>
+          ))}
+          {['owner', 'moderator'].includes(userRole || '') && (
+             <button
+              onClick={() => setActiveTab('settings')}
+              style={{
+                padding: '16px 24px', border: 'none', background: 'none', color: activeTab === 'settings' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', borderBottom: `2px solid ${activeTab === 'settings' ? 'var(--accent-primary)' : 'transparent'}`,
+                transition: 'all 0.2s'
+              }}
+            >
+              Settings
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'Feed' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {isMember && <CreatePost communityId={id} onPostCreated={fetchCommunityData} />}
-
-          {posts.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {posts.map(post => (
-                  <PostCard key={post.id} post={post} />
-                ))}
+      {activeTab === 'posts' && (
+        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          {isMember ? (
+            <>
+              <div className="glass-card" style={{ padding: '16px', borderRadius: '16px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--bg-secondary)' }} />
+                <input 
+                  type="text" placeholder={`Post something to ${community.name}...`} 
+                  style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: 'white' }}
+                  onClick={() => router.push('/upload')}
+                />
+                <button onClick={() => router.push('/upload')} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer' }}>
+                  <Camera size={20} />
+                </button>
               </div>
-            </div>
+              {posts.map(post => <PostCard key={post.id} post={post} />)}
+            </>
           ) : (
-            <div className="glass-card" style={{ padding: '60px 40px', textAlign: 'center', borderRadius: '24px' }}>
-              <div style={{
-                width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px'
-              }}>
-                <MessageSquare size={32} style={{ opacity: 0.3 }} />
-              </div>
-              <h3 style={{ marginBottom: '8px' }}>No posts yet</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Be the first to start a conversation in {community.name}!</p>
+            <div className="glass-card" style={{ padding: '60px', textAlign: 'center', borderRadius: '24px' }}>
+              <Shield size={48} style={{ color: 'var(--text-muted)', marginBottom: '16px' }} />
+              <h3>Join to View Posts</h3>
+              <p style={{ color: 'var(--text-secondary)' }}>This community's posts are only visible to members.</p>
+              <button onClick={handleJoin} className="btn-primary" style={{ marginTop: '20px', padding: '10px 24px' }}>Join Community</button>
             </div>
           )}
         </div>
       )}
 
-      {activeTab === 'Chat' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {!isMember ? (
-            <div className="glass-card" style={{ padding: '40px', textAlign: 'center', borderRadius: '24px' }}>
-              <Lock size={32} style={{ marginBottom: '16px', color: 'var(--text-secondary)' }} />
-              <h3 style={{ marginBottom: '8px' }}>Chat is for members only</h3>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Join this community to participate in the conversation!</p>
-              <button onClick={handleJoin} className="btn-primary" style={{ padding: '10px 24px', borderRadius: '12px' }}>Join Community</button>
-            </div>
+      {activeTab === 'chat' && (
+        <div style={{ height: '600px', marginBottom: '24px' }}>
+          {isMember ? (
+            <CommunityChat communityId={id as string} />
           ) : (
-            <CommunityChat communityId={id} />
+             <div className="glass-card" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '24px' }}>
+              <Shield size={48} style={{ color: 'var(--text-muted)', marginBottom: '16px' }} />
+              <h3>Join to Chat</h3>
+              <button onClick={handleJoin} className="btn-primary" style={{ marginTop: '20px', padding: '10px 24px' }}>Join Community</button>
+            </div>
           )}
         </div>
       )}
 
-      {activeTab === 'Members' && (
+      {activeTab === 'members' && (
         <div className="glass-card" style={{ padding: '24px', borderRadius: '24px' }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Users size={20} /> Community Members
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {members.filter(m => m.status === 'joined').map((member, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', borderRadius: '12px' }} className="hover-glass">
+          <h2 style={{ marginBottom: '20px' }}>Community Members</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+            {members.filter(m => m.status === 'joined').map(member => (
+              <div key={member.id} style={{ padding: '16px', borderRadius: '16px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <img
-                    src={member.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.profiles?.username}`}
-                    style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }}
-                    alt={member.profiles?.username || 'member'}
-                  />
+                  <img src={member.profiles.avatar_url} style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
                   <div>
-                    <div style={{ fontWeight: '700' }}>{member.profiles?.full_name || member.profiles?.username}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>@{member.profiles?.username}</div>
+                    <div style={{ fontWeight: '700' }}>{member.profiles.full_name}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      @{member.profiles.username} 
+                      {member.role === 'owner' && <ShieldCheck size={14} style={{ color: 'var(--accent-secondary)' }} />}
+                      {member.role === 'moderator' && <Shield size={14} style={{ color: 'var(--accent-primary)' }} />}
+                    </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {member.user_id === community.creator_id ? (
-                    <span style={{ fontSize: '0.7rem', background: 'rgba(139,92,246,0.1)', color: 'var(--accent-secondary)', padding: '4px 10px', borderRadius: '20px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Shield size={12} /> OWNER
-                    </span>
-                  ) : member.role === 'moderator' ? (
-                    <span style={{ fontSize: '0.7rem', background: 'rgba(16,185,129,0.1)', color: '#10b981', padding: '4px 10px', borderRadius: '20px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Shield size={12} /> MOD
-                    </span>
-                  ) : null}
-                  {member.user_id !== user?.id && (
-                    <button
-                      onClick={() => router.push(`/messages?userId=${member.user_id}`)}
-                      className="btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px' }}
+                {['owner', 'moderator'].includes(userRole || '') && member.user_id !== currentUser?.id && member.role !== 'owner' && (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {userRole === 'owner' && (
+                       <button 
+                        onClick={() => handleToggleRole(member.user_id, member.role)}
+                        style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--text-secondary)', padding: '6px', borderRadius: '8px', cursor: 'pointer' }}
+                        title={member.role === 'moderator' ? "Demote to Member" : "Promote to Moderator"}
+                      >
+                        <Shield size={16} />
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => handleKick(member.user_id)}
+                      style={{ background: 'rgba(239,68,68,0.1)', border: 'none', color: '#ef4444', padding: '6px', borderRadius: '8px', cursor: 'pointer' }}
+                      title="Kick Member"
                     >
-                      Message
+                      <UserMinus size={16} />
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {activeTab === 'Moderation' && (
-        <div className="glass-card" style={{ padding: '24px', borderRadius: '24px' }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <ShieldCheck size={20} /> Join Requests
-          </h2>
-          {pendingRequests.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {pendingRequests.map((req, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '16px', background: 'rgba(255,255,255,0.02)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <img
-                      src={req.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${req.profiles?.username}`}
-                      style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }}
-                      alt={req.profiles?.username || 'request'}
-                    />
-                    <div>
-                      <div style={{ fontWeight: '700' }}>{req.profiles?.full_name || req.profiles?.username}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>@{req.profiles?.username}</div>
+      {activeTab === 'settings' && (
+        <div className="glass-card" style={{ padding: '32px', borderRadius: '24px' }}>
+          <h2 style={{ marginBottom: '32px' }}>Community Settings</h2>
+          
+          {pendingRequests.length > 0 && (
+             <div style={{ marginBottom: '40px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '16px', color: 'var(--accent-secondary)' }}>Pending Join Requests ({pendingRequests.length})</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {pendingRequests.map(req => (
+                    <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '16px', background: 'var(--bg-secondary)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <img src={req.profiles.avatar_url} style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
+                        <div>
+                          <div style={{ fontWeight: '700' }}>{req.profiles.full_name}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>@{req.profiles.username}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button 
+                          onClick={() => handleAcceptRequest(req.user_id)}
+                          style={{ padding: '8px 16px', borderRadius: '10px', background: 'var(--accent-primary)', border: 'none', color: 'white', fontWeight: '700', cursor: 'pointer' }}
+                        >
+                          Accept
+                        </button>
+                        <button 
+                          onClick={() => handleKick(req.user_id)}
+                          style={{ padding: '8px 16px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', fontWeight: '700', cursor: 'pointer' }}
+                        >
+                          Decline
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={() => handleRequestAction(req.user_id, true)}
-                      style={{ padding: '8px 16px', borderRadius: '10px', background: '#10b981', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      <Check size={16} /> Accept
-                    </button>
-                    <button
-                      onClick={() => handleRequestAction(req.user_id, false)}
-                      style={{ padding: '8px 16px', borderRadius: '10px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: 'none', cursor: 'pointer', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      <X size={16} /> Reject
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <Mail size={32} style={{ marginBottom: '12px', opacity: 0.3 }} />
-              <p>No pending join requests</p>
-            </div>
+             </div>
           )}
 
           {userRole === 'owner' && (
-            <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid rgba(239,68,68,0.2)' }}>
-              <h3 style={{ color: '#ef4444', fontSize: '1rem', fontWeight: '800', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ShieldCheck size={18} /> Danger Zone
-              </h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>
-                Deleting a community will permanently remove all its data, including members and posts.
-              </p>
-              <button
-                onClick={handleDelete}
+            <div style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.02)' }}>
+              <h3 style={{ color: '#ef4444', marginTop: 0 }}>Danger Zone</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '20px' }}>Once you delete a community, there is no going back. Please be certain.</p>
+              <button 
+                onClick={handleDeleteCommunity}
                 style={{ 
                   width: '100%', padding: '12px', borderRadius: '12px', 
                   background: 'rgba(239,68,68,0.1)', color: '#ef4444', 
@@ -558,29 +482,19 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {inviteList.length > 0 ? inviteList.map((u, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', borderRadius: '12px' }} className="hover-glass">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <img
-                      src={u.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`}
-                      style={{ width: '40px', height: '40px', borderRadius: '50%' }}
-                      alt={u.username || 'user'}
-                    />
-                    <div>
-                      <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{u.full_name || u.username}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>@{u.username}</div>
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <img src={u.avatar_url} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                    <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>{u.username}</span>
                   </div>
-                  <button
+                  <button 
                     onClick={() => handleInvite(u.id)}
-                    className="btn-primary"
-                    style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '0.85rem' }}
+                    style={{ background: 'var(--accent-primary)', border: 'none', color: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer' }}
                   >
                     Add
                   </button>
                 </div>
               )) : (
-                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
-                  {inviteList.length === 0 && 'No followers to invite'}
-                </div>
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No more people to invite.</p>
               )}
             </div>
           </div>
