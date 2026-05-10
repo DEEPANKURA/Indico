@@ -34,6 +34,19 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
   const [showShare, setShowShare] = useState(false);
 
   useEffect(() => {
+    const savedMute = localStorage.getItem('reels_muted');
+    if (savedMute !== null) {
+      setIsMuted(savedMute === 'true');
+    }
+  }, []);
+
+  const toggleMute = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    localStorage.setItem('reels_muted', String(nextMuted));
+  };
+
+  useEffect(() => {
     const checkLike = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -108,12 +121,12 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
         playsInline
         muted={!isActive || isMuted}
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        onClick={() => setIsMuted(!isMuted)}
+        onClick={toggleMute}
       />
 
       {/* Mute Toggle Overlay */}
       <button 
-        onClick={() => setIsMuted(!isMuted)}
+        onClick={toggleMute}
         style={{
           position: 'absolute', top: '20px', right: '20px',
           background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: '50%',
