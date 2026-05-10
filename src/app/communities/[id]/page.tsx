@@ -215,10 +215,12 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
             style={{ 
               padding: '12px 4px', borderBottom: activeTab === tab ? '3px solid var(--accent-secondary)' : 'none',
               background: 'none', color: activeTab === tab ? 'white' : 'var(--text-secondary)',
-              fontWeight: '700', fontSize: '1rem', cursor: 'pointer', transition: 'all 0.2s'
+              fontWeight: '700', fontSize: '1rem', cursor: 'pointer', transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', gap: '8px'
             }}
           >
             {tab}
+            {tab === 'Chat' && isMember && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} className="animate-pulse" />}
           </button>
         ))}
       </div>

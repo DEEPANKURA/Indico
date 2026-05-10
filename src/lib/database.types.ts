@@ -482,9 +482,9 @@ export type Database = {
           created_at?: string
           engagement_score?: number | null
           id?: string
-          is_flagged?: boolean | null
+          is_flagged: boolean | null
           like_count?: number | null
-          media_urls?: string[] | null
+          media_urls: string[] | null
           moderation_status?:
             | Database["public"]["Enums"]["moderation_status"]
             | null

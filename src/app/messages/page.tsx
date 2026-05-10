@@ -225,7 +225,7 @@ export default function MessagesPage() {
     const { error } = await supabase.from('messages').insert(newMsg);
     if (error) {
       alert('Failed to send message: ' + error.message);
-      setMessages(prev => prev.filter(m => m !== optimisticMsg));
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
     } else {
       fetchConversations(currentUser.id);
     }

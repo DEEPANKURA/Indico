@@ -179,7 +179,7 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
           <div className="glass-card" style={{ 
             position: 'absolute', bottom: '100%', left: '16px', width: '200px', 
             padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px',
-            borderRadius: '16px', marginBottom: '10px', zIndex: 10
+            borderRadius: '16px', marginBottom: '10px', zIndex: 10, boxShadow: '0 -4px 20px rgba(0,0,0,0.3)'
           }}>
             {STICKERS.map((s, i) => (
               <img key={i} src={s} style={{ width: '100%', cursor: 'pointer' }} onClick={() => handleSend(s)} />
