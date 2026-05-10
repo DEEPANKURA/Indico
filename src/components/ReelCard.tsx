@@ -19,7 +19,15 @@ interface ReelCardProps {
       name: string;
       username: string;
       avatar: string;
-    }
+    };
+    musicUrl?: string;
+    musicTitle?: string;
+    musicArtist?: string;
+    musicStartTime?: number;
+    musicVolume?: number;
+    videoVolume?: number;
+    videoTrimStart?: number;
+    videoTrimEnd?: number;
   };
   isActive: boolean;
 }
@@ -32,6 +40,9 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+
 
   useEffect(() => {
     const savedMute = localStorage.getItem('reels_muted');
@@ -66,10 +77,15 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
   useEffect(() => {
     if (videoRef.current) {
       if (isActive) {
+        // Set initial volumes
+        videoRef.current.volume = post.videoVolume ?? 1.0;
+        if (post.videoTrimStart) {
+          videoRef.current.currentTime = post.videoTrimStart;
+        }
+
         const playPromise = videoRef.current.play();
         if (playPromise !== undefined) {
           playPromise.catch(() => {
-            // Browser blocked unmuted autoplay
             setIsMuted(true);
             if (videoRef.current) {
               videoRef.current.muted = true;
@@ -77,12 +93,31 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
             }
           });
         }
+
+        // Start music if available
+        if (post.musicUrl && audioRef.current) {
+          audioRef.current.volume = post.musicVolume ?? 0.5;
+          audioRef.current.currentTime = post.musicStartTime || 0;
+          audioRef.current.play().catch(() => {});
+          setIsPlayingMusic(true);
+        }
       } else {
         videoRef.current.pause();
-        videoRef.current.currentTime = 0;
+        videoRef.current.currentTime = post.videoTrimStart || 0;
+        if (audioRef.current) {
+          audioRef.current.pause();
+          setIsPlayingMusic(false);
+        }
       }
+
+      // Handle trim end
+      videoRef.current.ontimeupdate = () => {
+        if (post.videoTrimEnd && videoRef.current && videoRef.current.currentTime >= post.videoTrimEnd) {
+          videoRef.current.currentTime = post.videoTrimStart || 0;
+        }
+      };
     }
-  }, [isActive]);
+  }, [isActive, post.musicUrl]);
 
   const handleLike = async () => {
     const wasLiked = liked;
@@ -134,6 +169,10 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
         onClick={toggleMute}
       />
 
+      {post.musicUrl && (
+        <audio ref={audioRef} src={post.musicUrl} loop />
+      )}
+
       {/* Mute Toggle Overlay */}
       <button 
         onClick={toggleMute}
@@ -181,7 +220,7 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', fontSize: '0.85rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Music2 size={14} />
-            <span>Original Sound</span>
+            <span>{post.musicTitle ? `${post.musicTitle} • ${post.musicArtist}` : 'Original Sound'}</span>
           </div>
         </div>
       </div>

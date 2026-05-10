@@ -31,6 +31,11 @@ interface PostCardProps {
     musicUrl?: string;
     musicTitle?: string;
     musicArtist?: string;
+    musicStartTime?: number;
+    musicVolume?: number;
+    videoVolume?: number;
+    videoTrimStart?: number;
+    videoTrimEnd?: number;
   }
 }
 
@@ -50,6 +55,7 @@ export default function PostCard({ post }: PostCardProps) {
   const [isDeleted, setIsDeleted] = useState(false);
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -65,6 +71,10 @@ export default function PostCard({ post }: PostCardProps) {
         entries.forEach((entry) => {
           if (videoRef.current) {
             if (entry.isIntersecting) {
+              videoRef.current.volume = post.videoVolume ?? 1.0;
+              if (post.videoTrimStart) {
+                videoRef.current.currentTime = post.videoTrimStart;
+              }
               videoRef.current.play().catch(() => {});
             } else {
               videoRef.current.pause();
@@ -75,7 +85,16 @@ export default function PostCard({ post }: PostCardProps) {
       { threshold: 0.6 }
     );
 
-    if (videoRef.current) observer.observe(videoRef.current);
+    if (videoRef.current) {
+      observer.observe(videoRef.current);
+      
+      // Handle trim end during playback
+      videoRef.current.ontimeupdate = () => {
+        if (post.videoTrimEnd && videoRef.current && videoRef.current.currentTime >= post.videoTrimEnd) {
+          videoRef.current.currentTime = post.videoTrimStart || 0;
+        }
+      };
+    }
     return () => observer.disconnect();
   }, []);
   
@@ -248,7 +267,14 @@ export default function PostCard({ post }: PostCardProps) {
               setIsPlayingMusic(!isPlayingMusic);
             }
           }}>
-            <audio ref={audioRef} src={post.musicUrl} loop />
+            <audio ref={audioRef} src={post.musicUrl} loop onPlay={(e) => {
+              if (audioRef.current) {
+                audioRef.current.volume = post.musicVolume ?? 0.5;
+                if (audioRef.current.currentTime < (post.musicStartTime || 0)) {
+                  audioRef.current.currentTime = post.musicStartTime || 0;
+                }
+              }
+            }} />
             <div style={{ 
               width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
@@ -287,11 +313,14 @@ export default function PostCard({ post }: PostCardProps) {
               ref={videoRef}
               src={post.mediaUrl} 
               autoPlay 
-              muted 
+              muted={isVideoMuted} 
               loop 
               playsInline 
               controls
               style={{ width: '100%', height: 'auto', display: 'block' }} 
+              onVolumeChange={(e) => {
+                if (videoRef.current) setIsVideoMuted(videoRef.current.muted);
+              }}
             />
           ) : (
             <img 

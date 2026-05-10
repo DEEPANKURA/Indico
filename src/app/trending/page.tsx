@@ -22,6 +22,8 @@ export default function TrendingPage() {
           media_urls,
           like_count,
           comment_count,
+          music_url, music_title, music_artist, music_start_time,
+          music_volume, video_volume, video_trim_start, video_trim_end,
           profiles:author_id ( id, username, full_name, avatar_url )
         `)
         .not('media_urls', 'is', null)
@@ -100,21 +102,29 @@ export default function TrendingPage() {
             <div key={post.id} className="reel-item" data-index={index}>
               <ReelCard 
                 isActive={index === activeIndex}
-                post={{
-                  id: post.id,
-                  content: post.content,
-                  mediaUrl: post.media_urls[0],
-                  likes: post.like_count || 0,
-                  comments: post.comment_count || 0,
-                  author: {
-                    id: post.profiles.id,
-                    name: post.profiles.full_name || 'Creator',
-                    username: post.profiles.username || 'user',
-                    avatar: post.profiles.avatar_url || ''
-                  }
-                }}
-              />
-            </div>
+              post={{
+                id: post.id,
+                content: post.content,
+                mediaUrl: post.media_urls[0],
+                likes: post.like_count || 0,
+                comments: post.comment_count || 0,
+                author: {
+                  id: post.profiles.id,
+                  name: post.profiles.full_name || 'Creator',
+                  username: post.profiles.username || 'user',
+                  avatar: post.profiles.avatar_url || ''
+                },
+                musicUrl: post.music_url,
+                musicTitle: post.music_title,
+                musicArtist: post.music_artist,
+                musicStartTime: post.music_start_time,
+                musicVolume: post.music_volume,
+                videoVolume: post.video_volume,
+                videoTrimStart: post.video_trim_start,
+                videoTrimEnd: post.video_trim_end
+              }}
+            />
+          </div>
           ))}
         </div>
       ) : (

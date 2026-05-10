@@ -35,7 +35,7 @@ export default function UploadClient() {
 
   const supabase = createClient();
 
-  const acceptMap = {
+  const acceptMap: Record<UploadType, string> = {
     photo: 'image/*',
     video: 'video/*',
     reel: 'video/*',
@@ -79,7 +79,7 @@ export default function UploadClient() {
       if (!user) throw new Error('You must be logged in to upload');
 
       // 1. Upload to Storage
-      const ext = file.name.split('.').pop();
+      const ext = file.name.split('.').pop() || (type === 'photo' ? 'jpg' : 'mp4');
       const filePath = `${user.id}/${Date.now()}.${ext}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -210,17 +210,27 @@ export default function UploadClient() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', aspectRatio: type === 'reel' ? '9/16' : '16/9', maxHeight: '500px' }}>
                 {type === 'photo'
                   ? <img src={preview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  : <video ref={videoRef} src={preview} style={{ width: '100%', height: '100%' }} onClick={() => videoRef.current?.paused ? videoRef.current.play() : videoRef.current.pause()} />
+                  : <video 
+                      ref={videoRef} 
+                      src={preview} 
+                      style={{ width: '100%', height: '100%' }} 
+                      onClick={() => {
+                        if (videoRef.current) {
+                          if (videoRef.current.paused) videoRef.current.play().catch(() => {});
+                          else videoRef.current.pause();
+                        }
+                      }} 
+                    />
                 }
               </div>
               
               {/* Playback Progress Overlay for Trimming */}
-              {type !== 'photo' && (
+              {type !== 'photo' && videoDuration > 0 && (
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '4px', background: 'rgba(255,255,255,0.2)' }}>
                    <div style={{ 
                      position: 'absolute', 
                      left: `${(trimStart / videoDuration) * 100}%`, 
-                     width: `${((trimEnd - trimStart) / videoDuration) * 100}%`,
+                     width: `${Math.max(0, (trimEnd - trimStart) / videoDuration) * 100}%`,
                      height: '100%',
                      background: 'var(--accent-secondary)'
                    }} />
@@ -391,8 +401,12 @@ export default function UploadClient() {
       {/* Music Selector Modal */}
       {showMusicSelector && (
         <MusicSelector 
-          onSelect={(music) => {
-            setSelectedMusic(music);
+          onSelect={(track, startTime) => {
+            if (track) {
+              setSelectedMusic({ ...track, startTime });
+            } else {
+              setSelectedMusic(null);
+            }
             setShowMusicSelector(false);
           }} 
           onClose={() => setShowMusicSelector(false)} 
