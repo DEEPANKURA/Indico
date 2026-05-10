@@ -19,6 +19,11 @@ const STICKERS = [
   'https://fonts.gstatic.com/s/e/notoemoji/latest/2728/512.gif',
 ];
 
+const normalizeJoin = (val: any) => {
+  if (Array.isArray(val)) return val[0];
+  return val;
+};
+
 export default function MessagesPage() {
   const supabase = createClient();
   const [conversations, setConversations] = useState<any[]>([]);
@@ -152,14 +157,14 @@ export default function MessagesPage() {
 
     if (dmData) {
       (dmData as any[]).forEach(msg => {
-        const otherUser = msg.sender_id === userId ? msg.recipient : msg.sender;
+        const otherUser = msg.sender_id === userId ? normalizeJoin(msg.recipient) : normalizeJoin(msg.sender);
         if (otherUser && !seen.has(otherUser.id)) {
           convs.push({
             type: 'dm',
             user: otherUser,
-            lastMsg: msg.message_type === 'sticker' ? 'Sent a sticker' : msg.content,
+            lastMsg: msg.message_type === 'sticker' ? 'Sent a sticker' : (msg.content || ''),
             time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-            timestamp: new Date(msg.created_at).getTime()
+            timestamp: msg.created_at ? new Date(msg.created_at).getTime() : 0
           });
           seen.add(otherUser.id);
         }
@@ -168,7 +173,7 @@ export default function MessagesPage() {
 
     if (groupMemberships) {
       for (const membership of groupMemberships) {
-        const group = (membership as any).group;
+        const group = normalizeJoin((membership as any).group);
         if (!group) continue;
         
         // Fetch last message for group
@@ -244,13 +249,13 @@ export default function MessagesPage() {
       newMsg.group_id = selectedGroup.id;
     }
 
-    // Optimistic update
+    // Optimistic update (simple)
     const optimisticMsg = { 
       ...newMsg, 
       created_at: new Date().toISOString(),
       sender: {
         id: currentUser.id,
-        full_name: currentUser.user_metadata?.full_name || 'Me',
+        full_name: currentUser.user_metadata?.full_name || currentUser.email || 'Me',
         avatar_url: currentUser.user_metadata?.avatar_url
       }
     };
