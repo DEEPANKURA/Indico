@@ -56,7 +56,6 @@ export default function MessagesPage() {
     init();
 
     const handleManualRefresh = () => {
-      console.log('Manual unread refresh triggered');
       if (currentUser) fetchConversations(currentUser.id);
     };
 
@@ -74,7 +73,7 @@ export default function MessagesPage() {
       
       // Subscribe to new messages
       const channel = supabase
-        .channel('realtime_messages')
+        .channel('realtime_messages_' + (selectedUser?.id || selectedGroup?.id))
         .on('postgres_changes', { 
           event: 'INSERT', 
           schema: 'public', 
@@ -91,7 +90,6 @@ export default function MessagesPage() {
           } 
           // Handle Group
           else if (selectedGroup && newMsg.group_id === selectedGroup.id) {
-            // We need the sender profile for group messages
             fetchSenderProfile(newMsg).then(msgWithSender => {
               setMessages(prev => [...prev, msgWithSender]);
             });
@@ -180,7 +178,7 @@ export default function MessagesPage() {
           .eq('group_id', group.id)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
         convs.push({
           type: 'group',
@@ -217,16 +215,14 @@ export default function MessagesPage() {
 
     // Mark as read
     try {
-      const { error } = await supabase
+      await supabase
         .from('messages')
         .update({ is_read: true })
         .eq('recipient_id', currentUser.id)
         .eq('sender_id', otherUserId)
-        .eq('is_read', false); // Only update unread ones to trigger less events
+        .eq('is_read', false);
       
-      if (!error) {
-        window.dispatchEvent(new Event('messages_read'));
-      }
+      window.dispatchEvent(new Event('messages_read'));
     } catch (e) {
       console.error('Error marking messages as read:', e);
     }
@@ -248,7 +244,7 @@ export default function MessagesPage() {
       newMsg.group_id = selectedGroup.id;
     }
 
-    // Optimistic update (simple)
+    // Optimistic update
     const optimisticMsg = { 
       ...newMsg, 
       created_at: new Date().toISOString(),
@@ -264,7 +260,7 @@ export default function MessagesPage() {
 
     const { error } = await supabase.from('messages').insert(newMsg);
     if (error) {
-      alert('Failed to send message');
+      alert('Failed to send message: ' + error.message);
       setMessages(prev => prev.filter(m => m !== optimisticMsg));
     } else {
       fetchConversations(currentUser.id);
@@ -292,11 +288,14 @@ export default function MessagesPage() {
     }
 
     // Add selected members
-    const members = selectedMembers.map(m => ({
-      group_id: group.id,
-      user_id: m.id,
-      role: 'member'
-    }));
+    const members = [
+      { group_id: group.id, user_id: currentUser.id, role: 'admin' },
+      ...selectedMembers.map(m => ({
+        group_id: group.id,
+        user_id: m.id,
+        role: 'member'
+      }))
+    ];
 
     await supabase.from('group_members').insert(members);
 
@@ -345,7 +344,7 @@ export default function MessagesPage() {
   if (loading) return <div style={{ textAlign: 'center', padding: '100px', color: 'var(--text-secondary)' }}>Loading conversations...</div>;
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', paddingTop: '10px' }}>
+    <div style={{ padding: '10px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
         <MessageSquare size={28} style={{ color: 'var(--accent-secondary)' }} />
         <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>Messages</h1>
@@ -355,13 +354,14 @@ export default function MessagesPage() {
         borderRadius: '16px', overflow: 'hidden', display: 'flex', height: '75vh',
         position: 'relative'
       }}>
-        {/* Sidebar - hidden on mobile when a chat is selected */}
+        {/* Sidebar */}
         <div style={{ 
-          width: (selectedUser || selectedGroup) ? '320px' : '100%', 
+          width: (selectedUser || selectedGroup) ? (isMobile ? '100%' : '320px') : '100%', 
           borderRight: '1px solid var(--border-light)', 
           display: ((selectedUser || selectedGroup) && isMobile) ? 'none' : 'flex', 
           flexDirection: 'column',
-          flexShrink: 0
+          flexShrink: 0,
+          minWidth: 0
         }}>
           <div style={{ padding: '16px' }}>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
@@ -387,7 +387,6 @@ export default function MessagesPage() {
                   border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: 'white', cursor: 'pointer'
                 }}
-                title="Create Group"
               >
                 {isCreatingGroup ? <X size={20} /> : <Users size={20} />}
               </button>
@@ -509,19 +508,19 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* Chat area - hidden on mobile when no chat is selected */}
+        {/* Chat area */}
         <div style={{ 
           flex: 1, 
           display: (!(selectedUser || selectedGroup) && isMobile) ? 'none' : 'flex', 
           flexDirection: 'column', 
           background: 'rgba(0,0,0,0.2)',
-          width: '100%'
+          minWidth: 0
         }}>
           {(selectedUser || selectedGroup) ? (
             <>
               <div style={{ padding: '16px', borderBottom: '1px solid var(--border-light)', display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--bg-glass)' }}>
-                {typeof window !== 'undefined' && window.innerWidth < 640 && (
-                  <button onClick={() => { setSelectedUser(null); setSelectedGroup(null); }} style={{ marginRight: '8px', color: 'var(--text-secondary)' }}>
+                {isMobile && (
+                  <button onClick={() => { setSelectedUser(null); setSelectedGroup(null); }} style={{ marginRight: '8px', color: 'var(--text-secondary)', background: 'none', border: 'none' }}>
                     <ArrowLeft size={24} />
                   </button>
                 )}
@@ -590,18 +589,28 @@ export default function MessagesPage() {
                   </div>
                 ))}
               </div>
-              <div style={{ padding: '20px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--bg-glass)', position: 'relative' }}>
+              <div style={{ 
+                padding: '12px 16px', 
+                borderTop: '1px solid var(--border-light)', 
+                display: 'flex', 
+                gap: '8px', 
+                alignItems: 'center', 
+                background: 'var(--bg-glass)', 
+                position: 'relative',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}>
                 <button 
                   onClick={() => setShowStickers(!showStickers)}
-                  style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                  style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexShrink: 0 }}
                 >
                   <Smile size={24} />
                 </button>
                 
                 {showStickers && (
                   <div className="glass-card" style={{ 
-                    position: 'absolute', bottom: '100%', left: '20px', width: '280px', 
-                    padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px',
+                    position: 'absolute', bottom: '100%', left: '12px', width: '260px', 
+                    padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px',
                     borderRadius: '16px', marginBottom: '12px', zIndex: 100,
                     boxShadow: '0 8px 32px rgba(0,0,0,0.4)', border: '1px solid var(--border-light)'
                   }}>
@@ -622,14 +631,33 @@ export default function MessagesPage() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="Type a message..."
-                  style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-light)', borderRadius: '24px', padding: '12px 20px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem' }}
+                  style={{ 
+                    flex: 1, 
+                    minWidth: 0,
+                    background: 'rgba(255,255,255,0.05)', 
+                    border: '1px solid var(--border-light)', 
+                    borderRadius: '24px', 
+                    padding: '10px 16px', 
+                    color: 'var(--text-primary)', 
+                    outline: 'none', 
+                    fontSize: '0.9rem' 
+                  }}
                 />
                 <button 
                   onClick={() => handleSend()}
                   className="btn-primary" 
-                  style={{ width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  style={{ 
+                    width: '40px', 
+                    height: '40px', 
+                    borderRadius: '50%', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    flexShrink: 0,
+                    padding: 0
+                  }}
                 >
-                  <Send size={20} />
+                  <Send size={18} />
                 </button>
               </div>
             </>
