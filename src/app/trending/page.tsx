@@ -43,15 +43,32 @@ export default function TrendingPage() {
     fetchReels();
   }, []);
 
-  const handleScroll = () => {
+  useEffect(() => {
     if (!containerRef.current) return;
-    const scrollPos = containerRef.current.scrollTop;
-    const height = containerRef.current.clientHeight;
-    const newIndex = Math.round(scrollPos / height);
-    if (newIndex !== activeIndex) {
-      setActiveIndex(newIndex);
-    }
-  };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const index = Number(entry.target.getAttribute('data-index'));
+            setActiveIndex(index);
+          }
+        });
+      },
+      {
+        threshold: 0.6, // Reel is considered active when 60% visible
+        root: containerRef.current
+      }
+    );
+
+    const elements = containerRef.current.querySelectorAll('.reel-item');
+    elements.forEach((el) => observer.observe(el));
+
+    return () => {
+      elements.forEach((el) => observer.unobserve(el));
+      observer.disconnect();
+    };
+  }, [reels]);
 
   if (loading) {
     return (
@@ -71,7 +88,6 @@ export default function TrendingPage() {
       {reels.length > 0 ? (
         <div 
           ref={containerRef}
-          onScroll={handleScroll}
           style={{ 
             height: 'calc(100vh - 180px)', 
             overflowY: 'scroll', 
@@ -81,23 +97,24 @@ export default function TrendingPage() {
           className="hide-scrollbar"
         >
           {reels.map((post, index) => (
-            <ReelCard 
-              key={post.id} 
-              isActive={index === activeIndex}
-              post={{
-                id: post.id,
-                content: post.content,
-                mediaUrl: post.media_urls[0],
-                likes: post.like_count || 0,
-                comments: post.comment_count || 0,
-                author: {
-                  id: post.profiles.id,
-                  name: post.profiles.full_name || 'Creator',
-                  username: post.profiles.username || 'user',
-                  avatar: post.profiles.avatar_url || ''
-                }
-              }}
-            />
+            <div key={post.id} className="reel-item" data-index={index}>
+              <ReelCard 
+                isActive={index === activeIndex}
+                post={{
+                  id: post.id,
+                  content: post.content,
+                  mediaUrl: post.media_urls[0],
+                  likes: post.like_count || 0,
+                  comments: post.comment_count || 0,
+                  author: {
+                    id: post.profiles.id,
+                    name: post.profiles.full_name || 'Creator',
+                    username: post.profiles.username || 'user',
+                    avatar: post.profiles.avatar_url || ''
+                  }
+                }}
+              />
+            </div>
           ))}
         </div>
       ) : (
