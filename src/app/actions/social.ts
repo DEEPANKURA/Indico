@@ -57,13 +57,16 @@ export async function toggleFollowAction(targetUserId: string) {
 
     const { data: existingFollow } = await supabase
       .from('follows')
-      .select('id')
+      .select('*')
       .eq('follower_id', user.id)
       .eq('following_id', targetUserId)
-      .single();
+      .maybeSingle();
 
     if (existingFollow) {
-      await supabase.from('follows').delete().eq('id', existingFollow.id);
+      await supabase
+        .from('follows')
+        .delete()
+        .match({ follower_id: user.id, following_id: targetUserId });
       revalidatePath('/profile/' + targetUserId);
       return { success: true, following: false };
     } else {
