@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Bell, Heart, MessageCircle, UserPlus, Reply, X } from 'lucide-react';
 import { getNotificationsAction, markNotificationsAsReadAction } from '@/app/actions/notifications';
+import { useRouter } from 'next/navigation';
 
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -39,6 +41,24 @@ export default function NotificationBell() {
       case 'follow': return <UserPlus size={16} color="var(--accent-primary)" />;
       case 'reply': return <Reply size={16} color="var(--accent-secondary)" />;
       default: return <Bell size={16} />;
+    }
+  };
+
+  const handleNotificationClick = (n: any) => {
+    setShowDropdown(false);
+    const profile = Array.isArray(n.actor) ? n.actor[0] : n.actor;
+    
+    switch (n.type) {
+      case 'like':
+      case 'comment':
+      case 'reply':
+        if (n.target_id) router.push(`/post/${n.target_id}`);
+        break;
+      case 'follow':
+        if (profile?.username) router.push(`/profile/${n.actor_id}`);
+        break;
+      default:
+        break;
     }
   };
 
@@ -91,12 +111,14 @@ export default function NotificationBell() {
               notifications.map((n) => {
                 const profile = Array.isArray(n.actor) ? n.actor[0] : n.actor;
                 return (
-                  <div key={n.id} style={{ 
-                    display: 'flex', gap: '12px', alignItems: 'center', padding: '12px 20px',
-                    background: n.is_read ? 'transparent' : 'rgba(var(--accent-primary-rgb), 0.05)',
-                    transition: 'background 0.2s',
-                    cursor: 'pointer'
-                  }} className="notification-item">
+                  <div key={n.id} 
+                    onClick={() => handleNotificationClick(n)}
+                    style={{ 
+                      display: 'flex', gap: '12px', alignItems: 'center', padding: '12px 20px',
+                      background: n.is_read ? 'transparent' : 'rgba(var(--accent-primary-rgb), 0.05)',
+                      transition: 'background 0.2s',
+                      cursor: 'pointer'
+                    }} className="notification-item">
                     {/* Avatar */}
                     <div style={{ 
                       width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
