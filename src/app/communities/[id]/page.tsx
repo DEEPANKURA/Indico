@@ -94,9 +94,10 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         .select('user_id, status, role, profiles(username, avatar_url, full_name)')
         .eq('community_id', id);
 
-      setMembers((memData as unknown as Member[]) || []);
+      const castMembers = (memData as unknown as Member[]) || [];
+      setMembers(castMembers);
 
-      const currentMember = (memData as any[])?.find(m => m.user_id === currentUser?.id);
+      const currentMember = castMembers.find(m => m.user_id === currentUser?.id);
       setIsMember(currentMember?.status === 'joined');
       setMembershipStatus(currentMember?.status || 'none');
       
@@ -159,7 +160,6 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     fetchCommunityData();
 
-    // Realtime for posts in this community
     const channel = supabase
       .channel(`community_${id}_posts`)
       .on('postgres_changes', {
@@ -185,18 +185,13 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
   };
 
   const handleLeave = async () => {
-    console.log('handleLeave triggered');
     if (confirm('Are you sure you want to leave this community?')) {
-      console.log('handleLeave confirmed, calling action...');
       const res = await leaveCommunityAction(id);
-      console.log('handleLeave result:', res);
       if (res.success) {
-        console.log('handleLeave success, fetching data...');
         await fetchCommunityData();
         setActiveTab('Feed');
         alert('You have left the community.');
       } else {
-        console.error('handleLeave error:', res.error);
         alert('Failed to leave community: ' + res.error);
       }
     }
@@ -225,7 +220,6 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
     const res = await inviteMemberAction(id, userId);
     if (res.success) {
       fetchCommunityData();
-      // Remove from local invite list
       setInviteList(prev => prev.filter(u => u.id !== userId));
     }
   };
@@ -295,10 +289,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end', zIndex: 5, position: 'relative' }}>
                 {userRole && ['owner', 'moderator'].includes(userRole) && (
                   <button
-                    onClick={() => {
-                      console.log('Invite button clicked');
-                      setShowInviteModal(true);
-                    }}
+                    onClick={() => setShowInviteModal(true)}
                     className="btn-primary"
                     style={{ padding: '10px 16px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', border: 'none', cursor: 'pointer' }}
                   >
@@ -306,10 +297,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                   </button>
                 )}
                 <button
-                  onClick={() => {
-                    console.log('Leave button clicked');
-                    handleLeave();
-                  }}
+                  onClick={handleLeave}
                   className="btn-secondary"
                   style={{ 
                     padding: '10px 16px', borderRadius: '14px', background: 'rgba(239,68,68,0.1)', 
@@ -340,7 +328,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
 
           <div style={{ marginTop: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ display: 'flex', marginLeft: '4px' }}>
-              {members.slice(0, 5).map((m, i) => (
+              {members.filter(m => m.status === 'joined').slice(0, 5).map((m, i) => (
                 <img
                   key={i}
                   src={m.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${m.profiles?.username}`}
@@ -348,15 +336,16 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                     width: '32px', height: '32px', borderRadius: '50%',
                     border: '2px solid var(--bg-primary)', marginLeft: i === 0 ? 0 : '-12px'
                   }}
+                  alt={m.profiles?.username || 'member'}
                 />
               ))}
-              {members.length > 5 && (
+              {members.filter(m => m.status === 'joined').length > 5 && (
                 <div style={{
                   width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-glass-hover)',
                   border: '2px solid var(--bg-primary)', marginLeft: '-12px', display: 'flex',
                   alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: '800'
                 }}>
-                  +{members.length - 5}
+                  +{members.filter(m => m.status === 'joined').length - 5}
                 </div>
               )}
             </div>
@@ -434,12 +423,13 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
             <Users size={20} /> Community Members
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {members.map((member, i) => (
+            {members.filter(m => m.status === 'joined').map((member, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', borderRadius: '12px' }} className="hover-glass">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <img
                     src={member.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.profiles?.username}`}
                     style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }}
+                    alt={member.profiles?.username || 'member'}
                   />
                   <div>
                     <div style={{ fontWeight: '700' }}>{member.profiles?.full_name || member.profiles?.username}</div>
@@ -485,6 +475,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                     <img
                       src={req.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${req.profiles?.username}`}
                       style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }}
+                      alt={req.profiles?.username || 'request'}
                     />
                     <div>
                       <div style={{ fontWeight: '700' }}>{req.profiles?.full_name || req.profiles?.username}</div>
@@ -570,6 +561,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                     <img
                       src={u.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`}
                       style={{ width: '40px', height: '40px', borderRadius: '50%' }}
+                      alt={u.username || 'user'}
                     />
                     <div>
                       <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{u.full_name || u.username}</div>
