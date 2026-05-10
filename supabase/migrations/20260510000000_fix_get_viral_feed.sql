@@ -46,7 +46,8 @@ BEGIN
     ) as viral_score
   FROM posts p
   JOIN profiles pr ON p.author_id = pr.id
-  WHERE p.is_flagged = false OR p.is_flagged IS NULL
+  WHERE (p.is_flagged = false OR p.is_flagged IS NULL)
+    AND p.community_id IS NULL  -- Filter out community posts from viral feed
   ORDER BY viral_score DESC
   LIMIT limit_count;
 END;

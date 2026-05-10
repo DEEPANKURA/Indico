@@ -25,6 +25,7 @@ export default function TrendingPage() {
           profiles:author_id ( id, username, full_name, avatar_url )
         `)
         .not('media_urls', 'is', null)
+        .is('community_id', null)
         .order('like_count', { ascending: false })
         .limit(10);
 

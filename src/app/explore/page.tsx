@@ -45,6 +45,7 @@ export default function ExplorePage() {
       const { data: posts } = await supabase
         .from('posts')
         .select('*, author:profiles(username, avatar_url, full_name)')
+        .is('community_id', null)
         .order('engagement_score', { ascending: false })
         .limit(10);
       
@@ -92,6 +93,7 @@ export default function ExplorePage() {
         supabase
           .from('posts')
           .select('*, author:profiles(id, username, avatar_url, full_name)')
+          .is('community_id', null)
           .ilike('content', `%${trimmedQuery}%`)
           .limit(10)
       ]);
