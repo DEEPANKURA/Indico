@@ -10,12 +10,14 @@ import {
   handleJoinRequestAction,
   getFollowingListForInviteAction,
   inviteToCommunityAction,
-  deleteCommunityAction
+  deleteCommunityAction,
+  kickMemberAction,
+  setMemberRoleAction
 } from '@/app/actions/communities';
 import {
   Users, Globe, Lock, ArrowLeft, Loader2, MessageSquare,
   Shield, Settings, Info, Check, X, UserPlus,
-  LogOut, ShieldCheck, Mail
+  LogOut, ShieldCheck, Mail, UserMinus
 } from 'lucide-react';
 import PostCard from '@/components/PostCard';
 import CreatePost from '@/components/CreatePost';
@@ -198,6 +200,18 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
+  const handleKick = async (userId: string) => {
+    if (!confirm('Are you sure you want to kick this member?')) return;
+    const res = await kickMemberAction(id, userId);
+    if (res.success) fetchCommunityData();
+  };
+
+  const handleToggleRole = async (userId: string, currentRole: string) => {
+    const nextRole = currentRole === 'moderator' ? 'member' : 'moderator';
+    const res = await setMemberRoleAction(id, userId, nextRole);
+    if (res.success) fetchCommunityData();
+  };
+
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this community? This cannot be undone.')) {
       const res = await deleteCommunityAction(id);
@@ -348,13 +362,23 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--bg-primary)', overflow: 'hidden' }}>
                       {member.profiles?.avatar_url && <img src={member.profiles.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                     </div>
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{member.profiles?.full_name || member.profiles?.username}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         @{member.profiles?.username}
                         {member.role === 'owner' && <ShieldCheck size={14} style={{ color: 'var(--accent-secondary)' }} />}
                       </div>
                     </div>
+                    {isMod && member.user_id !== user?.id && member.role !== 'owner' && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => handleToggleRole(member.user_id, member.role || 'member')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} title="Change Role">
+                          <Shield size={16} />
+                        </button>
+                        <button onClick={() => handleKick(member.user_id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title="Kick Member">
+                          <UserMinus size={16} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
