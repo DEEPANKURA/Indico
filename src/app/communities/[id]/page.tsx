@@ -9,7 +9,8 @@ import {
   getPendingRequestsAction,
   handleJoinRequestAction,
   getFollowingListForInviteAction,
-  inviteMemberAction
+  inviteMemberAction,
+  deleteCommunityAction
 } from '@/app/actions/communities';
 import {
   Users, Globe, Lock, ArrowLeft, Loader2, MessageSquare,
@@ -189,6 +190,21 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
       if (res.success) {
         fetchCommunityData();
         setActiveTab('Feed');
+        alert('You have left the community.');
+      } else {
+        alert('Failed to leave community: ' + res.error);
+      }
+    }
+  };
+
+  const handleDelete = async () => {
+    if (confirm('CRITICAL: Are you sure you want to PERMANENTLY DELETE this community? This action cannot be undone.')) {
+      const res = await deleteCommunityAction(id);
+      if (res.success) {
+        router.push('/communities');
+        alert('Community deleted successfully.');
+      } else {
+        alert('Failed to delete community: ' + res.error);
       }
     }
   };
@@ -485,6 +501,29 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
             <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <Mail size={32} style={{ marginBottom: '12px', opacity: 0.3 }} />
               <p>No pending join requests</p>
+            </div>
+          )}
+
+          {userRole === 'owner' && (
+            <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid rgba(239,68,68,0.2)' }}>
+              <h3 style={{ color: '#ef4444', fontSize: '1rem', fontWeight: '800', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldCheck size={18} /> Danger Zone
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>
+                Deleting a community will permanently remove all its data, including members and posts.
+              </p>
+              <button
+                onClick={handleDelete}
+                style={{ 
+                  width: '100%', padding: '12px', borderRadius: '12px', 
+                  background: 'rgba(239,68,68,0.1)', color: '#ef4444', 
+                  border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer',
+                  fontWeight: '700', transition: 'all 0.2s'
+                }}
+                className="hover-scale"
+              >
+                Delete Community
+              </button>
             </div>
           )}
         </div>

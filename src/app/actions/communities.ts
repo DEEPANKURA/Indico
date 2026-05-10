@@ -119,6 +119,34 @@ export async function leaveCommunityAction(communityId: string) {
   }
 }
 
+export async function deleteCommunityAction(communityId: string) {
+  try {
+    const supabase = await getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    // Delete members first
+    await supabase.from('community_members').delete().eq('community_id', communityId);
+    
+    // Delete posts
+    await supabase.from('posts').delete().eq('community_id', communityId);
+
+    // Delete community
+    const { error } = await supabase
+      .from('communities')
+      .delete()
+      .eq('id', communityId)
+      .eq('creator_id', user.id);
+
+    if (error) throw error;
+
+    revalidatePath('/communities');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function getPendingRequestsAction(communityId: string) {
   try {
     const supabase = await getSupabase();
