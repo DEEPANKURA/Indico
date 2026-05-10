@@ -329,6 +329,7 @@ export type Database = {
       }
       messages: {
         Row: {
+          community_id: string | null
           content: string
           created_at: string | null
           group_id: string | null
@@ -341,6 +342,7 @@ export type Database = {
           sticker_url: string | null
         }
         Insert: {
+          community_id?: string | null
           content: string
           created_at?: string | null
           group_id?: string | null
@@ -353,6 +355,7 @@ export type Database = {
           sticker_url?: string | null
         }
         Update: {
+          community_id?: string | null
           content?: string
           created_at?: string | null
           group_id?: string | null
@@ -365,6 +368,13 @@ export type Database = {
           sticker_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "messages_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "messages_group_id_fkey"
             columns: ["group_id"]
@@ -469,9 +479,9 @@ export type Database = {
           created_at?: string
           engagement_score?: number | null
           id?: string
-          is_flagged?: boolean | null
+          is_flagged: boolean | null
           like_count?: number | null
-          media_urls?: string[] | null
+          media_urls: string[] | null
           moderation_status?:
             | Database["public"]["Enums"]["moderation_status"]
             | null
@@ -730,6 +740,11 @@ export type Database = {
       increment_viewer_count: {
         Args: { stream_id: string }
         Returns: undefined
+      }
+      is_group_admin: { Args: { target_group_id: string }; Returns: boolean }
+      is_member_of_group: {
+        Args: { target_group_id: string }
+        Returns: boolean
       }
     }
     Enums: {
