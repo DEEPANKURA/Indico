@@ -85,8 +85,9 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
 
         const playPromise = videoRef.current.play();
         if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            setIsMuted(true);
+          playPromise.catch((error) => {
+            console.log("Autoplay unmuted blocked, trying muted:", error);
+            // If unmuted autoplay fails, try muted
             if (videoRef.current) {
               videoRef.current.muted = true;
               videoRef.current.play().catch(e => console.error("Video play failed even muted", e));
@@ -98,7 +99,9 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
         if (post.musicUrl && audioRef.current) {
           audioRef.current.volume = post.musicVolume ?? 0.5;
           audioRef.current.currentTime = post.musicStartTime || 0;
-          audioRef.current.play().catch(() => {});
+          audioRef.current.play().catch(() => {
+            console.log("Music autoplay blocked");
+          });
           setIsPlayingMusic(true);
         }
       } else {

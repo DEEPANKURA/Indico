@@ -58,7 +58,7 @@ export default function TrendingPage() {
         });
       },
       {
-        threshold: 0.6, // Reel is considered active when 60% visible
+        threshold: 0.4, // Lower threshold for better response
         root: containerRef.current
       }
     );
@@ -102,28 +102,28 @@ export default function TrendingPage() {
             <div key={post.id} className="reel-item" data-index={index}>
               <ReelCard 
                 isActive={index === activeIndex}
-              post={{
-                id: post.id,
-                content: post.content,
-                mediaUrl: post.media_urls[0],
-                likes: post.like_count || 0,
-                comments: post.comment_count || 0,
-                author: {
-                  id: post.profiles.id,
-                  name: post.profiles.full_name || 'Creator',
-                  username: post.profiles.username || 'user',
-                  avatar: post.profiles.avatar_url || ''
-                },
-                musicUrl: post.music_url,
-                musicTitle: post.music_title,
-                musicArtist: post.music_artist,
-                musicStartTime: post.music_start_time,
-                musicVolume: post.music_volume,
-                videoVolume: post.video_volume,
-                videoTrimStart: post.video_trim_start,
-                videoTrimEnd: post.video_trim_end
-              }}
-            />
+                post={{
+                  id: post.id,
+                  content: post.content,
+                  mediaUrl: post.media_urls[0],
+                  likes: post.like_count || 0,
+                  comments: post.comment_count || 0,
+                  author: {
+                    id: post.profiles.id,
+                    name: post.profiles.full_name || 'Creator',
+                    username: post.profiles.username || 'user',
+                    avatar: post.profiles.avatar_url || ''
+                  },
+                  musicUrl: post.music_url,
+                  musicTitle: post.music_title,
+                  musicArtist: post.music_artist,
+                  musicStartTime: post.music_start_time,
+                  musicVolume: post.music_volume,
+                  videoVolume: post.video_volume,
+                  video_trim_start: post.video_trim_start,
+                  video_trim_end: post.video_trim_end
+                }}
+              />
           </div>
           ))}
         </div>
