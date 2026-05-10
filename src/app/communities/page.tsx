@@ -23,7 +23,6 @@ export default function CommunitiesPage() {
   const fetchCommunities = async () => {
     try {
       setLoading(true);
-      // Fetch user and communities in parallel to avoid one blocking the other
       const [userRes, commsRes] = await Promise.all([
         supabase.auth.getUser(),
         getCommunitiesAction()
@@ -34,15 +33,12 @@ export default function CommunitiesPage() {
       }
 
       if (commsRes.success) {
-        console.log('Fetched communities:', commsRes.communities);
         setCommunities(commsRes.communities || []);
         setError(null);
       } else {
-        console.error('Failed to fetch communities:', commsRes.error);
         setError(commsRes.error || 'Failed to connect to the server');
       }
     } catch (err: any) {
-      console.error('Error in fetchCommunities:', err);
       setError('An unexpected error occurred while loading communities.');
     } finally {
       setLoading(false);
