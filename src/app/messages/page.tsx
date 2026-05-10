@@ -144,7 +144,7 @@ export default function MessagesPage() {
       .order('created_at', { ascending: false });
 
     // Fetch Groups
-    const { data: groupMemberships } = await supabase
+    const { data: groupMemberships } = await (supabase as any)
       .from('group_members')
       .select('group_id, group:groups(*)')
       .eq('user_id', userId);
@@ -153,7 +153,7 @@ export default function MessagesPage() {
     const seen = new Set();
 
     if (dmData) {
-      dmData.forEach(msg => {
+      (dmData as any[]).forEach(msg => {
         const otherUser = msg.sender_id === userId ? msg.recipient : msg.sender;
         if (otherUser && !seen.has(otherUser.id)) {
           convs.push({
@@ -185,9 +185,9 @@ export default function MessagesPage() {
         convs.push({
           type: 'group',
           group: group,
-          lastMsg: lastMsg ? (lastMsg.message_type === 'sticker' ? 'Sent a sticker' : lastMsg.content) : 'No messages yet',
-          time: lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-          timestamp: lastMsg ? new Date(lastMsg.created_at).getTime() : 0
+          lastMsg: lastMsg ? ((lastMsg as any).message_type === 'sticker' ? 'Sent a sticker' : (lastMsg as any).content) : 'No messages yet',
+          time: lastMsg ? new Date((lastMsg as any).created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+          timestamp: lastMsg ? new Date((lastMsg as any).created_at).getTime() : 0
         });
       }
     }
