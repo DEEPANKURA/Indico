@@ -1,9 +1,7 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createClient } from '@/utils/supabase/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { Database } from '@/lib/database.types';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -15,25 +13,7 @@ export async function createPostAction(
   videoEditing?: { volume?: number; trimStart?: number; trimEnd?: number }
 ) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {}
-          },
-        },
-      }
-    );
+    const supabase = await createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Unauthorized');
@@ -75,7 +55,7 @@ export async function createPostAction(
       video_volume: videoEditing?.volume ?? 1.0,
       video_trim_start: videoEditing?.trimStart ?? 0,
       video_trim_end: videoEditing?.trimEnd ?? null
-    });
+    } as any);
 
     if (insertError) throw insertError;
 
