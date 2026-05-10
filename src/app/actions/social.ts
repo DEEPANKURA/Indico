@@ -1,29 +1,11 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { Database } from '@/lib/database.types';
-
-async function getSupabase() {
-  const cookieStore = await cookies();
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
-          try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {}
-        },
-      },
-    }
-  );
-}
 
 export async function toggleLikeAction(postId: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -39,7 +21,7 @@ export async function toggleLikeAction(postId: string) {
       await supabase.from('likes').delete().eq('id', existingLike.id);
       return { success: true, liked: false };
     } else {
-      await supabase.from('likes').insert({ post_id: postId, user_id: user.id });
+      await supabase.from('likes').insert({ post_id: postId, user_id: user.id } as any);
       return { success: true, liked: true };
     }
   } catch (error: any) {
@@ -49,7 +31,7 @@ export async function toggleLikeAction(postId: string) {
 
 export async function toggleFollowAction(targetUserId: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -70,7 +52,7 @@ export async function toggleFollowAction(targetUserId: string) {
       revalidatePath('/profile/' + targetUserId);
       return { success: true, following: false };
     } else {
-      await supabase.from('follows').insert({ follower_id: user.id, following_id: targetUserId });
+      await supabase.from('follows').insert({ follower_id: user.id, following_id: targetUserId } as any);
       revalidatePath('/profile/' + targetUserId);
       return { success: true, following: true };
     }
@@ -81,7 +63,7 @@ export async function toggleFollowAction(targetUserId: string) {
 
 export async function addCommentAction(postId: string, content: string, parentId?: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -92,7 +74,7 @@ export async function addCommentAction(postId: string, content: string, parentId
         user_id: user.id,
         content: content,
         parent_id: parentId
-      })
+      } as any)
       .select('*, profiles:user_id(full_name, avatar_url, username)')
       .single();
 
@@ -105,7 +87,7 @@ export async function addCommentAction(postId: string, content: string, parentId
 
 export async function getCommentsAction(postId: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('comments')
       .select('*, profiles:user_id(full_name, avatar_url, username)')
@@ -121,7 +103,7 @@ export async function getCommentsAction(postId: string) {
 
 export async function searchUsersAction(query: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('profiles')
       .select('id, username, full_name, avatar_url')
@@ -137,7 +119,7 @@ export async function searchUsersAction(query: string) {
 
 export async function getFriendsAction() {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -171,7 +153,7 @@ export async function getFriendsAction() {
 
 export async function sendDirectMessageAction(recipientId: string, content: string, postId?: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -182,7 +164,7 @@ export async function sendDirectMessageAction(recipientId: string, content: stri
         recipient_id: recipientId,
         content: content,
         post_id: postId
-      });
+      } as any);
 
     if (error) throw error;
     return { success: true };
@@ -193,7 +175,7 @@ export async function sendDirectMessageAction(recipientId: string, content: stri
 
 export async function deletePostAction(postId: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -223,7 +205,7 @@ export async function deletePostAction(postId: string) {
 
 export async function getJoinedCommunitiesAction() {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -248,7 +230,7 @@ export async function getJoinedCommunitiesAction() {
 
 export async function sendCommunityMessageAction(communityId: string, content: string, postId?: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -259,7 +241,7 @@ export async function sendCommunityMessageAction(communityId: string, content: s
         community_id: communityId,
         content: content,
         post_id: postId || null
-      });
+      } as any);
 
     if (error) throw error;
     revalidatePath(`/communities/${communityId}`);

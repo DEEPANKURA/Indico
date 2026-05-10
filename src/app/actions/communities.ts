@@ -1,27 +1,7 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
-
-async function getSupabase() {
-  const cookieStore = await cookies();
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
-  
-  if (!url || !key) {
-    throw new Error('Supabase environment variables are missing');
-  }
-
-  return createServerClient(url, key, {
-    cookies: {
-      getAll() { return cookieStore.getAll(); },
-      setAll(cookiesToSet) {
-        try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {}
-      },
-    },
-  });
-}
 
 export async function createCommunityAction(formData: {
   name: string;
@@ -31,7 +11,7 @@ export async function createCommunityAction(formData: {
   color: string;
 }) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -44,7 +24,7 @@ export async function createCommunityAction(formData: {
         is_public: formData.isPublic,
         color: formData.color,
         creator_id: user.id
-      })
+      } as any)
       .select()
       .single();
 
@@ -56,7 +36,7 @@ export async function createCommunityAction(formData: {
       user_id: user.id,
       role: 'owner',
       status: 'joined'
-    });
+    } as any);
 
     revalidatePath('/communities');
     return { success: true, community: data };
@@ -67,7 +47,7 @@ export async function createCommunityAction(formData: {
 
 export async function joinCommunityAction(communityId: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -87,7 +67,7 @@ export async function joinCommunityAction(communityId: string) {
         user_id: user.id,
         status: community.is_public ? 'joined' : 'pending',
         role: 'member'
-      });
+      } as any);
 
     if (error) throw error;
 
@@ -101,7 +81,7 @@ export async function joinCommunityAction(communityId: string) {
 export async function leaveCommunityAction(communityId: string) {
   try {
     console.log('leaveCommunityAction called for:', communityId);
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       console.log('leaveCommunityAction: No user found');
@@ -132,7 +112,7 @@ export async function leaveCommunityAction(communityId: string) {
 
 export async function deleteCommunityAction(communityId: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -160,7 +140,7 @@ export async function deleteCommunityAction(communityId: string) {
 
 export async function getPendingRequestsAction(communityId: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('community_members')
       .select('*, profiles(username, avatar_url, full_name)')
@@ -176,7 +156,7 @@ export async function getPendingRequestsAction(communityId: string) {
 
 export async function handleJoinRequestAction(communityId: string, userId: string, accept: boolean) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -186,7 +166,7 @@ export async function handleJoinRequestAction(communityId: string, userId: strin
       supabase.from('communities').select('creator_id').eq('id', communityId).single()
     ]);
 
-    const isAuthorized = (member && ['owner', 'moderator'].includes(member.role)) || (community?.creator_id === user.id);
+    const isAuthorized = (member && ['owner', 'moderator'].includes((member as any).role)) || (community?.creator_id === user.id);
 
     if (!isAuthorized) {
       return { success: false, error: 'Only owners or moderators can manage requests' };
@@ -195,7 +175,7 @@ export async function handleJoinRequestAction(communityId: string, userId: strin
     if (accept) {
       const { error } = await supabase
         .from('community_members')
-        .update({ status: 'joined' })
+        .update({ status: 'joined' } as any)
         .eq('community_id', communityId)
         .eq('user_id', userId);
       if (error) throw error;
@@ -217,7 +197,7 @@ export async function handleJoinRequestAction(communityId: string, userId: strin
 
 export async function getFollowingListForInviteAction(communityId: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -238,7 +218,7 @@ export async function getFollowingListForInviteAction(communityId: string) {
     const memberIds = new Set(existingMembers?.map(m => m.user_id) || []);
     
     const inviteable = following
-      ?.map(f => f.profiles)
+      ?.map(f => (f as any).profiles)
       .filter((p: any) => p && !memberIds.has(p.id)) || [];
 
     return { success: true, users: inviteable };
@@ -249,7 +229,7 @@ export async function getFollowingListForInviteAction(communityId: string) {
 
 export async function inviteToCommunityAction(communityId: string, userId: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -259,7 +239,7 @@ export async function inviteToCommunityAction(communityId: string, userId: strin
       supabase.from('communities').select('creator_id').eq('id', communityId).single()
     ]);
 
-    const isAuthorized = (member && ['owner', 'moderator'].includes(member.role)) || (community?.creator_id === user.id);
+    const isAuthorized = (member && ['owner', 'moderator'].includes((member as any).role)) || (community?.creator_id === user.id);
 
     if (!isAuthorized) {
       return { success: false, error: 'Only owners or moderators can invite members' };
@@ -272,7 +252,7 @@ export async function inviteToCommunityAction(communityId: string, userId: strin
         user_id: userId,
         status: 'joined', // Directly add them for now as requested "add members from following lists"
         role: 'member'
-      });
+      } as any);
 
     if (error) throw error;
 
@@ -285,7 +265,7 @@ export async function inviteToCommunityAction(communityId: string, userId: strin
 
 export async function kickMemberAction(communityId: string, userId: string) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
@@ -305,13 +285,13 @@ export async function kickMemberAction(communityId: string, userId: string) {
 
 export async function setMemberRoleAction(communityId: string, userId: string, role: 'owner' | 'moderator' | 'member') {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
     const { error } = await supabase
       .from('community_members')
-      .update({ role })
+      .update({ role } as any)
       .eq('community_id', communityId)
       .eq('user_id', userId);
 
@@ -325,7 +305,7 @@ export async function setMemberRoleAction(communityId: string, userId: string, r
 
 export async function getCommunitiesAction() {
   try {
-    const supabase = await getSupabase();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('communities')
