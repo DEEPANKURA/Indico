@@ -4,7 +4,8 @@ const JAMENDO_CLIENT_ID = '34946938';
 
 export async function searchMusicAction(query: string) {
   try {
-    const url = `https://api.jamendo.com/v3.0/tracks?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=20&search=${encodeURIComponent(query)}&audioformat=mp32`;
+    // Jamendo uses 'namesearch' for track names or 'search' for general search
+    const url = `https://api.jamendo.com/v3.0/tracks?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=20&search=${encodeURIComponent(query)}&audioformat=mp31`;
     const res = await fetch(url);
     const data = await res.json();
     
@@ -25,7 +26,8 @@ export async function searchMusicAction(query: string) {
 
 export async function getFeaturedMusicAction() {
   try {
-    const url = `https://api.jamendo.com/v3.0/tracks?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=10&order=boostratio_month&audioformat=mp32`;
+    // Fixed order parameter to use a valid value like 'buzzrate'
+    const url = `https://api.jamendo.com/v3.0/tracks?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=10&order=buzzrate&audioformat=mp31`;
     const res = await fetch(url);
     const data = await res.json();
 
