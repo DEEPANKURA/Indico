@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Send, Smile, Loader2, User } from 'lucide-react';
+import { Send, Smile, Loader2, User, ExternalLink, MessageCircle } from 'lucide-react';
+import Link from 'next/link';
+import PostCard from './PostCard';
 
 const STICKERS = [
   'https://fonts.gstatic.com/s/e/notoemoji/latest/1f600/512.gif',
@@ -38,14 +40,24 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
         filter: `community_id=eq.${communityId}`
       }, async (payload) => {
         const newMsg = payload.new;
-        // Fetch sender profile
+        // Fetch sender profile and post if shared
         const { data: profile } = await supabase
           .from('profiles')
           .select('username, avatar_url, full_name')
           .eq('id', newMsg.sender_id)
           .single();
         
-        setMessages(prev => [...prev, { ...newMsg, sender: profile }]);
+        let postData = null;
+        if (newMsg.post_id) {
+          const { data: post } = await supabase
+            .from('posts')
+            .select('*, author:profiles(username, avatar_url)')
+            .eq('id', newMsg.post_id)
+            .single();
+          postData = post;
+        }
+        
+        setMessages(prev => [...prev, { ...newMsg, sender: profile, post: postData }]);
       })
       .subscribe();
 
@@ -57,7 +69,7 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
   const fetchMessages = async () => {
     const { data } = await supabase
       .from('messages')
-      .select('*, sender:profiles!sender_id(username, avatar_url, full_name)')
+      .select('*, sender:profiles!sender_id(username, avatar_url, full_name), post:posts(*, author:profiles(username, avatar_url))')
       .eq('community_id', communityId)
       .order('created_at', { ascending: true });
 
@@ -90,8 +102,8 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
   if (loading) return <div style={{ textAlign: 'center', padding: '40px' }}><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="glass-card" style={{ height: '500px', display: 'flex', flexDirection: 'column', borderRadius: '24px', overflow: 'hidden' }}>
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div className="glass-card" style={{ height: '500px', display: 'flex', flexDirection: 'column', borderRadius: '24px', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(0,0,0,0.2)' }}>
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '100px' }}>
             No messages yet. Start the conversation!
@@ -103,19 +115,39 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
             flexDirection: 'column', 
             alignItems: msg.sender_id === user?.id ? 'flex-end' : 'flex-start' 
           }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               {msg.sender?.full_name || msg.sender?.username || 'User'}
             </div>
             <div style={{
-              maxWidth: '80%', 
+              maxWidth: '85%', 
               padding: msg.message_type === 'sticker' ? '0' : '10px 14px',
               borderRadius: msg.sender_id === user?.id ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-              background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === user?.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)'),
+              background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === user?.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.08)'),
               color: 'white',
-              fontSize: '0.9rem'
+              fontSize: '0.9rem',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
             }}>
               {msg.message_type === 'sticker' ? (
                 <img src={msg.sticker_url} style={{ width: '100px', height: '100px' }} />
+              ) : msg.message_type === 'post' || msg.post_id ? (
+                <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '12px', minWidth: '240px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', fontSize: '0.8rem', opacity: 0.8 }}>
+                    <MessageCircle size={14} /> Shared Post
+                  </div>
+                  {msg.post ? (
+                    <div style={{ fontSize: '0.85rem' }}>
+                      <p style={{ margin: '0 0 8px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{msg.post.content}</p>
+                      <Link 
+                        href={`/post/${msg.post.id}`}
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-secondary)', textDecoration: 'none', fontWeight: 'bold' }}
+                      >
+                        View Post <ExternalLink size={14} />
+                      </Link>
+                    </div>
+                  ) : (
+                    <div style={{ fontStyle: 'italic', opacity: 0.6 }}>Post content preview unavailable</div>
+                  )}
+                </div>
               ) : (
                 msg.content
               )}
@@ -124,7 +156,7 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
         ))}
       </div>
 
-      <div style={{ padding: '16px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '8px', position: 'relative' }}>
+      <div style={{ padding: '16px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '8px', position: 'relative', background: 'var(--bg-secondary)' }}>
         <button onClick={() => setShowStickers(!showStickers)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
           <Smile size={20} />
         </button>
@@ -133,7 +165,7 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
           <div className="glass-card" style={{ 
             position: 'absolute', bottom: '100%', left: '16px', width: '200px', 
             padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px',
-            borderRadius: '16px', marginBottom: '10px', zIndex: 10
+            borderRadius: '16px', marginBottom: '10px', zIndex: 10, boxShadow: '0 -4px 20px rgba(0,0,0,0.3)'
           }}>
             {STICKERS.map((s, i) => (
               <img key={i} src={s} style={{ width: '100%', cursor: 'pointer' }} onClick={() => handleSend(s)} />
