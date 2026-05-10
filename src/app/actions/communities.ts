@@ -100,9 +100,14 @@ export async function joinCommunityAction(communityId: string) {
 
 export async function leaveCommunityAction(communityId: string) {
   try {
+    console.log('leaveCommunityAction called for:', communityId);
     const supabase = await getSupabase();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!user) {
+      console.log('leaveCommunityAction: No user found');
+      return { success: false, error: 'Unauthorized' };
+    }
+    console.log('leaveCommunityAction: User is', user.id);
 
     const { error } = await supabase
       .from('community_members')
@@ -110,11 +115,17 @@ export async function leaveCommunityAction(communityId: string) {
       .eq('community_id', communityId)
       .eq('user_id', user.id);
 
-    if (error) throw error;
+    if (error) {
+      console.error('leaveCommunityAction Error:', error);
+      throw error;
+    }
 
+    console.log('leaveCommunityAction: Success');
     revalidatePath(`/communities/${communityId}`);
+    revalidatePath('/communities');
     return { success: true };
   } catch (error: any) {
+    console.error('leaveCommunityAction Catch Error:', error);
     return { success: false, error: error.message };
   }
 }

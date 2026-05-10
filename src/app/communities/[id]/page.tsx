@@ -185,13 +185,18 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
   };
 
   const handleLeave = async () => {
+    console.log('handleLeave triggered');
     if (confirm('Are you sure you want to leave this community?')) {
+      console.log('handleLeave confirmed, calling action...');
       const res = await leaveCommunityAction(id);
+      console.log('handleLeave result:', res);
       if (res.success) {
-        fetchCommunityData();
+        console.log('handleLeave success, fetching data...');
+        await fetchCommunityData();
         setActiveTab('Feed');
         alert('You have left the community.');
       } else {
+        console.error('handleLeave error:', res.error);
         alert('Failed to leave community: ' + res.error);
       }
     }
@@ -287,36 +292,42 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                 Pending
               </button>
             ) : (
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end', zIndex: 5, position: 'relative' }}>
                 {userRole && ['owner', 'moderator'].includes(userRole) && (
                   <button
-                    onClick={() => setShowInviteModal(true)}
+                    onClick={() => {
+                      console.log('Invite button clicked');
+                      setShowInviteModal(true);
+                    }}
                     className="btn-primary"
-                    style={{ padding: '8px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}
+                    style={{ padding: '10px 16px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', border: 'none', cursor: 'pointer' }}
                   >
-                    <UserPlus size={16} /> Invite
+                    <UserPlus size={18} /> Invite
                   </button>
                 )}
                 <button
-                  onClick={handleLeave}
+                  onClick={() => {
+                    console.log('Leave button clicked');
+                    handleLeave();
+                  }}
                   className="btn-secondary"
                   style={{ 
-                    padding: '8px 12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', 
-                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem',
-                    border: '1px solid var(--border-light)', color: 'var(--text-secondary)'
+                    padding: '10px 16px', borderRadius: '14px', background: 'rgba(239,68,68,0.1)', 
+                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem',
+                    border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: 'pointer'
                   }}
                   title="Leave Community"
                 >
-                  <LogOut size={16} /> Leave
+                  <LogOut size={18} /> Leave
                 </button>
                 {userRole === 'owner' && (
                   <button 
                     onClick={() => setActiveTab('Moderation')}
                     className="btn-secondary" 
-                    style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: activeTab === 'Moderation' ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)' }}
+                    style={{ padding: '10px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', border: activeTab === 'Moderation' ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)', cursor: 'pointer' }}
                     title="Manage Community"
                   >
-                    <Settings size={18} />
+                    <Settings size={20} />
                   </button>
                 )}
               </div>
