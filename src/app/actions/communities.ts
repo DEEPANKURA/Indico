@@ -247,7 +247,7 @@ export async function getFollowingListForInviteAction(communityId: string) {
   }
 }
 
-export async function inviteMemberAction(communityId: string, userId: string) {
+export async function inviteToCommunityAction(communityId: string, userId: string) {
   try {
     const supabase = await getSupabase();
     const { data: { user } } = await supabase.auth.getUser();
@@ -276,6 +276,46 @@ export async function inviteMemberAction(communityId: string, userId: string) {
 
     if (error) throw error;
 
+    revalidatePath(`/communities/${communityId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function kickMemberAction(communityId: string, userId: string) {
+  try {
+    const supabase = await getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const { error } = await supabase
+      .from('community_members')
+      .delete()
+      .eq('community_id', communityId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    revalidatePath(`/communities/${communityId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function setMemberRoleAction(communityId: string, userId: string, role: 'owner' | 'moderator' | 'member') {
+  try {
+    const supabase = await getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const { error } = await supabase
+      .from('community_members')
+      .update({ role })
+      .eq('community_id', communityId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
     revalidatePath(`/communities/${communityId}`);
     return { success: true };
   } catch (error: any) {
