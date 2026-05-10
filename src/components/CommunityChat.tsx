@@ -135,11 +135,11 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
               maxWidth: '85%', 
               padding: msg.message_type === 'sticker' ? '0' : '12px 16px',
               borderRadius: msg.sender_id === user?.id ? '20px 20px 4px 20px' : '20px 20px 20px 20px',
-              background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === user?.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.15)'),
+              background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === user?.id ? 'var(--accent-primary)' : 'rgba(139, 92, 246, 0.15)'),
               color: msg.sender_id === user?.id ? '#ffffff' : 'var(--text-primary)',
               fontSize: '0.95rem',
               boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-              border: msg.sender_id === user?.id ? 'none' : '1px solid rgba(255,255,255,0.1)'
+              border: msg.sender_id === user?.id ? 'none' : '1px solid rgba(139, 92, 246, 0.3)'
             }}>
               {msg.message_type === 'sticker' ? (
                 <img src={msg.sticker_url} style={{ width: '100px', height: '100px' }} />
