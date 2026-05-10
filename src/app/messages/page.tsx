@@ -377,11 +377,11 @@ export default function MessagesPage() {
                     <div style={{
                       maxWidth: '75%', padding: msg.message_type === 'sticker' ? '0' : '12px 16px', 
                       borderRadius: msg.sender_id === currentUser.id ? '20px 20px 4px 20px' : '20px 20px 20px 20px',
-                      background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === currentUser.id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'rgba(139, 92, 246, 0.15)'),
-                      color: msg.sender_id === currentUser.id ? '#ffffff' : 'var(--text-primary)',
+                      background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === currentUser.id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : '#2a2a3d'),
+                      color: '#ffffff',
                       fontSize: '0.95rem', lineHeight: '1.5', 
-                      boxShadow: msg.message_type === 'sticker' ? 'none' : '0 4px 15px rgba(0,0,0,0.2)',
-                      border: msg.sender_id === currentUser.id ? 'none' : '1px solid rgba(139, 92, 246, 0.3)',
+                      boxShadow: msg.message_type === 'sticker' ? 'none' : '0 4px 15px rgba(0,0,0,0.3)',
+                      border: 'none',
                       display: 'flex', flexDirection: 'column', gap: '8px'
                     }}>
                       {msg.post_id && msg.posts && (
