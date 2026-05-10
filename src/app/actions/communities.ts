@@ -50,10 +50,12 @@ export async function createCommunityAction(formData: {
 
     if (error) throw error;
 
-    // Auto join as creator
+    // Auto join as creator with owner role
     await supabase.from('community_members').insert({
       community_id: data.id,
-      user_id: user.id
+      user_id: user.id,
+      role: 'owner',
+      status: 'joined'
     });
 
     revalidatePath('/communities');
@@ -139,15 +141,15 @@ export async function handleJoinRequestAction(communityId: string, userId: strin
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    // Verify current user is owner or moderator
-    const { data: member, error: memberError } = await supabase
-      .from('community_members')
-      .select('role')
-      .eq('community_id', communityId)
-      .eq('user_id', user.id)
-      .single();
+    // Verify current user is owner/moderator or the creator
+    const [{ data: member }, { data: community }] = await Promise.all([
+      supabase.from('community_members').select('role').eq('community_id', communityId).eq('user_id', user.id).single(),
+      supabase.from('communities').select('creator_id').eq('id', communityId).single()
+    ]);
 
-    if (memberError || !['owner', 'moderator'].includes(member.role)) {
+    const isAuthorized = (member && ['owner', 'moderator'].includes(member.role)) || (community?.creator_id === user.id);
+
+    if (!isAuthorized) {
       return { success: false, error: 'Only owners or moderators can manage requests' };
     }
 
@@ -211,6 +213,18 @@ export async function inviteMemberAction(communityId: string, userId: string) {
     const supabase = await getSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
+
+    // Verify current user is owner/moderator or the creator
+    const [{ data: member }, { data: community }] = await Promise.all([
+      supabase.from('community_members').select('role').eq('community_id', communityId).eq('user_id', user.id).single(),
+      supabase.from('communities').select('creator_id').eq('id', communityId).single()
+    ]);
+
+    const isAuthorized = (member && ['owner', 'moderator'].includes(member.role)) || (community?.creator_id === user.id);
+
+    if (!isAuthorized) {
+      return { success: false, error: 'Only owners or moderators can invite members' };
+    }
 
     const { error } = await supabase
       .from('community_members')

@@ -19,6 +19,7 @@ import {
 import PostCard from '@/components/PostCard';
 import CreatePost from '@/components/CreatePost';
 import CommunityChat from '@/components/CommunityChat';
+
 interface Profile {
   id: string;
   username: string;
@@ -97,10 +98,13 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
       const currentMember = (memData as any[])?.find(m => m.user_id === currentUser?.id);
       setIsMember(currentMember?.status === 'joined');
       setMembershipStatus(currentMember?.status || 'none');
-      setUserRole(currentMember?.role || null);
+      
+      // Fallback: If they are the creator, they are the owner
+      const effectiveRole = currentMember?.role || (commData.creator_id === currentUser?.id ? 'owner' : null);
+      setUserRole(effectiveRole as any);
 
       // If owner/moderator, fetch pending requests
-      if (currentMember && currentMember.role && ['owner', 'moderator'].includes(currentMember.role)) {
+      if (effectiveRole && ['owner', 'moderator'].includes(effectiveRole)) {
         const { data: reqData } = await supabase
           .from('community_members')
           .select('*, profiles(username, avatar_url, full_name)')
@@ -268,13 +272,32 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
               </button>
             ) : (
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={handleLeave}
-                  className="btn-secondary"
-                  style={{ padding: '10px 16px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                  <Check size={18} style={{ color: '#10b981' }} /> Joined
-                </button>
+                <div style={{ position: 'relative' }} onMouseEnter={(e) => {
+                  const btn = e.currentTarget.querySelector('.leave-btn') as HTMLElement;
+                  if (btn) btn.style.display = 'flex';
+                }} onMouseLeave={(e) => {
+                  const btn = e.currentTarget.querySelector('.leave-btn') as HTMLElement;
+                  if (btn) btn.style.display = 'none';
+                }}>
+                  <button
+                    className="btn-secondary"
+                    style={{ padding: '10px 16px', borderRadius: '12px', background: 'rgba(16,185,129,0.1)', color: '#10b981', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(16,185,129,0.2)' }}
+                  >
+                    <ShieldCheck size={18} /> Member
+                  </button>
+                  <button
+                    onClick={handleLeave}
+                    className="leave-btn btn-secondary"
+                    style={{ 
+                      display: 'none', position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
+                      padding: '10px', borderRadius: '12px', background: '#ef4444', color: 'white', 
+                      zIndex: 10, alignItems: 'center', justifyContent: 'center', gap: '8px', border: 'none',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    <LogOut size={16} /> Leave
+                  </button>
+                </div>
                 {userRole && ['owner', 'moderator'].includes(userRole) && (
                   <button
                     onClick={() => setShowInviteModal(true)}
@@ -284,8 +307,13 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                     <UserPlus size={18} /> Invite
                   </button>
                 )}
-                {community.creator_id === user?.id && (
-                  <button className="btn-secondary" style={{ padding: '10px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}>
+                {userRole === 'owner' && (
+                  <button 
+                    onClick={() => setActiveTab('Moderation')}
+                    className="btn-secondary" 
+                    style={{ padding: '10px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: activeTab === 'Moderation' ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)' }}
+                    title="Manage Community"
+                  >
                     <Settings size={20} />
                   </button>
                 )}
