@@ -348,14 +348,14 @@ export default function MessagesPage() {
           flex: 1, 
           display: (!selectedUser && isMobile) ? 'none' : 'flex', 
           flexDirection: 'column', 
-          background: '#0a0a0f',
+          background: '#ffffff',
           minWidth: 0
         }}>
           {selectedUser ? (
             <>
-              <div style={{ padding: '16px', borderBottom: '1px solid var(--border-light)', display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--bg-glass)' }}>
+              <div style={{ padding: '16px', borderBottom: '1px solid #eeeeee', display: 'flex', gap: '12px', alignItems: 'center', background: '#ffffff' }}>
                 {isMobile && (
-                  <button onClick={() => setSelectedUser(null)} style={{ marginRight: '8px', color: 'var(--text-secondary)', background: 'none', border: 'none' }}>
+                  <button onClick={() => setSelectedUser(null)} style={{ marginRight: '8px', color: '#666666', background: 'none', border: 'none' }}>
                     <ArrowLeft size={24} />
                   </button>
                 )}
@@ -371,16 +371,16 @@ export default function MessagesPage() {
                   <div style={{ fontSize: '0.8rem', color: 'var(--accent-neon)' }}>Online</div>
                 </div>
               </div>
-              <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', background: '#f8f9fa' }}>
                 {messages.map((msg, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: msg.sender_id === currentUser.id ? 'flex-end' : 'flex-start', width: '100%' }}>
                     <div style={{
                       maxWidth: '75%', padding: msg.message_type === 'sticker' ? '0' : '12px 16px', 
                       borderRadius: msg.sender_id === currentUser.id ? '20px 20px 4px 20px' : '20px 20px 20px 20px',
-                      background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === currentUser.id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : '#2a2a3d'),
-                      color: '#ffffff',
+                      background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === currentUser.id ? 'var(--accent-primary)' : '#e4e6eb'),
+                      color: msg.sender_id === currentUser.id ? '#ffffff' : '#000000',
                       fontSize: '0.95rem', lineHeight: '1.5', 
-                      boxShadow: msg.message_type === 'sticker' ? 'none' : '0 4px 15px rgba(0,0,0,0.3)',
+                      boxShadow: msg.message_type === 'sticker' ? 'none' : '0 2px 8px rgba(0,0,0,0.05)',
                       border: 'none',
                       display: 'flex', flexDirection: 'column', gap: '8px'
                     }}>
@@ -416,18 +416,18 @@ export default function MessagesPage() {
               </div>
               <div style={{ 
                 padding: '12px 16px', 
-                borderTop: '1px solid var(--border-light)', 
+                borderTop: '1px solid #eeeeee', 
                 display: 'flex', 
                 gap: '8px', 
                 alignItems: 'center', 
-                background: 'var(--bg-glass)', 
+                background: '#ffffff', 
                 position: 'relative',
                 width: '100%',
                 boxSizing: 'border-box'
               }}>
                 <button 
                   onClick={() => setShowStickers(!showStickers)}
-                  style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexShrink: 0 }}
+                  style={{ color: '#666666', background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexShrink: 0 }}
                 >
                   <Smile size={24} />
                 </button>
@@ -459,11 +459,11 @@ export default function MessagesPage() {
                   style={{ 
                     flex: 1, 
                     minWidth: 0,
-                    background: 'rgba(255,255,255,0.05)', 
-                    border: '1px solid var(--border-light)', 
+                    background: '#f0f2f5', 
+                    border: 'none', 
                     borderRadius: '24px', 
                     padding: '10px 16px', 
-                    color: 'var(--text-primary)', 
+                    color: '#000000', 
                     outline: 'none', 
                     fontSize: '0.9rem' 
                   }}

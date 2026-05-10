@@ -115,10 +115,10 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
   if (loading) return <div style={{ textAlign: 'center', padding: '40px' }}><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="glass-card" style={{ height: '550px', display: 'flex', flexDirection: 'column', borderRadius: '24px', overflow: 'hidden', background: '#0f0f14', border: '1px solid rgba(255,255,255,0.1)' }}>
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(0,0,0,0.4)' }}>
+    <div className="glass-card" style={{ height: '550px', display: 'flex', flexDirection: 'column', borderRadius: '24px', overflow: 'hidden', background: '#ffffff', border: '1px solid #e0e0e0' }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', background: '#f8f9fa' }}>
         {messages.length === 0 && (
-          <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '100px' }}>
+          <div style={{ textAlign: 'center', color: '#666666', marginTop: '100px' }}>
             No messages yet. Start the conversation!
           </div>
         )}
@@ -128,17 +128,17 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
             flexDirection: 'column', 
             alignItems: msg.sender_id === user?.id ? 'flex-end' : 'flex-start' 
           }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '0.7rem', color: '#666666', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               {msg.sender?.full_name || msg.sender?.username || 'User'}
             </div>
             <div style={{
               maxWidth: '85%', 
               padding: msg.message_type === 'sticker' ? '0' : '12px 16px',
               borderRadius: msg.sender_id === user?.id ? '20px 20px 4px 20px' : '20px 20px 20px 20px',
-              background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === user?.id ? 'var(--accent-primary)' : '#2a2a3d'),
-              color: '#ffffff',
+              background: msg.message_type === 'sticker' ? 'transparent' : (msg.sender_id === user?.id ? 'var(--accent-primary)' : '#e4e6eb'),
+              color: msg.sender_id === user?.id ? '#ffffff' : '#000000',
               fontSize: '0.95rem',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
               border: 'none'
             }}>
               {msg.message_type === 'sticker' ? (
@@ -170,8 +170,8 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
         ))}
       </div>
 
-      <div style={{ padding: '16px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '8px', position: 'relative', background: 'var(--bg-secondary)' }}>
-        <button onClick={() => setShowStickers(!showStickers)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+      <div style={{ padding: '16px', borderTop: '1px solid #eeeeee', display: 'flex', gap: '8px', position: 'relative', background: '#ffffff' }}>
+        <button onClick={() => setShowStickers(!showStickers)} style={{ background: 'none', border: 'none', color: '#666666', cursor: 'pointer' }}>
           <Smile size={20} />
         </button>
 
@@ -193,7 +193,7 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSend()}
           placeholder="Message community..." 
-          style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-light)', borderRadius: '20px', padding: '8px 16px', color: 'white', outline: 'none' }}
+          style={{ flex: 1, background: '#f0f2f5', border: 'none', borderRadius: '20px', padding: '8px 16px', color: '#000000', outline: 'none' }}
         />
         <button onClick={() => handleSend()} style={{ background: 'var(--accent-primary)', border: 'none', color: 'white', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <Send size={18} />
