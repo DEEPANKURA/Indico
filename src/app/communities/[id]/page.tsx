@@ -256,65 +256,51 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Users size={16} /> {community.member_count} members
+                  <Users size={16} /> {members.filter(m => m.status === 'joined').length || community.member_count} members
                 </span>
                 <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--border-light)' }} />
                 <span>Founded {community.created_at ? new Date(community.created_at).toLocaleDateString() : 'Recently'}</span>
               </div>
             </div>
             {membershipStatus === 'none' ? (
-              <button onClick={handleJoin} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '16px', fontWeight: '800' }}>
-                {community.is_public ? 'Join Community' : 'Request to Join'}
+              <button onClick={handleJoin} className="btn-primary" style={{ padding: '12px 24px', borderRadius: '16px', fontWeight: '800', whiteSpace: 'nowrap' }}>
+                {community.is_public ? 'Join' : 'Request'}
               </button>
             ) : membershipStatus === 'pending' ? (
-              <button className="btn-secondary" style={{ padding: '12px 32px', borderRadius: '16px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', cursor: 'default' }}>
-                Request Pending
+              <button className="btn-secondary" style={{ padding: '12px 24px', borderRadius: '16px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', cursor: 'default', fontSize: '0.9rem' }}>
+                Pending
               </button>
             ) : (
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <div style={{ position: 'relative' }} onMouseEnter={(e) => {
-                  const btn = e.currentTarget.querySelector('.leave-btn') as HTMLElement;
-                  if (btn) btn.style.display = 'flex';
-                }} onMouseLeave={(e) => {
-                  const btn = e.currentTarget.querySelector('.leave-btn') as HTMLElement;
-                  if (btn) btn.style.display = 'none';
-                }}>
-                  <button
-                    className="btn-secondary"
-                    style={{ padding: '10px 16px', borderRadius: '12px', background: 'rgba(16,185,129,0.1)', color: '#10b981', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(16,185,129,0.2)' }}
-                  >
-                    <ShieldCheck size={18} /> Member
-                  </button>
-                  <button
-                    onClick={handleLeave}
-                    className="leave-btn btn-secondary"
-                    style={{ 
-                      display: 'none', position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-                      padding: '10px', borderRadius: '12px', background: '#ef4444', color: 'white', 
-                      zIndex: 10, alignItems: 'center', justifyContent: 'center', gap: '8px', border: 'none',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                    }}
-                  >
-                    <LogOut size={16} /> Leave
-                  </button>
-                </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 {userRole && ['owner', 'moderator'].includes(userRole) && (
                   <button
                     onClick={() => setShowInviteModal(true)}
                     className="btn-primary"
-                    style={{ padding: '10px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    style={{ padding: '8px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}
                   >
-                    <UserPlus size={18} /> Invite
+                    <UserPlus size={16} /> Invite
                   </button>
                 )}
+                <button
+                  onClick={handleLeave}
+                  className="btn-secondary"
+                  style={{ 
+                    padding: '8px 12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', 
+                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem',
+                    border: '1px solid var(--border-light)', color: 'var(--text-secondary)'
+                  }}
+                  title="Leave Community"
+                >
+                  <LogOut size={16} /> Leave
+                </button>
                 {userRole === 'owner' && (
                   <button 
                     onClick={() => setActiveTab('Moderation')}
                     className="btn-secondary" 
-                    style={{ padding: '10px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: activeTab === 'Moderation' ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)' }}
+                    style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: activeTab === 'Moderation' ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)' }}
                     title="Manage Community"
                   >
-                    <Settings size={20} />
+                    <Settings size={18} />
                   </button>
                 )}
               </div>
