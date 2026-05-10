@@ -6,18 +6,21 @@ import { revalidatePath } from 'next/cache';
 
 async function getSupabase() {
   const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
-          try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {}
-        },
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  
+  if (!url || !key) {
+    throw new Error('Supabase environment variables are missing');
+  }
+
+  return createServerClient(url, key, {
+    cookies: {
+      getAll() { return cookieStore.getAll(); },
+      setAll(cookiesToSet) {
+        try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {}
       },
-    }
-  );
+    },
+  });
 }
 
 export async function createCommunityAction(formData: {
@@ -236,8 +239,9 @@ export async function getCommunitiesAction() {
       .order('member_count', { ascending: false });
 
     if (error) throw error;
-    return { success: true, communities: data };
+    return { success: true, communities: data || [] };
   } catch (error: any) {
+    console.error('getCommunitiesAction error:', error);
     return { success: false, error: error.message };
   }
 }

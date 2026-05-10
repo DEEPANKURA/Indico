@@ -26,6 +26,8 @@ export default function CommunitiesPage() {
     const res = await getCommunitiesAction();
     if (res.success) {
       setCommunities(res.communities || []);
+    } else {
+      console.error('Failed to fetch communities:', res.error);
     }
     setLoading(false);
   };
@@ -67,8 +69,8 @@ export default function CommunitiesPage() {
 
   const filteredCommunities = communities.filter(c => {
     const matchesFilter = filter === 'All' || c.category === filter;
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || 
-                          c.description?.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = (c.name || '').toLowerCase().includes(search.toLowerCase()) || 
+                          (c.description || '').toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
@@ -208,11 +210,11 @@ export default function CommunitiesPage() {
                     
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-primary)' }}>
-                        <Users size={16} /> {comm.member_count} members
+                        <Users size={16} /> {comm.member_count || 0} members
                       </div>
                       <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--border-light)' }} />
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        Active {new Date(comm.updated_at).toLocaleDateString()}
+                        Active {comm.updated_at ? new Date(comm.updated_at).toLocaleDateString() : 'Recently'}
                       </div>
                     </div>
                   </div>
