@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Search, Music, Play, Pause, X, Loader2, Check } from 'lucide-react';
+import { searchMusicAction, getFeaturedMusicAction } from '@/app/actions/music';
 
 interface Track {
   id: string;
@@ -17,7 +18,6 @@ interface MusicSelectorProps {
   onClose: () => void;
 }
 
-const JAMENDO_CLIENT_ID = '709fa152';
 
 export default function MusicSelector({ onSelect, onClose }: MusicSelectorProps) {
   const [query, setQuery] = useState('');
@@ -30,9 +30,10 @@ export default function MusicSelector({ onSelect, onClose }: MusicSelectorProps)
     if (!q.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=jsonpretty&limit=20&search=${encodeURIComponent(q)}&include=musicinfo&audioformat=mp32`);
-      const data = await res.json();
-      setTracks(data.results || []);
+      const res = await searchMusicAction(q);
+      if (res.success) {
+        setTracks(res.results || []);
+      }
     } catch (error) {
       console.error('Jamendo error:', error);
     } finally {
@@ -45,9 +46,10 @@ export default function MusicSelector({ onSelect, onClose }: MusicSelectorProps)
     const loadFeatured = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=jsonpretty&limit=10&order=boostratio_month&audioformat=mp32`);
-        const data = await res.json();
-        setTracks(data.results || []);
+        const res = await getFeaturedMusicAction();
+        if (res.success) {
+          setTracks(res.results || []);
+        }
       } catch (error) {
         console.error('Jamendo error:', error);
       } finally {
