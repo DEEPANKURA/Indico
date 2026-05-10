@@ -128,7 +128,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         .eq('community_id', id)
         .order('created_at', { ascending: false });
 
-      const mappedPosts = postData?.map(p => ({
+      const mappedPosts = postData?.map((p: any) => ({
         ...p,
         author: {
           name: p.author?.username || 'Anonymous',
@@ -146,7 +146,8 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
         musicUrl: p.music_url,
         musicTitle: p.music_title,
-        musicArtist: p.music_artist
+        musicArtist: p.music_artist,
+        musicStartTime: p.music_start_time,
       })) || [];
 
       setPosts(mappedPosts);
