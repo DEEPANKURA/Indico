@@ -91,8 +91,11 @@ export default function ProfilePage() {
         padding: '0 16px', position: 'relative', borderBottom: '1px solid var(--border-light)',
         background: 'var(--bg-primary)'
       }}>
+        <button onClick={() => router.push('/studio')} style={{ position: 'absolute', left: '16px', color: 'var(--text-primary)' }}>
+          <Video size={22} />
+        </button>
         <div style={{ fontWeight: '700', fontSize: '1rem' }}>{username}</div>
-        <button onClick={() => router.push('/settings')} style={{ position: 'absolute', right: '16px' }}>
+        <button onClick={() => router.push('/settings')} style={{ position: 'absolute', right: '16px', color: 'var(--text-primary)' }}>
           <Settings size={22} />
         </button>
       </div>
@@ -159,17 +162,22 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {/* Professional Dashboard (Compact) */}
+        {/* Analytics Dashboard (Instagram Style) */}
         <div 
-          onClick={() => router.push('/studio')}
+          onClick={() => router.push('/analytics')}
           style={{ 
             background: 'var(--bg-glass)', borderRadius: '12px', padding: '12px', border: '1px solid var(--border-light)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
           }}
         >
-          <div>
-            <div style={{ fontSize: '0.9rem', fontWeight: '700' }}>Professional Dashboard</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>${totalEarnings.toFixed(2)} earned this month</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(6,182,212,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <BarChart2 size={18} color="#06b6d4" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.9rem', fontWeight: '700' }}>Analytics Dashboard</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>${totalEarnings.toFixed(2)} earned this month</div>
+            </div>
           </div>
           <ChevronRight size={18} color="var(--text-muted)" />
         </div>
