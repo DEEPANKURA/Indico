@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Grid3x3, Heart, MessageCircle, Settings, DollarSign, Camera, BarChart2, Video, Sparkles, Layout, Trash2 } from 'lucide-react';
+import { 
+  Settings, Camera, DollarSign, BarChart2, Video, 
+  Sparkles, Layout, Trash2, CheckCircle2, User, 
+  Users, Heart, FileText, ChevronRight, Edit2, Share2, Calendar, Crown, MessageCircle
+} from 'lucide-react';
 import { deletePostAction } from '@/app/actions/social';
 import EditProfileModal from '@/components/EditProfileModal';
 import FollowsModal from '@/components/FollowsModal';
@@ -18,16 +22,10 @@ export default function ProfilePage() {
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
-
-  const [selectedPost, setSelectedPost] = useState<any>(null);
-  const [isMobile, setIsMobile] = useState(false);
   const [showFollows, setShowFollows] = useState<{ type: 'followers' | 'following', userId: string } | null>(null);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 640);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    fetchData();
   }, []);
 
   const fetchData = async () => {
@@ -37,7 +35,7 @@ export default function ProfilePage() {
 
     const [{ data: profile }, { data: posts }, { data: earnings }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('posts').select('id, content, like_count, comment_count, created_at, media_urls, music_url, music_title, music_artist, music_start_time, music_volume, video_volume, video_trim_start, video_trim_end').eq('author_id', user.id).is('community_id', null).order('created_at', { ascending: false }),
+      supabase.from('posts').select('*').eq('author_id', user.id).is('community_id', null).order('created_at', { ascending: false }),
       supabase.from('transactions').select('amount').eq('recipient_id', user.id).eq('status', 'completed'),
     ]);
 
@@ -48,40 +46,36 @@ export default function ProfilePage() {
   };
 
   const handleDeletePost = async (postId: string) => {
-    if (!confirm('Are you sure you want to delete this post? This action cannot be undone.')) return;
-    
+    if (!confirm('Are you sure you want to delete this post?')) return;
     const res = await deletePostAction(postId);
     if (res.success) {
       setPosts(prev => prev.filter(p => p.id !== postId));
-      setSelectedPost(null);
     } else {
       alert('Error: ' + res.error);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
-
   if (loading) return (
-    <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-      Loading profile...
+    <div style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '100px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+      <div className="animate-spin" style={{ marginBottom: '20px' }}>
+        <Sparkles size={40} color="var(--accent-primary)" />
+      </div>
+      <p style={{ fontWeight: '600', letterSpacing: '0.05em' }}>PREPARING YOUR PROFILE...</p>
     </div>
   );
 
   const displayName = profile?.full_name || user?.user_metadata?.full_name || 'Creator';
   const username = profile?.username || user?.user_metadata?.username || user?.email?.split('@')[0] || 'user';
   const totalLikes = posts.reduce((s, p) => s + (p.like_count || 0), 0);
+  const joinDate = new Date(profile?.created_at || user?.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   return (
-    <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px' }}>
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px 20px 120px 20px' }}>
       {showEdit && (
         <EditProfileModal
           profile={profile || {}}
           onClose={() => setShowEdit(false)}
-          onSaved={() => { 
-            setShowEdit(false); 
-            router.refresh(); 
-            fetchData(); 
-          }}
+          onSaved={() => { setShowEdit(false); fetchData(); }}
         />
       )}
 
@@ -93,275 +87,225 @@ export default function ProfilePage() {
         />
       )}
 
-      {/* Profile Header */}
-      <div className="glass-card" style={{ padding: '24px', borderRadius: '20px', marginBottom: '24px', position: 'relative' }}>
-        <a href="/settings" style={{ position: 'absolute', top: '20px', right: '20px', color: 'var(--text-secondary)' }}>
+      {/* Header Section */}
+      <div className="glass-card" style={{ padding: '40px', borderRadius: '32px', marginBottom: '24px', position: 'relative', border: '1px solid var(--border-light)', background: 'var(--bg-secondary)' }}>
+        <button onClick={() => router.push('/settings')} style={{ position: 'absolute', top: '24px', right: '24px', background: 'var(--bg-glass)', padding: '10px', borderRadius: '14px', border: '1px solid var(--border-glass)', color: 'var(--text-secondary)' }} className="hover-scale">
           <Settings size={20} />
-        </a>
+        </button>
 
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          {/* Avatar */}
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            {profile?.avatar_url ? (
-              <img src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} alt="avatar"
-                style={{ width: '88px', height: '88px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--accent-secondary)', boxShadow: 'var(--shadow-neon)' }} />
-            ) : (
-              <div style={{
-                width: '88px', height: '88px', borderRadius: '50%',
-                background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-neon))',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '2.5rem', fontWeight: '800', color: 'white',
-                border: '3px solid var(--accent-secondary)', boxShadow: 'var(--shadow-neon)',
-              }}>
-                {displayName[0]?.toUpperCase()}
-              </div>
-            )}
-            <button onClick={() => setShowEdit(true)}
-              title="Change photo"
-              style={{
-                position: 'absolute', bottom: 0, right: 0,
-                width: '26px', height: '26px', borderRadius: '50%',
-                background: 'var(--accent-primary)', border: '2px solid var(--bg-secondary)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: 'white',
-              }}>
-              <Camera size={13} />
+        <div style={{ display: 'flex', gap: '32px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Avatar with Camera Overlay */}
+          <div style={{ position: 'relative' }}>
+            <div style={{ 
+              width: '140px', height: '140px', borderRadius: '50%', 
+              background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+              padding: '4px', boxShadow: '0 10px 30px rgba(138, 43, 226, 0.3)'
+            }}>
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--bg-secondary)' }} />
+              ) : (
+                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', fontWeight: '900', color: 'var(--text-primary)' }}>
+                  {displayName[0]?.toUpperCase()}
+                </div>
+              )}
+            </div>
+            <button onClick={() => setShowEdit(true)} style={{ position: 'absolute', bottom: '8px', right: '8px', width: '36px', height: '36px', borderRadius: '50%', background: 'var(--accent-primary)', border: '3px solid var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }} className="hover-scale">
+              <Camera size={16} />
             </button>
           </div>
 
-          <div style={{ flex: 1, minWidth: '0' }}>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '2px' }}>{displayName}</h1>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '8px', fontSize: '0.9rem' }}>@{username}</p>
-            {profile?.bio
-              ? <p style={{ fontSize: '0.9rem', marginBottom: '12px', lineHeight: '1.5' }}>{profile.bio}</p>
-              : <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '12px', fontStyle: 'italic' }}>No bio yet</p>
-            }
-            {profile?.website && (
-              <a href={profile.website} target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: '0.85rem', color: 'var(--accent-secondary)', marginBottom: '12px', display: 'block' }}>
-                🔗 {profile.website.replace(/^https?:\/\//, '')}
-              </a>
-            )}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button className="btn-primary" onClick={() => setShowEdit(true)} style={{ padding: '7px 20px', fontSize: '0.85rem' }}>
-                Edit Profile
+          {/* User Info */}
+          <div style={{ flex: 1, minWidth: '300px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+              <h1 style={{ fontSize: '2rem', fontWeight: '900', letterSpacing: '-0.03em', margin: 0 }}>{displayName}</h1>
+              <CheckCircle2 size={24} style={{ color: '#8b5cf6' }} fill="#8b5cf6" />
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', marginBottom: '16px', fontWeight: '500' }}>@{username}</p>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
+              {profile?.bio ? (
+                <p style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0 }}>{profile.bio}</p>
+              ) : (
+                <p style={{ fontSize: '1rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>No bio yet</p>
+              )}
+              <button onClick={() => setShowEdit(true)} style={{ color: 'var(--text-muted)' }}><Edit2 size={14} /></button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', background: 'rgba(139,92,246,0.1)', borderRadius: '12px', color: '#8b5cf6', fontSize: '0.85rem', fontWeight: '700', border: '1px solid rgba(139,92,246,0.2)' }}>
+                <Crown size={14} /> Creator
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', background: 'var(--bg-glass)', borderRadius: '12px', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: '700', border: '1px solid var(--border-light)' }}>
+                <Calendar size={14} /> Member since {joinDate}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setShowEdit(true)} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <Edit2 size={18} /> Edit Profile
               </button>
-              <button className="btn-secondary" onClick={() => { navigator.clipboard?.writeText(window.location.href); }} style={{ padding: '7px 20px', fontSize: '0.85rem' }}>
-                Share Profile
+              <button onClick={() => navigator.clipboard.writeText(window.location.href)} className="btn-secondary" style={{ padding: '12px 32px', borderRadius: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <Share2 size={18} /> Share Profile
               </button>
             </div>
           </div>
         </div>
-
-        {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border-light)' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '1.4rem', fontWeight: '800' }}>{posts.length.toLocaleString()}</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Posts</div>
-          </div>
-          <div 
-            style={{ textAlign: 'center', cursor: 'pointer' }} 
-            onClick={() => setShowFollows({ type: 'followers', userId: user.id })}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-          >
-            <div style={{ fontSize: '1.4rem', fontWeight: '800' }}>{(profile?.followers_count || 0).toLocaleString()}</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Followers</div>
-          </div>
-          <div 
-            style={{ textAlign: 'center', cursor: 'pointer' }} 
-            onClick={() => setShowFollows({ type: 'following', userId: user.id })}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-          >
-            <div style={{ fontSize: '1.4rem', fontWeight: '800' }}>{(profile?.following_count || 0).toLocaleString()}</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Following</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '1.4rem', fontWeight: '800' }}>{totalLikes.toLocaleString()}</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Likes</div>
-          </div>
-        </div>
       </div>
 
-      {/* Earnings */}
-      <div style={{
-        background: 'linear-gradient(135deg, #1a1040 0%, #0d2040 100%)',
-        border: '1px solid rgba(139,92,246,0.3)',
-        borderRadius: '16px', padding: '20px', marginBottom: '24px',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
+      {/* Stats Card */}
+      <div className="glass-card" style={{ padding: '32px', borderRadius: '32px', marginBottom: '24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', textAlign: 'center', border: '1px solid var(--border-light)' }}>
         <div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Creator Earnings</div>
-          <div style={{ fontSize: '2rem', fontWeight: '800' }} className="text-gradient">${totalEarnings.toFixed(2)}</div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Total tips received</div>
+          <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(139,92,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <FileText size={24} color="#8b5cf6" />
+          </div>
+          <div style={{ fontSize: '1.4rem', fontWeight: '900' }}>{posts.length}</div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Posts</div>
         </div>
-        <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <DollarSign size={28} color="white" />
+        <div onClick={() => setShowFollows({ type: 'followers', userId: user.id })} style={{ cursor: 'pointer' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(6,182,212,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <User size={24} color="#06b6d4" />
+          </div>
+          <div style={{ fontSize: '1.4rem', fontWeight: '900' }}>{profile?.followers_count || 0}</div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Followers</div>
+        </div>
+        <div onClick={() => setShowFollows({ type: 'following', userId: user.id })} style={{ cursor: 'pointer' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(245,158,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <Users size={24} color="#f59e0b" />
+          </div>
+          <div style={{ fontSize: '1.4rem', fontWeight: '900' }}>{profile?.following_count || 0}</div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Following</div>
+        </div>
+        <div>
+          <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(236,72,153,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <Heart size={24} color="#ec4899" />
+          </div>
+          <div style={{ fontSize: '1.4rem', fontWeight: '900' }}>{totalLikes}</div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Likes</div>
         </div>
       </div>
 
-      {/* Creator Tools Section (Especially for Mobile) */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <Layout size={20} style={{ color: 'var(--accent-neon)' }} />
-          <h2 style={{ fontWeight: '700', fontSize: '1.1rem' }}>Creator Studio</h2>
+      {/* Creator Earnings Card */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)',
+        borderRadius: '32px', padding: '32px', marginBottom: '40px',
+        position: 'relative', overflow: 'hidden', border: '1px solid rgba(139,92,246,0.3)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+      }}>
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1rem', fontWeight: '600', marginBottom: '8px' }}>Creator Earnings</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <h2 style={{ fontSize: '3rem', fontWeight: '900', margin: 0 }} className="text-gradient">${totalEarnings.toFixed(2)}</h2>
+          </div>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', marginTop: '4px' }}>Total tips received</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+
+        {/* Wavy Line Visualization */}
+        <div style={{ position: 'absolute', right: '120px', bottom: '40px', width: '200px', height: '80px', opacity: 0.3 }}>
+          <svg width="100%" height="100%" viewBox="0 0 100 40">
+            <path d="M0,35 Q15,35 25,25 T50,20 T75,10 T100,15" fill="none" stroke="var(--accent-secondary)" strokeWidth="2" />
+            <circle cx="25" cy="25" r="1.5" fill="var(--accent-secondary)" />
+            <circle cx="50" cy="20" r="1.5" fill="var(--accent-secondary)" />
+            <circle cx="75" cy="10" r="1.5" fill="var(--accent-secondary)" />
+            <circle cx="100" cy="15" r="1.5" fill="var(--accent-secondary)" />
+          </svg>
+        </div>
+
+        <div style={{ width: '72px', height: '72px', borderRadius: '20px', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 2, boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
+          <DollarSign size={36} color="white" />
+        </div>
+      </div>
+
+      {/* Creator Studio Section */}
+      <div style={{ marginBottom: '40px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+          <Layout size={24} style={{ color: '#8b5cf6' }} />
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '900' }}>Creator Studio</h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
           {[
-            { label: 'Analytics', icon: BarChart2, href: '/analytics', color: '#06b6d4' },
-            { label: 'Studio', icon: Video, href: '/studio', color: '#8b5cf6' },
-            { label: 'Monetize', icon: DollarSign, href: '/monetize', color: '#10b981' },
+            { title: 'Analytics', desc: 'Track your performance and audience insights', icon: BarChart2, color: '#06b6d4', href: '/analytics' },
+            { title: 'Studio', desc: 'Create and manage your content', icon: Video, color: '#8b5cf6', href: '/studio' },
+            { title: 'Monetize', desc: 'Manage earnings and tips', icon: DollarSign, color: '#10b981', href: '/monetize' },
           ].map((tool) => (
-            <a key={tool.label} href={tool.href} style={{ textDecoration: 'none' }}>
-              <div className="glass-card" style={{ 
-                padding: '16px', borderRadius: '16px', display: 'flex', flexDirection: 'column', 
-                alignItems: 'center', gap: '10px', textAlign: 'center',
-                border: `1px solid ${tool.color}33`,
-                transition: 'transform 0.2s'
-              }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                 onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                <div style={{ 
-                  width: '40px', height: '40px', borderRadius: '10px', 
-                  background: `${tool.color}11`, display: 'flex', 
-                  alignItems: 'center', justifyContent: 'center' 
-                }}>
-                  <tool.icon size={20} style={{ color: tool.color }} />
-                </div>
-                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-primary)' }}>{tool.label}</span>
+            <a key={tool.title} href={tool.href} className="glass-card" style={{ padding: '24px', borderRadius: '24px', textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid var(--border-light)' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: `${tool.color}11`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <tool.icon size={28} style={{ color: tool.color }} />
               </div>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '4px' }}>{tool.title}</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.5' }}>{tool.desc}</p>
+              </div>
+              <ChevronRight size={20} style={{ color: 'var(--text-muted)', marginTop: 'auto' }} />
             </a>
           ))}
         </div>
       </div>
 
-      {/* Posts Grid */}
+      {/* Posts Section */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <Grid3x3 size={20} style={{ color: 'var(--accent-secondary)' }} />
-          <h2 style={{ fontWeight: '700', fontSize: '1.1rem' }}>Your Posts</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Sparkles size={24} style={{ color: '#06b6d4' }} />
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '900' }}>Your Posts</h2>
+          </div>
+          <button onClick={() => router.push('/studio')} style={{ color: '#8b5cf6', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            View all posts <ChevronRight size={18} />
+          </button>
         </div>
-        
+
         {posts.length > 0 ? (
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(3, 1fr)', 
-            gap: '4px',
-            marginBottom: '40px'
-          }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
             {posts.map((post) => (
               <div 
-                key={post.id} 
-                onClick={() => setSelectedPost(post)}
-                style={{ 
-                  aspectRatio: '1/1', 
-                  background: 'var(--bg-glass)', 
-                  cursor: 'pointer',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  borderRadius: '4px'
-                }}
+                key={post.id}
+                className="glass-card"
+                style={{ padding: '20px', borderRadius: '24px', cursor: 'pointer', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '16px' }}
+                onClick={() => router.push(`/post/${post.id}`)}
               >
-                {post.media_urls?.[0] ? (
-                  post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
-                    <video src={post.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <img src={post.media_urls[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  )
-                ) : (
-                  <div style={{ padding: '8px', fontSize: '0.75rem', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    {post.content.substring(0, 50)}...
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--text-primary)', lineHeight: '1.4' }}>
+                    {post.content ? (post.content.length > 60 ? post.content.substring(0, 60) + '...' : post.content) : 'Post Content'}
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); handleDeletePost(post.id); }} style={{ color: 'var(--text-muted)' }} className="hover-scale"><Trash2 size={16} /></button>
+                </div>
+                
+                {post.media_urls?.[0] && (
+                  <div style={{ width: '100%', aspectRatio: '16/9', borderRadius: '16px', overflow: 'hidden', background: '#000' }}>
+                    {post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
+                      <video src={post.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <img src={post.media_urls[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )}
                   </div>
                 )}
-                
-                {/* Hover Overlay */}
-                <div style={{ 
-                  position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px',
-                  opacity: 0, transition: 'opacity 0.2s', color: 'white'
-                }} onMouseEnter={(e) => e.currentTarget.style.opacity = '1'} onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Heart size={18} fill="white" /> {post.like_count || 0}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MessageCircle size={18} fill="white" /> {post.comment_count || 0}</span>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid var(--border-light)' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                    {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                  <div style={{ display: 'flex', gap: '16px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700' }}>
+                      <Heart size={16} /> {post.like_count || 0}
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700' }}>
+                      <MessageCircle size={16} /> {post.comment_count || 0}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="glass-card" style={{ padding: '48px', textAlign: 'center', borderRadius: '16px' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '12px' }}>✍️</div>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>No posts yet. Share something!</p>
-            <a href="/" className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none', padding: '10px 24px' }}>Create your first post</a>
+          <div className="glass-card" style={{ padding: '60px', textAlign: 'center', borderRadius: '32px' }}>
+            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--bg-glass)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+              <FileText size={40} color="var(--text-muted)" />
+            </div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '8px' }}>No posts yet</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Start sharing your premium content with the community.</p>
+            <button onClick={() => router.push('/studio')} className="btn-primary">Create Your First Post</button>
           </div>
         )}
       </div>
-
-      {/* Post Detail Modal */}
-      {selectedPost && (
-        <div style={{ 
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 1000, 
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' 
-        }} onClick={() => setSelectedPost(null)}>
-          <div className="glass-card" style={{ 
-            width: '100%', maxWidth: '900px', maxHeight: '90vh', 
-            display: 'flex', flexDirection: isMobile ? 'column' : 'row',
-            overflow: 'hidden', borderRadius: '12px'
-          }} onClick={e => e.stopPropagation()}>
-            
-            {/* Media Area */}
-            <div style={{ 
-              flex: 1.5, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              maxHeight: isMobile ? '40vh' : 'none'
-            }}>
-              {selectedPost.media_urls?.[0] ? (
-                selectedPost.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
-                  <video src={selectedPost.media_urls[0]} controls autoPlay style={{ width: '100%', maxHeight: '100%', display: 'block' }} />
-                ) : (
-                  <img src={selectedPost.media_urls[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                )
-              ) : (
-                <div style={{ padding: '40px', color: 'white', textAlign: 'center' }}>
-                  {selectedPost.content}
-                </div>
-              )}
-            </div>
-
-            {/* Info Area */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-light)' }}>
-              <div style={{ padding: '16px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.8rem', overflow: 'hidden' }}>
-                  {profile.avatar_url ? <img src={profile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : username[0].toUpperCase()}
-                </div>
-                <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{username}</div>
-              </div>
-              
-              <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
-                <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5' }}>{selectedPost.content}</p>
-                <div style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  {new Date(selectedPost.created_at).toLocaleDateString()}
-                </div>
-              </div>
-
-              <div style={{ padding: '16px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '16px', alignItems: 'center' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Heart size={20} /> {selectedPost.like_count || 0}</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MessageCircle size={20} /> {selectedPost.comment_count || 0}</span>
-                
-                <button 
-                  onClick={() => handleDeletePost(selectedPost.id)}
-                  style={{ 
-                    marginLeft: 'auto', background: 'rgba(239,68,68,0.1)', color: '#ef4444', 
-                    border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' 
-                  }}
-                  title="Delete Post"
-                >
-                  <Trash2 size={20} />
-                </button>
-                
-                <button onClick={() => router.push(`/post/${selectedPost.id}`)} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>View Full</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
