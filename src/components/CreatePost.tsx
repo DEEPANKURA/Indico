@@ -40,6 +40,11 @@ export default function CreatePost({
       const newUrls: string[] = [];
 
       for (const file of Array.from(files)) {
+        // File size limit: 200MB
+        if (file.size > 200 * 1024 * 1024) {
+          throw new Error(`File "${file.name}" is too large. Maximum size is 200MB.`);
+        }
+
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
         const filePath = `${user.id}/${fileName}`;
@@ -59,6 +64,7 @@ export default function CreatePost({
 
       setMediaUrls(prev => [...prev, ...newUrls]);
     } catch (err: any) {
+      console.error('Upload error:', err);
       setError(err.message || 'Failed to upload media');
     } finally {
       setIsUploading(false);
