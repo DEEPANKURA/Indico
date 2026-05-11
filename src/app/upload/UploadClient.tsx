@@ -6,7 +6,7 @@ import {
   Upload, Image as ImageIcon, Video as VideoIcon, Film, X, Loader2, 
   CheckCircle, Music, Volume2, Scissors, Settings2, Sparkles, 
   Type, Filter, Tag, AtSign, ChevronLeft, ChevronRight, Plus, Minus,
-  Trash2, Layers, Smile
+  Trash2, Layers, Smile, AlertCircle
 } from 'lucide-react';
 import MusicSelector from '@/components/MusicSelector';
 import { uploadMediaAction } from '@/app/actions/post';
