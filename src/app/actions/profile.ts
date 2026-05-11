@@ -42,7 +42,39 @@ export async function updateProfileAction(formData: FormData) {
   }
 }
 
+export async function updateAvatarUrlAction(url: string) {
+  try {
+    const supabase = await createClient();
+    const { data, error: userError } = await supabase.auth.getUser();
+    const user = data?.user;
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ 
+        avatar_url: url, 
+        updated_at: new Date().toISOString() 
+      } as any)
+      .eq('id', user.id);
+
+    if (updateError) throw updateError;
+
+    await supabase.auth.updateUser({
+      data: { avatar_url: url }
+    });
+    
+    revalidatePath('/profile');
+    revalidatePath('/settings');
+    revalidatePath('/');
+    
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function uploadAvatarAction(formData: FormData) {
+  // Legacy server-side upload. Still works for small files but client-side is preferred.
   try {
     const supabase = await createClient();
     const { data, error: userError } = await supabase.auth.getUser();
@@ -54,7 +86,7 @@ export async function uploadAvatarAction(formData: FormData) {
       return { success: false, error: 'No valid image file provided' };
     }
 
-    // File size limit: 10MB
+    // File size limit: 10MB (but Netlify might reject at 6MB)
     if (file.size > 10 * 1024 * 1024) {
       return { success: false, error: 'File size too large. Max 10MB allowed.' };
     }
@@ -71,36 +103,7 @@ export async function uploadAvatarAction(formData: FormData) {
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
     const avatarUrlWithVersion = `${publicUrl}?v=${Date.now()}`;
 
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ 
-        avatar_url: avatarUrlWithVersion, 
-        updated_at: new Date().toISOString() 
-      } as any)
-      .eq('id', user.id);
-
-    if (updateError) {
-      const username = user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 5)}`;
-      const { error: upsertError } = await supabase
-        .from('profiles')
-        .upsert({ 
-          id: user.id,
-          username: username,
-          avatar_url: avatarUrlWithVersion, 
-          updated_at: new Date().toISOString() 
-        } as any);
-      if (upsertError) throw upsertError;
-    }
-
-    await supabase.auth.updateUser({
-      data: { avatar_url: avatarUrlWithVersion }
-    });
-    
-    revalidatePath('/profile');
-    revalidatePath('/settings');
-    revalidatePath('/');
-    
-    return { success: true, avatarUrl: avatarUrlWithVersion };
+    return await updateAvatarUrlAction(avatarUrlWithVersion);
   } catch (err: any) {
     console.error('Avatar Upload Error:', err);
     return { success: false, error: err.message };

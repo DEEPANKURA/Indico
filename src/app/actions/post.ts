@@ -13,6 +13,7 @@ function getGenAI() {
   return genAIInstance;
 }
 
+
 export async function createPostAction(
   content: string, 
   mediaUrls: string[], 
@@ -33,28 +34,36 @@ export async function createPostAction(
     // AI Safety Check
     let isFlagged = false;
     let safetyScore = 100;
-    let confidenceScore = 1.0;
 
     const genAI = getGenAI();
     if (genAI) {
+      // Run AI moderation in a non-blocking way if possible, or with a strict timeout
+      // For now, we'll keep it but optimize the prompt and use a faster model
       try {
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const result = await model.generateContent([
-          `Check this social media post for safety. Content: "${content}". Media URL: ${mediaUrl}. ` +
-          `Return JSON: { "is_flagged": boolean, "safety_score": number(0-100), "confidence": number(0-1) }`
+        
+        // We wrap it in a promise with a timeout to ensure it doesn't hang the upload
+        const moderationPromise = model.generateContent([
+          `Check post safety. Content: "${content.substring(0, 500)}". Media URL: ${mediaUrl}. ` +
+          `Return JSON: { "is_flagged": boolean, "safety_score": number }`
         ]);
+
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('AI Timeout')), 3000)
+        );
+
+        const result: any = await Promise.race([moderationPromise, timeoutPromise]);
         const responseText = result.response.text();
         
-        // Robust JSON extraction
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
           isFlagged = parsed.is_flagged ?? false;
           safetyScore = parsed.safety_score ?? 100;
-          confidenceScore = parsed.confidence ?? 1.0;
         }
       } catch (err) {
-        console.error('AI Moderation failed:', err);
+        console.warn('AI Moderation skipped or timed out:', err);
+        // We continue anyway to ensure the post is created
       }
     }
 
