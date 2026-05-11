@@ -20,15 +20,21 @@ export async function uploadMediaAction(formData: FormData) {
     if (!user) return { success: false, error: 'Unauthorized' };
 
     const file = formData.get('file') as File;
-    const content = formData.get('content') as string;
+    const content = formData.get('caption') as string; // User calls it caption in frontend but it maps to content in DB
     const communityId = formData.get('community_id') as string;
     const musicInfoStr = formData.get('music_info') as string;
     const videoEditingStr = formData.get('video_editing') as string;
+    const tagsStr = formData.get('tags') as string;
+    const mentionsStr = formData.get('mentions') as string;
+    const overlaysStr = formData.get('overlays') as string;
 
-    if (!file) return { success: false, error: 'No file provided' };
-
+    const tags = tagsStr ? JSON.parse(tagsStr) : [];
+    const mentions = mentionsStr ? JSON.parse(mentionsStr) : [];
+    const overlays = overlaysStr ? JSON.parse(overlaysStr) : null;
     const musicInfo = musicInfoStr ? JSON.parse(musicInfoStr) : null;
     const videoEditing = videoEditingStr ? JSON.parse(videoEditingStr) : null;
+
+    if (!file) return { success: false, error: 'No file provided' };
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
@@ -82,7 +88,10 @@ export async function uploadMediaAction(formData: FormData) {
       music_volume: musicInfo?.volume ?? 0.5,
       video_volume: videoEditing?.volume ?? 1.0,
       video_trim_start: videoEditing?.trimStart ?? 0,
-      video_trim_end: videoEditing?.trimEnd ?? null
+      video_trim_end: videoEditing?.trimEnd ?? null,
+      tags: tags,
+      mentions: mentions,
+      overlays: overlays
     } as any);
 
     if (dbError) throw dbError;
