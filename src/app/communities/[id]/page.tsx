@@ -148,7 +148,18 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         shares: '0',
         tags: p.tags || [],
         mentions: p.mentions || [],
-        overlays: p.overlays
+        overlays: p.overlays || undefined,
+        timeAgo: new Date(p.created_at).toLocaleDateString(),
+        mediaUrl: p.media_urls?.[0],
+        mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
+        musicUrl: p.music_url,
+        musicTitle: p.music_title,
+        musicArtist: p.music_artist,
+        musicStartTime: p.music_start_time,
+        musicVolume: p.music_volume,
+        videoVolume: p.video_volume,
+        videoTrimStart: p.video_trim_start,
+        videoTrimEnd: p.video_trim_end,
       })) || [];
 
       setPosts(mappedPosts);
@@ -163,134 +174,112 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
     fetchCommunityData();
   }, [id]);
 
-  const handleJoin = async () => {
+  const handleJoinLeave = async () => {
     if (!user) {
       router.push('/auth');
       return;
     }
-    const res = await joinCommunityAction(id);
-    if (res.success) {
-      fetchCommunityData();
-    } else {
-      alert(res.error);
-    }
-  };
 
-  const handleLeave = async () => {
-    if (confirm('Are you sure you want to leave this community?')) {
+    if (isMember) {
       const res = await leaveCommunityAction(id);
-      if (res.success) {
-        fetchCommunityData();
-      }
+      if (res.success) fetchCommunityData();
+    } else {
+      const res = await joinCommunityAction(id);
+      if (res.success) fetchCommunityData();
     }
   };
 
   const handleAcceptDecline = async (userId: string, accept: boolean) => {
     const res = await handleJoinRequestAction(id, userId, accept);
-    if (res.success) {
-      fetchCommunityData();
-    }
+    if (res.success) fetchCommunityData();
   };
 
   const handleInvite = async (userId: string) => {
-    const res = await inviteToCommunityAction(id, userId);
+    const res = await inviteToCommunityAction(id as string, userId);
     if (res.success) {
+      fetchCommunityData();
       setInviteList(prev => prev.filter(u => u.id !== userId));
-      alert('Invite sent!');
     }
   };
 
+  const handleKick = async (userId: string) => {
+    if (!confirm('Are you sure you want to kick this member?')) return;
+    const res = await kickMemberAction(id, userId);
+    if (res.success) fetchCommunityData();
+  };
+
+  const handleToggleRole = async (userId: string, currentRole: string) => {
+    const nextRole = currentRole === 'moderator' ? 'member' : 'moderator';
+    const res = await setMemberRoleAction(id, userId, nextRole);
+    if (res.success) fetchCommunityData();
+  };
+
   const handleDelete = async () => {
-    if (confirm('PERMANENTLY DELETE this community? This cannot be undone.')) {
+    if (confirm('Are you sure you want to delete this community? This cannot be undone.')) {
       const res = await deleteCommunityAction(id);
       if (res.success) router.push('/communities');
     }
   };
 
-  const handleKick = async (userId: string) => {
-    if (confirm('Kick this member?')) {
-      const res = await kickMemberAction(id, userId);
-      if (res.success) fetchCommunityData();
-    }
-  };
-
-  const handleToggleRole = async (userId: string, currentRole: string) => {
-    const newRole = currentRole === 'moderator' ? 'member' : 'moderator';
-    const res = await setMemberRoleAction(id, userId, newRole);
-    if (res.success) fetchCommunityData();
-  };
-
-  if (loading) return (
-    <div style={{ padding: '100px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-      <Loader2 className="animate-spin" style={{ margin: '0 auto 12px' }} />
-      Loading community...
-    </div>
-  );
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '100px' }}>
+        <Loader2 className="animate-spin" size={40} style={{ color: 'var(--accent-primary)' }} />
+      </div>
+    );
+  }
 
   if (!community) return null;
 
   const isOwner = userRole === 'owner' || community.creator_id === user?.id;
-  const isMod = isOwner || userRole === 'moderator';
+  const isMod = userRole === 'moderator' || isOwner;
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '10px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <button onClick={() => router.back()} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: '700' }}>
-          <ArrowLeft size={20} /> Back
-        </button>
-      </div>
-
-      <div className="glass-card" style={{ padding: '0', borderRadius: '32px', marginBottom: '32px', overflow: 'hidden' }}>
-        <div style={{ height: '160px', background: community.color || 'var(--accent-primary)', opacity: 0.8, position: 'relative' }}>
-          <div style={{ position: 'absolute', bottom: '-40px', left: '32px', width: '100px', height: '100px', borderRadius: '28px', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', border: '4px solid var(--bg-primary)' }}>
-            <Users size={48} style={{ color: community.color || 'var(--accent-primary)' }} />
-          </div>
+    <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '100px' }}>
+      {/* Community Header */}
+      <div className="glass-card" style={{ borderRadius: '24px', overflow: 'hidden', marginBottom: '24px' }}>
+        <div style={{ 
+          height: '240px', 
+          background: community.color || 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <Users size={80} color="white" style={{ opacity: 0.3 }} />
         </div>
-
-        <div style={{ padding: '60px 32px 32px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
-            <div style={{ flex: 1, minWidth: '300px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                <h1 style={{ margin: 0, fontSize: '2.2rem', fontWeight: '900' }}>{community.name}</h1>
-                {community.is_public ? <Globe size={20} style={{ color: 'var(--text-muted)' }} /> : <Lock size={20} style={{ color: 'var(--accent-secondary)' }} />}
+        
+        <div style={{ padding: '24px', position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '900' }}>{community.name}</h1>
+                {community.is_public ? <Globe size={18} style={{ color: 'var(--text-muted)' }} /> : <Lock size={18} style={{ color: 'var(--text-muted)' }} />}
               </div>
-              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '1.1rem', maxWidth: '600px' }}>{community.description || 'Welcome to our community!'}</p>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem' }}>{community.description}</p>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '20px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Users size={16} /> {community.member_count || 0} members
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {community.is_public ? <Globe size={16} /> : <Lock size={16} />} 
-                  {community.is_public ? 'Public' : 'Private'}
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.9rem', fontWeight: '700' }}>
+                  <Users size={16} />
+                  <span>{community.member_count} members</span>
+                </div>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
               {isMod && (
-                <button onClick={() => setShowInviteModal(true)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', borderRadius: '16px' }}>
+                <button 
+                  onClick={() => setShowInviteModal(true)}
+                  className="hover-glass"
+                  style={{ background: 'var(--bg-secondary)', border: 'none', color: 'var(--text-primary)', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
                   <UserPlus size={18} /> Invite
                 </button>
               )}
-              
-              {membershipStatus === 'joined' ? (
-                <button onClick={handleLeave} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', borderRadius: '16px', color: '#ef4444' }}>
-                  <LogOut size={18} /> Leave
-                </button>
-              ) : membershipStatus === 'pending' ? (
-                <button disabled className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', borderRadius: '16px', opacity: 0.7 }}>
-                  <Loader2 size={18} className="animate-spin" /> Pending
-                </button>
-              ) : membershipStatus === 'invited' ? (
-                <button onClick={handleJoin} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', borderRadius: '16px' }}>
-                  <Check size={18} /> Accept Invite
-                </button>
-              ) : (
-                <button onClick={handleJoin} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '16px', fontSize: '1rem', fontWeight: '800', boxShadow: `0 10px 20px ${community.color || 'var(--accent-primary)'}44` }}>
-                  {community.is_public ? 'Join Community' : 'Request to Join'}
-                </button>
-              )}
+              <button 
+                onClick={handleJoinLeave}
+                className={isMember ? "btn-secondary" : "btn-primary"}
+                style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: '800' }}
+              >
+                {membershipStatus === 'joined' ? 'Leave' : membershipStatus === 'pending' ? 'Pending' : community.is_public ? 'Join' : 'Request Access'}
+              </button>
             </div>
           </div>
         </div>
@@ -349,7 +338,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                     Only members can see posts in this community.
                   </p>
                   {membershipStatus === 'none' && (
-                    <button onClick={handleJoin} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px' }}>Request Access</button>
+                    <button onClick={handleJoinLeave} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px' }}>Request Access</button>
                   )}
                 </div>
               ) : (
@@ -475,43 +464,55 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
           </div>
 
           <div className="glass-card" style={{ padding: '20px', borderRadius: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <Shield size={20} style={{ color: 'var(--accent-secondary)' }} />
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '800' }}>Rules</h3>
-            </div>
-            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <li>Be respectful to all members</li>
-              <li>No spam or self-promotion</li>
-              <li>Post relevant content only</li>
-              <li>Follow platform guidelines</li>
-            </ul>
+             <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', fontWeight: '800' }}>Rules</h3>
+             <ul style={{ margin: 0, padding: '0 0 0 16px', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+               <li>Be respectful to all members.</li>
+               <li>No spam or self-promotion.</li>
+               <li>Post relevant content only.</li>
+             </ul>
           </div>
         </div>
       </div>
 
       {/* Invite Modal */}
       {showInviteModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div className="glass-card" style={{ width: '100%', maxWidth: '450px', padding: '32px', borderRadius: '32px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h3 style={{ margin: 0, fontWeight: '900' }}>Invite Followers</h3>
-              <button onClick={() => setShowInviteModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24} /></button>
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          padding: '20px'
+        }} onClick={() => setShowInviteModal(false)}>
+          <div className="glass-card" style={{
+            width: '100%', maxWidth: '400px', padding: '24px', borderRadius: '24px',
+            maxHeight: '80vh', overflowY: 'auto'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>Invite Followers</h2>
+              <button onClick={() => setShowInviteModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <X size={24} />
+              </button>
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '400px', overflowY: 'auto' }} className="no-scrollbar">
-              {inviteList.length > 0 ? inviteList.map((f) => (
-                <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '16px', background: 'var(--bg-secondary)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <img src={f.avatar_url || ''} style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
-                    <div>
-                      <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{f.full_name}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>@{f.username}</div>
-                    </div>
+
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '20px' }}>
+              Add people you follow directly to {community.name}.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {inviteList.length > 0 ? inviteList.map((u) => (
+                <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', borderRadius: '12px' }} className="hover-glass">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <img src={u.avatar_url || ''} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                    <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>{u.username}</span>
                   </div>
-                  <button onClick={() => handleInvite(f.id)} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>Invite</button>
+                  <button 
+                    onClick={() => handleInvite(u.id)}
+                    style={{ background: 'var(--accent-primary)', border: 'none', color: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer' }}
+                  >
+                    Add
+                  </button>
                 </div>
               )) : (
-                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>No followers available to invite.</div>
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No more people to invite.</p>
               )}
             </div>
           </div>
