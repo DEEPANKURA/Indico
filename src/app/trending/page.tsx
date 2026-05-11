@@ -120,8 +120,8 @@ export default function TrendingPage() {
                   musicStartTime: post.music_start_time,
                   musicVolume: post.music_volume,
                   videoVolume: post.video_volume,
-                  video_trim_start: post.video_trim_start,
-                  video_trim_end: post.video_trim_end
+                  videoTrimStart: post.video_trim_start,
+                  videoTrimEnd: post.video_trim_end
                 }}
               />
           </div>

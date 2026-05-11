@@ -106,3 +106,45 @@ export async function uploadAvatarAction(formData: FormData) {
     return { success: false, error: err.message };
   }
 }
+
+export async function createStoryAction(formData: FormData) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const mediaUrl = formData.get('media_url') as string;
+    const mediaType = formData.get('media_type') as string;
+    const overlayText = formData.get('overlay_text') as string;
+    const textColor = formData.get('text_color') as string;
+    const textX = parseFloat(formData.get('text_x') as string || '50');
+    const textY = parseFloat(formData.get('text_y') as string || '50');
+    const mentionsStr = formData.get('mentions') as string;
+    const mentions = mentionsStr ? mentionsStr.split(',') : [];
+
+    const { data, error } = await supabase
+      .from('stories')
+      .insert({
+        user_id: user.id,
+        media_url: mediaUrl,
+        media_type: mediaType,
+        overlay_text: overlayText,
+        text_color: textColor,
+        text_x: textX,
+        text_y: textY,
+        mentions: mentions,
+        music_url: formData.get('music_url') as string || null,
+        music_title: formData.get('music_title') as string || null,
+        music_artist: formData.get('music_artist') as string || null,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      } as any)
+      .select('*, profiles:user_id(username, avatar_url)')
+      .single();
+
+    if (error) throw error;
+    revalidatePath('/');
+    return { success: true, story: data };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}

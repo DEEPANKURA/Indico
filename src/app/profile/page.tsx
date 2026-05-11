@@ -37,7 +37,7 @@ export default function ProfilePage() {
 
     const [{ data: profile }, { data: posts }, { data: earnings }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('posts').select('id, content, like_count, comment_count, created_at, media_urls').eq('author_id', user.id).is('community_id', null).order('created_at', { ascending: false }),
+      supabase.from('posts').select('id, content, like_count, comment_count, created_at, media_urls, music_url, music_title, music_artist, music_start_time, music_volume, video_volume, video_trim_start, video_trim_end').eq('author_id', user.id).is('community_id', null).order('created_at', { ascending: false }),
       supabase.from('transactions').select('amount').eq('recipient_id', user.id).eq('status', 'completed'),
     ]);
 
