@@ -185,12 +185,13 @@ export default function UploadClient() {
         position: 'relative', 
         width: '100%', 
         aspectRatio: type === 'reel' ? '9/16' : '1/1',
-        maxHeight: '600px',
+        maxHeight: '70vh',
         backgroundColor: '#000',
-        borderRadius: '12px',
+        borderRadius: '24px',
         overflow: 'hidden',
         boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-        cursor: step === 'EDIT' ? 'crosshair' : 'default'
+        cursor: step === 'EDIT' ? 'crosshair' : 'default',
+        margin: '0 auto'
       }}
     >
       <div style={{ width: '100%', height: '100%', filter: selectedFilter, transition: 'filter 0.3s' }}>
@@ -220,7 +221,6 @@ export default function UploadClient() {
           onMouseDown={(e) => {
             if (step !== 'EDIT') return;
             setActiveOverlayId(overlay.id);
-            // Basic drag logic could go here
           }}
           style={{
             position: 'absolute',
@@ -264,13 +264,13 @@ export default function UploadClient() {
 
   const renderSelectStep = () => (
     <div style={{ textAlign: 'center', padding: '40px 0' }}>
-      <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '32px' }}>
+      <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '32px', flexWrap: 'wrap' }}>
         {(['photo', 'video', 'reel'] as UploadType[]).map((t) => (
           <button 
             key={t}
             onClick={() => { setType(t); setFile(null); setPreview(null); }}
             style={{
-              padding: '16px 24px',
+              padding: '16px 20px',
               borderRadius: '20px',
               border: '1px solid var(--border-light)',
               background: type === t ? 'var(--accent-secondary)22' : 'var(--bg-glass)',
@@ -280,13 +280,13 @@ export default function UploadClient() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '12px',
-              width: '120px',
+              gap: '8px',
+              width: '100px',
               transition: 'all 0.2s'
             }}
           >
-            {t === 'photo' ? <ImageIcon size={28} /> : t === 'video' ? <VideoIcon size={28} /> : <Film size={28} />}
-            <span style={{ textTransform: 'capitalize' }}>{t}</span>
+            {t === 'photo' ? <ImageIcon size={24} /> : t === 'video' ? <VideoIcon size={24} /> : <Film size={24} />}
+            <span style={{ textTransform: 'capitalize', fontSize: '0.8rem' }}>{t}</span>
           </button>
         ))}
       </div>
@@ -298,24 +298,30 @@ export default function UploadClient() {
         onClick={() => fileRef.current?.click()}
         style={{
           border: `3px dashed ${dragging ? 'var(--accent-secondary)' : 'var(--border-light)'}`,
-          borderRadius: '32px', padding: '100px 40px',
+          borderRadius: '32px', padding: '60px 20px',
           background: dragging ? 'rgba(139,92,246,0.05)' : 'var(--bg-glass)',
           cursor: 'pointer',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
-        <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 10px 20px rgba(0,0,0,0.1)' }}>
-          <Upload size={36} style={{ color: 'var(--text-secondary)' }} />
+        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 10px 20px rgba(0,0,0,0.1)' }}>
+          <Upload size={28} style={{ color: 'var(--text-secondary)' }} />
         </div>
-        <h2 style={{ fontWeight: '900', fontSize: '1.8rem', marginBottom: '12px' }}>Upload Content</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', fontSize: '1rem' }}>Drag and drop or click to browse files</p>
-        <button className="btn-primary" style={{ padding: '16px 48px', borderRadius: '16px', fontSize: '1.1rem' }}>Select From Computer</button>
+        <h2 style={{ fontWeight: '900', fontSize: '1.5rem', marginBottom: '8px' }}>Upload Content</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.9rem' }}>Drag and drop or click to browse</p>
+        <button className="btn-primary" style={{ padding: '12px 32px', borderRadius: '14px', fontSize: '1rem' }}>Browse Files</button>
+        <input type="file" ref={fileRef} hidden accept={acceptMap[type]} onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
       </div>
     </div>
   );
 
   const renderEditStep = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '32px' }}>
+    <div className="studio-layout" style={{ 
+      display: 'grid', 
+      gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+      gap: '24px',
+      paddingBottom: '80px'
+    }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {renderPreview()}
         
@@ -325,7 +331,7 @@ export default function UploadClient() {
             <Filter size={18} style={{ color: 'var(--accent-secondary)' }} />
             <h3 style={{ fontWeight: '800', fontSize: '1rem', margin: 0 }}>Filters</h3>
           </div>
-          <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '10px' }}>
+          <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '10px' }} className="no-scrollbar">
             {FILTERS.map((f) => (
               <button
                 key={f.name}
@@ -450,51 +456,51 @@ export default function UploadClient() {
         {type !== 'photo' && videoDuration > 0 && (
           <div className="glass-card" style={{ padding: '20px', borderRadius: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <Scissors size={18} style={{ color: 'var(--accent-primary)' }} />
+              <Scissors size={18} style={{ color: 'var(--accent-secondary)' }} />
               <h3 style={{ fontWeight: '800', margin: 0, fontSize: '0.9rem' }}>Trim Video</h3>
             </div>
-            <div style={{ position: 'relative', height: '20px', marginBottom: '24px' }}>
-              <div style={{ position: 'absolute', top: '8px', left: 0, right: 0, height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px' }} />
-              <input 
-                type="range" min="0" max={videoDuration} step="0.1"
-                value={trimStart} onChange={(e) => setTrimStart(Math.min(parseFloat(e.target.value), trimEnd - 0.5))}
-                style={{ position: 'absolute', width: '100%', top: 0, zIndex: 2, accentColor: 'var(--accent-primary)' }}
-              />
-              <input 
-                type="range" min="0" max={videoDuration} step="0.1"
-                value={trimEnd} onChange={(e) => setTrimEnd(Math.max(parseFloat(e.target.value), trimStart + 0.5))}
-                style={{ position: 'absolute', width: '100%', top: 0, zIndex: 1, accentColor: 'var(--accent-secondary)' }}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: '700' }}>
-              <span>Start: {trimStart.toFixed(1)}s</span>
-              <span style={{ color: 'var(--text-secondary)' }}>Dur: {(trimEnd - trimStart).toFixed(1)}s</span>
-              <span>End: {trimEnd.toFixed(1)}s</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '0.7rem' }}>Start: {trimStart.toFixed(1)}s</span>
+                  <span style={{ fontSize: '0.7rem' }}>End: {trimEnd.toFixed(1)}s</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input 
+                    type="range" min="0" max={videoDuration} step="0.1" value={trimStart} 
+                    onChange={(e) => setTrimStart(Math.min(parseFloat(e.target.value), trimEnd - 1))} 
+                    style={{ width: '100%', accentColor: 'var(--accent-secondary)' }} 
+                  />
+                </div>
+                <input 
+                  type="range" min="0" max={videoDuration} step="0.1" value={trimEnd} 
+                  onChange={(e) => setTrimEnd(Math.max(parseFloat(e.target.value), trimStart + 1))} 
+                  style={{ width: '100%', accentColor: 'var(--accent-secondary)' }} 
+                />
+              </div>
             </div>
           </div>
         )}
 
         <button 
           onClick={() => setStep('POST')}
-          className="btn-primary"
-          style={{ padding: '16px', borderRadius: '16px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: 'auto' }}
+          className="btn-primary" 
+          style={{ padding: '18px', borderRadius: '16px', fontWeight: '900', fontSize: '1.1rem', boxShadow: '0 10px 20px rgba(139,92,246,0.3)' }}
         >
-          Next Step <ChevronRight size={20} />
+          Next Step
         </button>
       </div>
     </div>
   );
 
   const renderPostStep = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '32px' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {renderPreview()}
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px' }}>
+        <div style={{ position: 'sticky', top: '20px' }}>
+          {renderPreview()}
+        </div>
+        
         <div className="glass-card" style={{ padding: '24px', borderRadius: '24px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '900', marginBottom: '20px' }}>Post Details</h3>
-          
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '800', color: 'var(--text-secondary)', marginBottom: '8px' }}>Caption</label>
             <textarea
@@ -599,80 +605,34 @@ export default function UploadClient() {
   }
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '20px', paddingBottom: '100px' }}>
-      {/* Header / Stepper */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ padding: '12px', borderRadius: '16px', background: 'var(--accent-secondary)22' }}>
-            <Upload size={32} style={{ color: 'var(--accent-secondary)' }} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: '2.2rem', fontWeight: '950', margin: 0, letterSpacing: '-0.02em' }}>Creator Studio</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: step === 'SELECT' ? 'var(--accent-secondary)' : '#10b981', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: '900' }}>{step !== 'SELECT' ? <CheckCircle size={12}/> : '1'}</div>
-                <span style={{ fontSize: '0.8rem', fontWeight: '800', color: step === 'SELECT' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>Select</span>
-              </div>
-              <ChevronRight size={14} color="var(--text-muted)" />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: step === 'EDIT' ? 'var(--accent-secondary)' : (step === 'POST' ? '#10b981' : 'var(--bg-secondary)'), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: '900' }}>{step === 'POST' ? <CheckCircle size={12}/> : '2'}</div>
-                <span style={{ fontSize: '0.8rem', fontWeight: '800', color: step === 'EDIT' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>Edit</span>
-              </div>
-              <ChevronRight size={14} color="var(--text-muted)" />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: step === 'POST' ? 'var(--accent-secondary)' : 'var(--bg-secondary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: '900' }}>3</div>
-                <span style={{ fontSize: '0.8rem', fontWeight: '800', color: step === 'POST' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>Post</span>
-              </div>
-            </div>
-          </div>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+        <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700' }}>
+          <ChevronLeft size={20} /> Back
+        </button>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '900' }}>{step === 'SELECT' ? 'Create New' : step === 'EDIT' ? 'Studio Edit' : 'Finalize Post'}</h1>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '700', marginTop: '4px' }}>Step {step === 'SELECT' ? '1' : step === 'EDIT' ? '2' : '3'} of 3</div>
         </div>
-        
-        {preview && step === 'EDIT' && (
-          <button onClick={() => { setFile(null); setPreview(null); setStep('SELECT'); }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: '700' }}>
-            <Trash2 size={18} /> Discard
-          </button>
-        )}
+        <div style={{ width: '60px' }} />
       </div>
+
+      {error && (
+        <div className="glass-card" style={{ padding: '16px', borderRadius: '16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <AlertCircle size={20} />
+          <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>{error}</span>
+        </div>
+      )}
 
       {step === 'SELECT' && renderSelectStep()}
       {step === 'EDIT' && renderEditStep()}
       {step === 'POST' && renderPostStep()}
 
-      <input ref={fileRef} type="file" accept={acceptMap[type]} style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-
       {showMusicSelector && (
         <MusicSelector 
-          onSelect={(track, startTime) => {
-            if (track) {
-              setSelectedMusic({ ...track, startTime });
-            } else {
-              setSelectedMusic(null);
-            }
-            setShowMusicSelector(false);
-          }} 
+          onSelect={(m) => { setSelectedMusic(m); setShowMusicSelector(false); }} 
           onClose={() => setShowMusicSelector(false)} 
         />
-      )}
-
-      {error && (
-        <div style={{ position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)', padding: '16px 32px', borderRadius: '16px', background: '#ef4444', color: 'white', zIndex: 1000, boxShadow: '0 10px 40px rgba(239,68,68,0.4)', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <X size={20} /> {error}
-        </div>
-      )}
-
-      {uploading && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: '360px', textAlign: 'center' }}>
-            <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto 40px' }}>
-              <Loader2 size={120} className="animate-spin" style={{ color: 'var(--accent-secondary)', opacity: 0.2 }} />
-              <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <h2 style={{ margin: 0, fontWeight: '900', fontSize: '1.5rem' }}>{progress}%</h2>
-              </div>
-            </div>
-            <h3 style={{ fontSize: '1.8rem', fontWeight: '950', marginBottom: '16px' }}>Mastering Your Content</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', lineHeight: '1.6' }}>We're optimizing your media for the best viewing experience on Indico.</p>
-          </div>
-        </div>
       )}
     </div>
   );
