@@ -58,6 +58,7 @@ export default function PostCard({ post }: PostCardProps) {
   const [isVideoMuted, setIsVideoMuted] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -69,25 +70,35 @@ export default function PostCard({ post }: PostCardProps) {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (videoRef.current) {
-            if (entry.isIntersecting) {
+          if (!entry.isIntersecting) {
+            // Out of view: pause everything
+            if (videoRef.current) {
+              videoRef.current.pause();
+            }
+            if (audioRef.current) {
+              audioRef.current.pause();
+              setIsPlayingMusic(false);
+            }
+          } else {
+            // In view: handle video auto-play if applicable
+            if (videoRef.current) {
               videoRef.current.volume = post.videoVolume ?? 1.0;
-              if (post.videoTrimStart) {
+              if (post.videoTrimStart && videoRef.current.currentTime < post.videoTrimStart) {
                 videoRef.current.currentTime = post.videoTrimStart;
               }
               videoRef.current.play().catch(() => {});
-            } else {
-              videoRef.current.pause();
             }
           }
         });
       },
-      { threshold: 0.6 }
+      { threshold: 0.1 }
     );
 
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
     if (videoRef.current) {
-      observer.observe(videoRef.current);
-      
       // Handle trim end during playback
       videoRef.current.ontimeupdate = () => {
         if (post.videoTrimEnd && videoRef.current && videoRef.current.currentTime >= post.videoTrimEnd) {
@@ -95,8 +106,9 @@ export default function PostCard({ post }: PostCardProps) {
         }
       };
     }
+    
     return () => observer.disconnect();
-  }, []);
+  }, [post.videoVolume, post.videoTrimStart, post.videoTrimEnd]);
   
   const handleTip = async () => {
     if (!post.authorId) return;
@@ -194,7 +206,7 @@ export default function PostCard({ post }: PostCardProps) {
   if (isDeleted) return null;
 
   return (
-    <article className="glass-card animate-fade-in" style={{ marginBottom: '24px', overflow: 'hidden' }}>
+    <article ref={cardRef as any} className="glass-card animate-fade-in" style={{ marginBottom: '24px', overflow: 'hidden' }}>
       <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Link href={`/profile/${post.authorId}`} style={{ textDecoration: 'none' }}>
