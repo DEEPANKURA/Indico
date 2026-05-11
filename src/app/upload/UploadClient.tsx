@@ -6,11 +6,9 @@ import {
   Upload, Image as ImageIcon, Video as VideoIcon, Film, X, Loader2, 
   CheckCircle, Music, Volume2, Scissors, Settings2, Sparkles, 
   Type, Filter, Tag, AtSign, ChevronLeft, ChevronRight, Plus, Minus,
-  Trash2, Layers, Smile, AlertCircle
+  Trash2, Layers, Smile, AlertCircle, Play, Bookmark, Grid3x3
 } from 'lucide-react';
 import MusicSelector from '@/components/MusicSelector';
-import { createPostAction } from '@/app/actions/post';
-import { createClient } from '@/utils/supabase/client';
 
 type UploadType = 'photo' | 'video' | 'reel';
 type Step = 'SELECT' | 'EDIT' | 'POST';
@@ -136,6 +134,7 @@ export default function UploadClient() {
     setError(null);
 
     try {
+      const { createClient } = await import('@/utils/supabase/client');
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Please login to upload media');
@@ -145,6 +144,11 @@ export default function UploadClient() {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
+
+      // File size limit: 200MB
+      if (file.size > 200 * 1024 * 1024) {
+        throw new Error('File is too large. Maximum size is 200MB.');
+      }
 
       const { error: uploadError } = await supabase.storage
         .from('media')
@@ -177,10 +181,11 @@ export default function UploadClient() {
         textItems: overlays
       };
 
+      const { createPostAction } = await import('@/app/actions/post');
       const res = await createPostAction(
         caption,
         [publicUrl],
-        undefined, // communityId not used in this specific client yet
+        undefined, 
         musicInfo,
         videoEditing,
         tags,
@@ -190,7 +195,7 @@ export default function UploadClient() {
 
       setProgress(100);
 
-      if (!res.success) throw new Error(res.error);
+      if (!res.success) throw new Error((res as any).error);
 
       setDone(true);
       setTimeout(() => router.push('/studio'), 2000);
@@ -245,7 +250,6 @@ export default function UploadClient() {
           onMouseDown={(e) => {
             if (step !== 'EDIT') return;
             setActiveOverlayId(overlay.id);
-            // Basic drag logic could go here
           }}
           style={{
             position: 'absolute',

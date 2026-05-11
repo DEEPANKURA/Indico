@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Settings, User, Camera, Save, Loader2, LogOut, Bell, Shield, CreditCard } from 'lucide-react';
-import { updateProfileAction, uploadAvatarAction } from '@/app/actions/profile';
 import { createClient } from '@/utils/supabase/client';
 
 interface Props {
@@ -28,37 +27,72 @@ export default function SettingsClient({ profile, email }: Props) {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Preview
-    setAvatarPreview(URL.createObjectURL(file));
+
+    // Set local preview immediately for optimistic UI
+    const localUrl = URL.createObjectURL(file);
+    setAvatarPreview(localUrl);
     setUploadingAvatar(true);
-    const fd = new FormData();
-    fd.append('avatar', file);
-    const result = await uploadAvatarAction(fd);
-    setUploadingAvatar(false);
-    if (result.success) {
-      if (result.avatarUrl) setAvatarPreview(result.avatarUrl);
-      setMessage({ type: 'success', text: 'Profile picture updated!' });
-      router.refresh();
-    } else {
-      setMessage({ type: 'error', text: result.error || 'Upload failed' });
+    setMessage(null);
+
+    try {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Unauthorized');
+
+      const ext = file.name.split('.').pop() || 'jpg';
+      const filePath = `${user.id}/avatar_${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const avatarUrlWithVersion = `${publicUrl}?v=${Date.now()}`;
+      
+      const { updateAvatarUrlAction } = await import('@/app/actions/profile');
+      const result = await updateAvatarUrlAction(avatarUrlWithVersion);
+      
+      if (result.success) {
+        setAvatarPreview(avatarUrlWithVersion);
+        setMessage({ type: 'success', text: 'Profile picture updated!' });
+        router.refresh();
+      } else {
+        throw new Error((result as any).error);
+      }
+    } catch (err: any) {
+      console.error('Avatar upload failed:', err);
+      setMessage({ type: 'error', text: err.message || 'Avatar upload failed' });
+      setAvatarPreview(profile?.avatar_url || null);
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
   const handleSaveProfile = async () => {
     setSaving(true);
     setMessage(null);
-    const fd = new FormData();
-    fd.append('full_name', fullName);
-    fd.append('username', username);
-    fd.append('bio', bio);
-    fd.append('website', website);
-    const result = await updateProfileAction(fd);
-    setSaving(false);
-    if (result.success) {
-      setMessage({ type: 'success', text: 'Profile saved successfully!' });
-      router.refresh();
-    } else {
-      setMessage({ type: 'error', text: result.error || 'Failed to save' });
+    try {
+      const fd = new FormData();
+      fd.append('full_name', fullName);
+      fd.append('username', username);
+      fd.append('bio', bio);
+      fd.append('website', website);
+      const { updateProfileAction } = await import('@/app/actions/profile');
+      const result = await updateProfileAction(fd);
+      if (result.success) {
+        setMessage({ type: 'success', text: 'Profile saved successfully!' });
+        router.refresh();
+      } else {
+        setMessage({ type: 'error', text: (result as any).error || 'Failed to save' });
+      }
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Connection error' });
+    } finally {
+      setSaving(false);
     }
   };
 
