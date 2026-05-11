@@ -50,7 +50,7 @@ export default function ExplorePage() {
         .limit(10);
       
       // Map posts to match PostCard expectations
-      const mappedPosts = (posts || []).map(p => ({
+      const mappedPosts = (posts as any[] || []).map((p: any) => ({
         ...p,
         authorId: p.author_id,
         author: {
@@ -113,7 +113,7 @@ export default function ExplorePage() {
       setResults(userRes.data || []);
       
       // Map posts for PostCard
-      const mapped = (postRes.data || []).map(p => ({
+      const mapped = (postRes.data as any[] || []).map((p: any) => ({
         ...p,
         authorId: p.author?.id,
         author: {
