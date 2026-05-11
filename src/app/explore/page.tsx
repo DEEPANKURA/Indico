@@ -54,10 +54,13 @@ export default function ExplorePage() {
         ...p,
         authorId: p.author_id,
         author: {
-          name: p.author.full_name || p.author.username,
-          handle: p.author.username,
-          avatar: p.author.avatar_url
+          name: p.author?.full_name || p.author?.username || 'Anonymous',
+          handle: `@${p.author?.username || 'unknown'}`,
+          avatar: p.author?.avatar_url || '',
+          isNew: false
         },
+        mediaUrl: p.media_urls?.[0],
+        mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
         likes: p.like_count || 0,
         comments: p.comment_count || 0,
         shares: "0",
@@ -112,12 +115,15 @@ export default function ExplorePage() {
       // Map posts for PostCard
       const mapped = (postRes.data || []).map(p => ({
         ...p,
-        authorId: p.author.id,
+        authorId: p.author?.id,
         author: {
-          name: p.author.full_name || p.author.username,
-          handle: p.author.username,
-          avatar: p.author.avatar_url
+          name: p.author?.full_name || p.author?.username || 'Anonymous',
+          handle: `@${p.author?.username || 'unknown'}`,
+          avatar: p.author?.avatar_url || '',
+          isNew: false
         },
+        mediaUrl: p.media_urls?.[0],
+        mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
         likes: p.like_count || 0,
         comments: p.comment_count || 0,
         shares: "0",
