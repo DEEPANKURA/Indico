@@ -1,44 +1,27 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { Play, Flame, Search } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
-import { TrendingUp, Flame, Play } from 'lucide-react';
 import ReelCard from '@/components/ReelCard';
+import Link from 'next/link';
 
 export default function TrendingPage() {
+  const supabase = createClient();
   const [reels, setReels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
 
   useEffect(() => {
     const fetchReels = async () => {
       const { data, error } = await supabase
         .from('posts')
-        .select(`
-          id,
-          content,
-          media_urls,
-          like_count,
-          comment_count,
-          music_url, music_title, music_artist, music_start_time,
-          music_volume, video_volume, video_trim_start, video_trim_end,
-          profiles:author_id ( id, username, full_name, avatar_url )
-        `)
-        .not('media_urls', 'is', null)
+        .select('*, profiles(id, username, full_name, avatar_url)')
         .is('community_id', null)
-        .order('like_count', { ascending: false })
-        .limit(10);
+        .order('engagement_score', { ascending: false })
+        .limit(20);
 
-      if (data) {
-        // Filter for videos (simple check by extension or presence of multiple URLs if we had better metadata)
-        const videoPosts = data.filter(p => 
-          p.media_urls?.[0]?.toLowerCase().match(/\.(mp4|webm|mov|m4v)$/) || 
-          p.media_urls?.[0]?.includes('video')
-        );
-        setReels(videoPosts);
-      }
+      if (data) setReels(data);
       setLoading(false);
     };
 
@@ -46,57 +29,53 @@ export default function TrendingPage() {
   }, []);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const index = Number(entry.target.getAttribute('data-index'));
-            setActiveIndex(index);
-          }
-        });
-      },
-      {
-        threshold: 0.4, // Lower threshold for better response
-        root: containerRef.current
+    const handleScroll = () => {
+      const scrollContainer = document.querySelector('.reels-container');
+      if (scrollContainer) {
+        const index = Math.round(scrollContainer.scrollTop / scrollContainer.clientHeight);
+        setActiveIndex(index);
       }
-    );
-
-    const elements = containerRef.current.querySelectorAll('.reel-item');
-    elements.forEach((el) => observer.observe(el));
-
-    return () => {
-      elements.forEach((el) => observer.unobserve(el));
-      observer.disconnect();
     };
+
+    const scrollContainer = document.querySelector('.reels-container');
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll);
+    }
+    return () => scrollContainer?.removeEventListener('scroll', handleScroll);
   }, [reels]);
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--text-secondary)' }}>
-        <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid var(--accent-primary)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh' }}>
+        <div className="animate-spin" style={{ width: '40px', height: '40px', border: '4px solid var(--accent-primary)', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
       </div>
     );
   }
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-        <TrendingUp size={28} style={{ color: 'var(--accent-secondary)' }} />
-        <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>Trending Reels</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <h1 style={{ fontWeight: '800', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Flame color="#ef4444" /> Trending Reels
+        </h1>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Link href="/explore">
+            <button className="btn-secondary" style={{ padding: '8px 16px', borderRadius: '12px' }}>
+              <Search size={18} />
+            </button>
+          </Link>
+        </div>
       </div>
 
       {reels.length > 0 ? (
         <div 
-          ref={containerRef}
+          className="reels-container no-scrollbar"
           style={{ 
-            height: 'calc(100vh - 180px)', 
+            height: 'calc(100vh - 120px)', 
             overflowY: 'scroll', 
             scrollSnapType: 'y mandatory',
             borderRadius: '20px'
           }}
-          className="hide-scrollbar"
         >
           {reels.map((post, index) => (
             <div key={post.id} className="reel-item" data-index={index}>
@@ -120,8 +99,8 @@ export default function TrendingPage() {
                   musicStartTime: post.music_start_time,
                   musicVolume: post.music_volume,
                   videoVolume: post.video_volume,
-                  video_trim_start: post.video_trim_start,
-                  video_trim_end: post.video_trim_end
+                  videoTrimStart: post.video_trim_start,
+                  videoTrimEnd: post.video_trim_end
                 }}
               />
           </div>
@@ -138,13 +117,9 @@ export default function TrendingPage() {
 
       {/* CSS to hide scrollbar */}
       <style jsx global>{`
-        .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .hide-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .reel-item { scroll-snap-align: start; height: 100%; }
       `}</style>
     </div>
   );
