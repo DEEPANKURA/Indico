@@ -49,9 +49,17 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     mediaType: (post.media_urls?.[0]?.includes('mp4') ? 'video' : 'image') as "image" | "video",
     likes: post.like_count?.toString() || "0",
     comments: post.comment_count?.toString() || "0",
-    shares: post.shares_count?.toString() || "0",
+    shares: "0",
     tags: [],
-    timeAgo: new Date(post.created_at).toLocaleDateString()
+    timeAgo: new Date(post.created_at).toLocaleDateString(),
+    musicUrl: post.music_url,
+    musicTitle: post.music_title,
+    musicArtist: post.music_artist,
+    musicStartTime: post.music_start_time,
+    musicVolume: post.music_volume,
+    videoVolume: post.video_volume,
+    videoTrimStart: post.video_trim_start,
+    videoTrimEnd: post.video_trim_end
   };
 
   return (

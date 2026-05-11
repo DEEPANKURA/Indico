@@ -4,7 +4,14 @@ import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// Initialize only when needed to avoid build-time issues with missing env vars
+let genAIInstance: any = null;
+function getGenAI() {
+  if (!genAIInstance && process.env.GEMINI_API_KEY) {
+    genAIInstance = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  }
+  return genAIInstance;
+}
 
 export async function uploadMediaAction(formData: FormData) {
   try {
@@ -13,59 +20,60 @@ export async function uploadMediaAction(formData: FormData) {
     if (!user) return { success: false, error: 'Unauthorized' };
 
     const file = formData.get('file') as File;
-    const caption = formData.get('caption') as string;
-    const communityId = formData.get('community_id') as string || undefined;
-    
-    // Music and Video Editing Info (passed as JSON strings in FormData)
+    const content = formData.get('content') as string;
+    const communityId = formData.get('community_id') as string;
     const musicInfoStr = formData.get('music_info') as string;
     const videoEditingStr = formData.get('video_editing') as string;
-    
+
+    if (!file) return { success: false, error: 'No file provided' };
+
     const musicInfo = musicInfoStr ? JSON.parse(musicInfoStr) : null;
     const videoEditing = videoEditingStr ? JSON.parse(videoEditingStr) : null;
 
-    if (!file || file.size === 0) return { success: false, error: 'No file provided' };
-
-    const ext = file.name.split('.').pop();
-    const filePath = `${user.id}/${Date.now()}.${ext}`;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+    const filePath = `${user.id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('media')
-      .upload(filePath, file, { upsert: false });
+      .upload(filePath, file);
 
     if (uploadError) throw uploadError;
 
-    const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(filePath);
+    const { data: { publicUrl } } = supabase.storage
+      .from('media')
+      .getPublicUrl(filePath);
 
-    // AI Moderation
+    // AI Safety Check
     let isFlagged = false;
-    let aiSafetyScore = 100;
-
-    if (process.env.GEMINI_API_KEY) {
+    let safetyScore = 100;
+    let confidenceScore = 1.0;
+    
+    const genAI = getGenAI();
+    if (genAI) {
       try {
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const prompt = `Analyze this social media post for safety. 
-        Note: Swimwear, beachwear, and bikinis are explicitly ALLOWED on this platform and should be considered SAFE and non-suggestive unless there is sexual violence or prohibited adult acts. 
-        Respond with only a JSON object: {"isSafe": boolean, "score": number (0-100)}. 
-        Post: "${caption}"`;
-        const result = await model.generateContent(prompt);
+        const result = await model.generateContent([
+          `Check this social media post for safety. Content: "${content}". Media URL: ${publicUrl}. ` +
+          `Return JSON: { "is_flagged": boolean, "safety_score": number(0-100), "confidence": number(0-1) }`
+        ]);
         const responseText = result.response.text();
-        const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(cleanJson);
-        
-        aiSafetyScore = parsed.score;
-        isFlagged = !parsed.isSafe || parsed.score < 50;
-      } catch (aiErr) {
-        console.error("AI Moderation failed", aiErr);
+        const parsed = JSON.parse(responseText.replace(/```json/g, '').replace(/```/g, '').trim());
+        isFlagged = parsed.is_flagged;
+        safetyScore = parsed.safety_score;
+        confidenceScore = parsed.confidence;
+      } catch (err) {
+        console.error('AI Moderation failed:', err);
       }
     }
 
-    // Create the post
-    const { error: postError } = await supabase.from('posts').insert({
+    const { error: dbError } = await supabase.from('posts').insert({
       author_id: user.id,
-      content: caption.trim(),
-      media_urls: [publicUrl],
-      ai_safety_score: aiSafetyScore,
+      content: content,
       is_flagged: isFlagged,
+      ai_safety_score: safetyScore,
+      ai_confidence_score: confidenceScore,
+      media_urls: [publicUrl],
       community_id: communityId || null,
       music_url: musicInfo?.url || null,
       music_title: musicInfo?.title || null,
@@ -77,22 +85,22 @@ export async function uploadMediaAction(formData: FormData) {
       video_trim_end: videoEditing?.trimEnd ?? null
     } as any);
 
-    if (postError) throw postError;
+    if (dbError) throw dbError;
 
     revalidatePath('/');
+    revalidatePath('/studio');
     revalidatePath('/profile');
-    if (communityId) revalidatePath(`/communities/${communityId}`);
-    
+
     return { success: true, isFlagged };
-  } catch (err: any) {
-    console.error('Upload Media Error:', err);
-    return { success: false, error: err.message };
+  } catch (error: any) {
+    console.error('Upload error:', error);
+    return { success: false, error: error.message };
   }
 }
 
 export async function createPostAction(
   content: string, 
-  mediaUrls: string[] = [], 
+  mediaUrls: string[], 
   communityId?: string,
   musicInfo?: { url: string; title: string; artist: string; startTime?: number; volume?: number },
   videoEditing?: { volume?: number; trimStart?: number; trimEnd?: number }
@@ -100,28 +108,40 @@ export async function createPostAction(
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Unauthorized');
+    if (!user) return { success: false, error: 'Unauthorized' };
 
+    const mediaUrl = mediaUrls?.[0] || '';
+
+    // AI Safety Check
     let isFlagged = false;
-    let aiSafetyScore = 100;
+    let safetyScore = 100;
+    let confidenceScore = 1.0;
 
-    if (process.env.GEMINI_API_KEY) {
+    const genAI = getGenAI();
+    if (genAI) {
       try {
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const prompt = `Analyze this social media post for safety. Post: "${content}"`;
-        const result = await model.generateContent(prompt);
-        const parsed = JSON.parse(result.response.text().replace(/```json/g, '').replace(/```/g, '').trim());
-        aiSafetyScore = parsed.score;
-        isFlagged = !parsed.isSafe || parsed.score < 50;
-      } catch (aiErr) {}
+        const result = await model.generateContent([
+          `Check this social media post for safety. Content: "${content}". Media URL: ${mediaUrl}. ` +
+          `Return JSON: { "is_flagged": boolean, "safety_score": number(0-100), "confidence": number(0-1) }`
+        ]);
+        const responseText = result.response.text();
+        const parsed = JSON.parse(responseText.replace(/```json/g, '').replace(/```/g, '').trim());
+        isFlagged = parsed.is_flagged;
+        safetyScore = parsed.safety_score;
+        confidenceScore = parsed.confidence;
+      } catch (err) {
+        console.error('AI Moderation failed:', err);
+      }
     }
 
-    const { error: insertError } = await supabase.from('posts').insert({
+    const { error: dbError } = await supabase.from('posts').insert({
       author_id: user.id,
-      content: content.trim(),
-      media_urls: mediaUrls,
-      ai_safety_score: aiSafetyScore,
+      content: content,
       is_flagged: isFlagged,
+      ai_safety_score: safetyScore,
+      ai_confidence_score: confidenceScore,
+      media_urls: mediaUrls,
       community_id: communityId || null,
       music_url: musicInfo?.url || null,
       music_title: musicInfo?.title || null,
@@ -133,7 +153,7 @@ export async function createPostAction(
       video_trim_end: videoEditing?.trimEnd ?? null
     } as any);
 
-    if (insertError) throw insertError;
+    if (dbError) throw dbError;
     revalidatePath('/');
     return { success: true, isFlagged };
   } catch (error: any) {

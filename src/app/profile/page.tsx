@@ -1,29 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Camera, Layout, Grid3x3, DollarSign, Settings, Share2, BarChart2, Video, Trash2, Heart, MessageCircle, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import EditProfileModal from '@/components/EditProfileModal';
-import PostCard from '@/components/PostCard';
+import { Grid3x3, Heart, MessageCircle, Settings, DollarSign, Camera, BarChart2, Video, Sparkles, Layout, Trash2 } from 'lucide-react';
 import { deletePostAction } from '@/app/actions/social';
+import EditProfileModal from '@/components/EditProfileModal';
 import FollowsModal from '@/components/FollowsModal';
 
 export default function ProfilePage() {
-  const supabase = createClient();
   const router = useRouter();
+  const supabase = createClient();
+
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
+  const [totalEarnings, setTotalEarnings] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
-  const [totalEarnings, setTotalEarnings] = useState(0);
+
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [showFollows, setShowFollows] = useState<{type: 'followers' | 'following', userId: string} | null>(null);
+  const [showFollows, setShowFollows] = useState<{ type: 'followers' | 'following', userId: string } | null>(null);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -77,28 +78,26 @@ export default function ProfilePage() {
           profile={profile || {}}
           onClose={() => setShowEdit(false)}
           onSaved={() => { 
-            setShowEdit(false);
-            fetchData();
+            setShowEdit(false); 
+            router.refresh(); 
+            fetchData(); 
           }}
         />
       )}
 
       {showFollows && (
-        <FollowsModal 
-          type={showFollows.type} 
-          userId={showFollows.userId} 
-          onClose={() => setShowFollows(null)} 
+        <FollowsModal
+          type={showFollows.type}
+          userId={showFollows.userId}
+          onClose={() => setShowFollows(null)}
         />
       )}
 
       {/* Profile Header */}
-      <div className="glass-card" style={{ padding: '32px', borderRadius: '24px', marginBottom: '24px', position: 'relative', overflow: 'hidden' }}>
-        {/* Background Accent */}
-        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '200px', height: '200px', background: 'var(--accent-primary)', opacity: 0.1, filter: 'blur(80px)', borderRadius: '50%' }}></div>
-        
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
-           <a href="/settings" style={{ color: 'var(--text-secondary)' }}><Settings size={22} /></a>
-        </div>
+      <div className="glass-card" style={{ padding: '24px', borderRadius: '20px', marginBottom: '24px', position: 'relative' }}>
+        <a href="/settings" style={{ position: 'absolute', top: '20px', right: '20px', color: 'var(--text-secondary)' }}>
+          <Settings size={20} />
+        </a>
 
         <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           {/* Avatar */}
@@ -139,14 +138,15 @@ export default function ProfilePage() {
             }
             {profile?.website && (
               <a href={profile.website} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-block', color: 'var(--accent-neon)', textDecoration: 'none', fontSize: '0.85rem', marginBottom: '12px' }}>
-                {profile.website.replace(/^https?:\/\//, '')}
+                style={{ fontSize: '0.85rem', color: 'var(--accent-secondary)', marginBottom: '12px', display: 'block' }}>
+                🔗 {profile.website.replace(/^https?:\/\//, '')}
               </a>
             )}
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setShowEdit(true)} className="btn-primary" style={{ padding: '8px 20px', borderRadius: '12px', fontSize: '0.85rem' }}>Edit Profile</button>
-              <button className="btn-secondary" style={{ padding: '8px 20px', borderRadius: '12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Share2 size={16} />
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button className="btn-primary" onClick={() => setShowEdit(true)} style={{ padding: '7px 20px', fontSize: '0.85rem' }}>
+                Edit Profile
+              </button>
+              <button className="btn-secondary" onClick={() => { navigator.clipboard?.writeText(window.location.href); }} style={{ padding: '7px 20px', fontSize: '0.85rem' }}>
                 Share Profile
               </button>
             </div>
@@ -247,7 +247,7 @@ export default function ProfilePage() {
             display: 'grid', 
             gridTemplateColumns: 'repeat(3, 1fr)', 
             gap: '4px',
-            marginBottom: '40px' 
+            marginBottom: '40px'
           }}>
             {posts.map((post) => (
               <div 
@@ -255,13 +255,12 @@ export default function ProfilePage() {
                 onClick={() => setSelectedPost(post)}
                 style={{ 
                   aspectRatio: '1/1', 
-                  position: 'relative', 
+                  background: 'var(--bg-glass)', 
                   cursor: 'pointer',
                   overflow: 'hidden',
-                  background: 'var(--bg-secondary)',
+                  position: 'relative',
                   borderRadius: '4px'
                 }}
-                className="hover-scale"
               >
                 {post.media_urls?.[0] ? (
                   post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
@@ -270,20 +269,33 @@ export default function ProfilePage() {
                     <img src={post.media_urls[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   )
                 ) : (
-                  <div style={{ padding: '12px', fontSize: '0.75rem', color: 'var(--text-secondary)', overflow: 'hidden' }}>{post.content}</div>
+                  <div style={{ padding: '8px', fontSize: '0.75rem', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    {post.content.substring(0, 50)}...
+                  </div>
                 )}
+                
+                {/* Hover Overlay */}
+                <div style={{ 
+                  position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px',
+                  opacity: 0, transition: 'opacity 0.2s', color: 'white'
+                }} onMouseEnter={(e) => e.currentTarget.style.opacity = '1'} onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Heart size={18} fill="white" /> {post.like_count || 0}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MessageCircle size={18} fill="white" /> {post.comment_count || 0}</span>
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="glass-card" style={{ padding: '40px', textAlign: 'center', borderRadius: '20px' }}>
-            <p style={{ color: 'var(--text-secondary)' }}>No posts yet.</p>
-            <a href="/upload" className="btn-primary" style={{ display: 'inline-block', marginTop: '16px', textDecoration: 'none', padding: '8px 20px' }}>Create First Post</a>
+          <div className="glass-card" style={{ padding: '48px', textAlign: 'center', borderRadius: '16px' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '12px' }}>✍️</div>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>No posts yet. Share something!</p>
+            <a href="/" className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none', padding: '10px 24px' }}>Create your first post</a>
           </div>
         )}
       </div>
 
-      {/* Detail Modal */}
+      {/* Post Detail Modal */}
       {selectedPost && (
         <div style={{ 
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 1000, 
@@ -298,59 +310,17 @@ export default function ProfilePage() {
             {/* Media Area */}
             <div style={{ 
               flex: 1.5, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              maxHeight: isMobile ? '40vh' : 'none', position: 'relative'
+              maxHeight: isMobile ? '40vh' : 'none'
             }}>
               {selectedPost.media_urls?.[0] ? (
                 selectedPost.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
-                  <video 
-                    src={selectedPost.media_urls[0]} 
-                    controls 
-                    autoPlay 
-                    loop
-                    onPlay={(e) => {
-                      const v = e.currentTarget;
-                      v.volume = selectedPost.video_volume ?? 1.0;
-                      if (selectedPost.video_trim_start) v.currentTime = selectedPost.video_trim_start;
-                    }}
-                    onTimeUpdate={(e) => {
-                      const v = e.currentTarget;
-                      if (selectedPost.video_trim_end && v.currentTime >= selectedPost.video_trim_end) {
-                        v.currentTime = selectedPost.video_trim_start || 0;
-                      }
-                    }}
-                    style={{ width: '100%', maxHeight: '100%', display: 'block' }} 
-                  />
+                  <video src={selectedPost.media_urls[0]} controls autoPlay style={{ width: '100%', maxHeight: '100%', display: 'block' }} />
                 ) : (
                   <img src={selectedPost.media_urls[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 )
               ) : (
                 <div style={{ padding: '40px', color: 'white', textAlign: 'center' }}>
                   {selectedPost.content}
-                </div>
-              )}
-              
-              {selectedPost.music_url && (
-                <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', zIndex: 5 }}>
-                   <div style={{ 
-                      display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px',
-                      background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', borderRadius: '12px',
-                      color: 'white', fontSize: '0.8rem'
-                    }}>
-                      <Music size={14} />
-                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {selectedPost.music_title} • {selectedPost.music_artist}
-                      </div>
-                    </div>
-                    <audio 
-                      autoPlay 
-                      src={selectedPost.music_url} 
-                      loop 
-                      onPlay={(e) => {
-                        const a = e.currentTarget;
-                        a.volume = selectedPost.music_volume ?? 0.5;
-                        a.currentTime = selectedPost.music_start_time || 0;
-                      }}
-                    />
                 </div>
               )}
             </div>
@@ -362,9 +332,6 @@ export default function ProfilePage() {
                   {profile.avatar_url ? <img src={profile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : username[0].toUpperCase()}
                 </div>
                 <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{username}</div>
-                <button onClick={() => setSelectedPost(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  <X size={20} />
-                </button>
               </div>
               
               <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>

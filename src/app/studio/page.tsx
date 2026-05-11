@@ -21,7 +21,7 @@ export default function StudioPage() {
 
     const { data } = await supabase
       .from('posts')
-      .select('id, content, like_count, comment_count, created_at, ai_safety_score, is_flagged, media_urls')
+      .select('id, content, like_count, comment_count, created_at, ai_safety_score, is_flagged, media_urls, music_url, music_title, music_artist, music_start_time, music_volume, video_volume, video_trim_start, video_trim_end')
       .eq('author_id', user.id)
       .order('created_at', { ascending: false });
 

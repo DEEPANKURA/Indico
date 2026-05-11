@@ -84,7 +84,12 @@ export default async function Home() {
               timeAgo: new Date(post.created_at).toLocaleDateString(),
               musicUrl: post.music_url,
               musicTitle: post.music_title,
-              musicArtist: post.music_artist
+              musicArtist: post.music_artist,
+              musicStartTime: post.music_start_time,
+              musicVolume: post.music_volume,
+              videoVolume: post.video_volume,
+              videoTrimStart: post.video_trim_start,
+              videoTrimEnd: post.video_trim_end
             }} 
           />
         ))}
