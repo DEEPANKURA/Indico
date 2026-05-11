@@ -111,27 +111,110 @@ export async function uploadMediaAction(formData: FormData) {
 
     revalidatePath('/');
     revalidatePath('/studio');
-    return { success: true };
+    revalidatePath('/profile');
+    return { success: true, isFlagged };
   } catch (error: any) {
-    console.error('Upload action error:', error);
-    return { success: false, error: error.message || 'An unexpected error occurred' };
+    console.error('Upload error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function createPostAction(
+  content: string, 
+  mediaUrls: string[], 
+  communityId?: string,
+  musicInfo?: { url: string; title: string; artist: string; startTime?: number; volume?: number },
+  videoEditing?: { volume?: number; trimStart?: number; trimEnd?: number }
+) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const mediaUrl = mediaUrls?.[0] || '';
+
+    // AI Safety Check
+    let isFlagged = false;
+    let safetyScore = 100;
+    let confidenceScore = 1.0;
+
+    const genAI = getGenAI();
+    if (genAI) {
+      try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const result = await model.generateContent([
+          `Check this social media post for safety. Content: "${content}". Media URL: ${mediaUrl}. ` +
+          `Return JSON: { "is_flagged": boolean, "safety_score": number(0-100), "confidence": number(0-1) }`
+        ]);
+        const responseText = result.response.text();
+        
+        // Robust JSON extraction
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          isFlagged = parsed.is_flagged ?? false;
+          safetyScore = parsed.safety_score ?? 100;
+          confidenceScore = parsed.confidence ?? 1.0;
+        }
+      } catch (err) {
+        console.error('AI Moderation failed:', err);
+      }
+    }
+
+    try {
+      const { error: dbError } = await supabase.from('posts').insert({
+        author_id: user.id,
+        content: content,
+        is_flagged: isFlagged,
+        ai_safety_score: safetyScore,
+        ai_confidence_score: confidenceScore,
+        media_urls: mediaUrls,
+        community_id: communityId || null,
+        music_url: musicInfo?.url || null,
+        music_title: musicInfo?.title || null,
+        music_artist: musicInfo?.artist || null,
+        music_start_time: musicInfo?.startTime || 0,
+        music_volume: musicInfo?.volume ?? 0.5,
+        video_volume: videoEditing?.volume ?? 1.0,
+        video_trim_start: videoEditing?.trimStart ?? 0,
+        video_trim_end: videoEditing?.trimEnd ?? null
+      } as any);
+
+      if (dbError) throw dbError;
+    } catch (dbErr: any) {
+      console.error('Database Error:', dbErr);
+      return { success: false, error: `Database Error: ${dbErr.message || 'Failed to save'}` };
+    }
+
+    revalidatePath('/');
+    revalidatePath('/studio');
+    revalidatePath('/profile');
+    return { success: true, isFlagged };
+  } catch (error: any) {
+    console.error('Create post error:', error);
+    return { success: false, error: error.message };
   }
 }
 
 export async function deletePostAction(postId: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: 'Unauthorized' };
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
 
-  const { error } = await supabase
-    .from('posts')
-    .delete()
-    .eq('id', postId)
-    .eq('author_id', user.id);
+    const { error } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId)
+      .eq('author_id', user.id);
 
-  if (error) return { success: false, error: error.message };
-  
-  revalidatePath('/');
-  revalidatePath('/studio');
-  return { success: true };
+    if (error) return { success: false, error: error.message };
+    
+    revalidatePath('/');
+    revalidatePath('/studio');
+    revalidatePath('/profile');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
 }
