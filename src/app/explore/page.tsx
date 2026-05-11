@@ -60,10 +60,19 @@ export default function ExplorePage() {
         },
         likes: p.like_count || 0,
         comments: p.comment_count || 0,
-        timestamp: new Date(p.created_at).toLocaleDateString(),
+        shares: "0",
+        tags: p.tags || [],
+        mentions: p.mentions || [],
+        overlays: p.overlays,
+        timeAgo: new Date(p.created_at).toLocaleDateString(),
         musicUrl: p.music_url,
         musicTitle: p.music_title,
-        musicArtist: p.music_artist
+        musicArtist: p.music_artist,
+        musicStartTime: p.music_start_time,
+        musicVolume: p.music_volume,
+        videoVolume: p.video_volume,
+        videoTrimStart: p.video_trim_start,
+        videoTrimEnd: p.video_trim_end
       }));
       setTrendingPosts(mappedPosts);
     };
@@ -111,10 +120,19 @@ export default function ExplorePage() {
         },
         likes: p.like_count || 0,
         comments: p.comment_count || 0,
+        shares: "0",
+        tags: p.tags || [],
+        mentions: p.mentions || [],
+        overlays: p.overlays,
         timeAgo: new Date(p.created_at).toLocaleDateString(),
         musicUrl: p.music_url,
         musicTitle: p.music_title,
-        musicArtist: p.music_artist
+        musicArtist: p.music_artist,
+        musicStartTime: p.music_start_time,
+        musicVolume: p.music_volume,
+        videoVolume: p.video_volume,
+        videoTrimStart: p.video_trim_start,
+        videoTrimEnd: p.video_trim_end
       }));
       setPostResults(mapped);
       
