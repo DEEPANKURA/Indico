@@ -40,9 +40,9 @@ export default function CreatePost({
       const newUrls: string[] = [];
 
       for (const file of Array.from(files)) {
-        // File size limit: 50MB (Supabase Free Tier Limit)
-        if (file.size > 50 * 1024 * 1024) {
-          throw new Error(`File "${file.name}" is too large. Supabase Free Tier limit is 50MB. Please upgrade to Pro for larger files.`);
+        // File size limit: 100MB
+        if (file.size > 100 * 1024 * 1024) {
+          throw new Error(`File "${file.name}" is too large. Maximum size is 100MB.`);
         }
 
         const fileExt = file.name.split('.').pop();

@@ -145,9 +145,9 @@ export default function UploadClient() {
       const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
-      // File size limit: 50MB (Supabase Free Tier Limit)
-      if (file.size > 50 * 1024 * 1024) {
-        throw new Error('File is too large. Supabase Free Tier limit is 50MB. Please upgrade to Pro for larger files.');
+      // File size limit: 100MB
+      if (file.size > 100 * 1024 * 1024) {
+        throw new Error('File is too large. Maximum size is 100MB.');
       }
 
       const { error: uploadError } = await supabase.storage
