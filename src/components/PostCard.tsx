@@ -27,6 +27,18 @@ interface PostCardProps {
     comments: string | number;
     shares: string | number;
     tags: string[];
+    mentions: string[];
+    overlays?: {
+      filter?: string;
+      textItems?: Array<{
+        id: string;
+        text: string;
+        color: string;
+        fontSize: number;
+        x: number;
+        y: number;
+      }>;
+    };
     timeAgo: string;
     musicUrl?: string;
     musicTitle?: string;
@@ -315,39 +327,68 @@ export default function PostCard({ post }: PostCardProps) {
           {post.tags?.map((tag, i) => (
             <span key={i} className="text-gradient" style={{ fontWeight: '600', fontSize: '0.9rem' }}>#{tag}</span>
           ))}
+          {post.mentions?.map((mention, i) => (
+            <span key={i} style={{ fontWeight: '600', fontSize: '0.9rem', color: 'var(--accent-primary)' }}>@{mention}</span>
+          ))}
         </div>
       </div>
 
       {post.mediaUrl && (
         <div style={{ position: 'relative', width: '100%', background: '#000', overflow: 'hidden' }}>
-          {post.mediaType === 'video' ? (
-            <video 
-              ref={videoRef}
-              src={post.mediaUrl} 
-              autoPlay 
-              muted={isVideoMuted} 
-              loop 
-              playsInline 
-              controls
-              style={{ width: '100%', height: 'auto', display: 'block' }} 
-              onVolumeChange={(e) => {
-                if (videoRef.current) setIsVideoMuted(videoRef.current.muted);
+          <div style={{ filter: post.overlays?.filter || 'none' }}>
+            {post.mediaType === 'video' ? (
+              <video 
+                ref={videoRef}
+                src={post.mediaUrl} 
+                autoPlay 
+                muted={isVideoMuted} 
+                loop 
+                playsInline 
+                controls
+                style={{ width: '100%', height: 'auto', display: 'block' }} 
+                onVolumeChange={(e) => {
+                  if (videoRef.current) setIsVideoMuted(videoRef.current.muted);
+                }}
+              />
+            ) : (
+              <img 
+                src={post.mediaUrl} 
+                alt="Post content" 
+                style={{ 
+                  width: '100%', 
+                  height: 'auto', 
+                  maxHeight: '80vh', 
+                  objectFit: 'contain',
+                  display: 'block',
+                  background: '#000'
+                }} 
+              />
+            )}
+          </div>
+          
+          {/* Text Overlays */}
+          {post.overlays?.textItems?.map((item: any) => (
+            <div
+              key={item.id}
+              style={{
+                position: 'absolute',
+                left: `${item.x}%`,
+                top: `${item.y}%`,
+                transform: 'translate(-50%, -50%)',
+                color: item.color,
+                fontSize: `min(calc(1vw + 1vh + ${item.fontSize}px), 40px)`,
+                fontWeight: '900',
+                textAlign: 'center',
+                textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                pointerEvents: 'none',
+                whiteSpace: 'pre-wrap',
+                maxWidth: '80%',
+                zIndex: 5
               }}
-            />
-          ) : (
-            <img 
-              src={post.mediaUrl} 
-              alt="Post content" 
-              style={{ 
-                width: '100%', 
-                height: 'auto', 
-                maxHeight: '80vh', 
-                objectFit: 'contain',
-                display: 'block',
-                background: '#000'
-              }} 
-            />
-          )}
+            >
+              {item.text}
+            </div>
+          ))}
         </div>
       )}
 
