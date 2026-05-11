@@ -4,6 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import RightSidebar from "@/components/RightSidebar";
 import BottomNav from "@/components/BottomNav";
 import PWARegister from "@/components/PWARegister";
+import ConfigInitializer from "@/components/ConfigInitializer";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -53,6 +54,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon.png" />
       </head>
       <body suppressHydrationWarning>
+        <ConfigInitializer 
+          url={process.env.SUPABASE_URL || ''} 
+          anonKey={process.env.SUPABASE_ANON_KEY || ''} 
+        />
         <div className="app-layout">
           <Sidebar />
           <main className="main-feed-area">
