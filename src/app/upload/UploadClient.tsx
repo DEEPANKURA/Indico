@@ -3,9 +3,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, Image, Video, Film, X, Loader2, CheckCircle, Music, Volume2, Scissors, Settings2, Sparkles } from 'lucide-react';
-import { createClient } from '@/utils/supabase/client';
 import MusicSelector from '@/components/MusicSelector';
-import { createPostAction } from '@/app/actions/post';
+import { uploadMediaAction } from '@/app/actions/post';
 
 type UploadType = 'photo' | 'video' | 'reel';
 
@@ -33,8 +32,6 @@ export default function UploadClient() {
   const [trimEnd, setTrimEnd] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
 
-  const supabase = createClient();
-
   const acceptMap: Record<UploadType, string> = {
     photo: 'image/*',
     video: 'video/*',
@@ -46,7 +43,6 @@ export default function UploadClient() {
     const url = URL.createObjectURL(f);
     setPreview(url);
     setError(null);
-    // Reset editing state
     setSelectedMusic(null);
     setTrimStart(0);
     setTrimEnd(0);
@@ -75,48 +71,33 @@ export default function UploadClient() {
     setError(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('You must be logged in to upload');
-
-      // 1. Upload to Storage
-      const ext = file.name.split('.').pop() || (type === 'photo' ? 'jpg' : 'mp4');
-      const filePath = `${user.id}/${Date.now()}.${ext}`;
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('caption', caption);
+      fd.append('type', type);
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('media')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) throw uploadError;
-      setProgress(60);
-
-      // 2. Get Public URL
-      const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(filePath);
-
-      // 3. Create Post Record using the server action
-      const res = await createPostAction(
-        caption,
-        [publicUrl],
-        undefined,
-        selectedMusic ? {
+      if (selectedMusic) {
+        fd.append('music_info', JSON.stringify({
           url: selectedMusic.audio,
           title: selectedMusic.name,
           artist: selectedMusic.artist_name,
           startTime: selectedMusic.startTime || 0,
           volume: musicVolume
-        } : undefined,
-        {
-          volume: videoVolume,
-          trimStart: trimStart,
-          trimEnd: trimEnd
-        }
-      );
+        }));
+      }
+
+      fd.append('video_editing', JSON.stringify({
+        volume: videoVolume,
+        trimStart: trimStart,
+        trimEnd: trimEnd
+      }));
+
+      setProgress(30);
+      const res = await uploadMediaAction(fd);
+      setProgress(100);
 
       if (!res.success) throw new Error(res.error);
 
-      setProgress(100);
       setDone(true);
       setTimeout(() => router.push('/studio'), 2000);
     } catch (err: any) {
@@ -158,7 +139,6 @@ export default function UploadClient() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px', alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Type Tabs */}
           <div style={{ display: 'flex', gap: '10px' }}>
             {tabs.map((tab) => (
               <button key={tab.id} onClick={() => { setType(tab.id); setFile(null); setPreview(null); }} style={{
@@ -174,7 +154,6 @@ export default function UploadClient() {
             ))}
           </div>
 
-          {/* Media Area */}
           {!preview ? (
             <div
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -224,7 +203,6 @@ export default function UploadClient() {
                 }
               </div>
               
-              {/* Playback Progress Overlay for Trimming */}
               {type !== 'photo' && videoDuration > 0 && (
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '4px', background: 'rgba(255,255,255,0.2)' }}>
                    <div style={{ 
@@ -249,7 +227,6 @@ export default function UploadClient() {
             </div>
           )}
 
-          {/* Editing Table */}
           {preview && (
             <div className="glass-card" style={{ padding: '24px', borderRadius: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
@@ -258,7 +235,6 @@ export default function UploadClient() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                {/* Music Selection */}
                 <div style={{ padding: '16px', borderRadius: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-light)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700' }}>
@@ -290,7 +266,6 @@ export default function UploadClient() {
                   )}
                 </div>
 
-                {/* Volume Controls */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div style={{ padding: '16px', borderRadius: '16px', background: 'rgba(255,255,255,0.03)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '0.85rem', fontWeight: '700' }}>
@@ -319,30 +294,24 @@ export default function UploadClient() {
                   )}
                 </div>
 
-                {/* Trim Tool */}
                 {type !== 'photo' && videoDuration > 0 && (
                   <div style={{ padding: '16px', borderRadius: '16px', background: 'rgba(255,255,255,0.03)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', fontSize: '0.85rem', fontWeight: '700' }}>
                       <Scissors size={16} /> Trim {type === 'reel' ? 'Clip' : 'Video'}
                     </div>
-                    
                     <div style={{ position: 'relative', height: '24px', margin: '0 10px' }}>
                       <div style={{ position: 'absolute', top: '10px', left: 0, right: 0, height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px' }} />
-                      
-                      {/* Start Handle */}
                       <input 
                         type="range" min="0" max={videoDuration} step="0.1"
                         value={trimStart} onChange={(e) => setTrimStart(Math.min(parseFloat(e.target.value), trimEnd - 0.5))}
                         style={{ position: 'absolute', width: '100%', top: 0, zIndex: 2, accentColor: 'var(--accent-primary)' }}
                       />
-                      {/* End Handle */}
                       <input 
                         type="range" min="0" max={videoDuration} step="0.1"
                         value={trimEnd} onChange={(e) => setTrimEnd(Math.max(parseFloat(e.target.value), trimStart + 0.5))}
                         style={{ position: 'absolute', width: '100%', top: 0, zIndex: 1, accentColor: 'var(--accent-secondary)' }}
                       />
                     </div>
-                    
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px', fontSize: '0.75rem', fontWeight: '600' }}>
                       <div style={{ color: 'var(--accent-primary)' }}>Start: {trimStart.toFixed(1)}s</div>
                       <div style={{ color: 'var(--text-muted)' }}>Duration: {(trimEnd - trimStart).toFixed(1)}s</div>
@@ -355,11 +324,9 @@ export default function UploadClient() {
           )}
         </div>
 
-        {/* Sidebar Info */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="glass-card" style={{ padding: '20px', borderRadius: '20px' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: '800', marginBottom: '16px' }}>Post Details</h3>
-            
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px' }}>Caption</label>
               <textarea
@@ -373,7 +340,6 @@ export default function UploadClient() {
                 }}
               />
             </div>
-
             <button
               onClick={handleUpload}
               disabled={!file || uploading}
@@ -384,21 +350,11 @@ export default function UploadClient() {
               {uploading ? 'Processing...' : `Share to Feed`}
             </button>
           </div>
-
-          <div className="glass-card" style={{ padding: '20px', borderRadius: '20px', border: '1px solid rgba(139,92,246,0.2)', background: 'linear-gradient(135deg, rgba(139,92,246,0.05), transparent)' }}>
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '0.9rem', fontWeight: '700' }}>Pro Studio Tips</h4>
-            <ul style={{ margin: 0, padding: '0 0 0 16px', fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <li>Vertical videos (9:16) perform 80% better as Reels.</li>
-              <li>Music volume at 40-60% allows your voice to be heard.</li>
-              <li>Trim out the first 0.5s of silence for more impact.</li>
-            </ul>
-          </div>
         </div>
       </div>
 
       <input ref={fileRef} type="file" accept={acceptMap[type]} style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
 
-      {/* Music Selector Modal */}
       {showMusicSelector && (
         <MusicSelector 
           onSelect={(track, startTime) => {
