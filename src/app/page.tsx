@@ -82,7 +82,7 @@ export default async function Home() {
               shares: "0",
               tags: post.tags || [],
               mentions: post.mentions || [],
-              overlays: post.overlays,
+              overlays: post.overlays || undefined,
               timeAgo: new Date(post.created_at).toLocaleDateString(),
               musicUrl: post.music_url,
               musicTitle: post.music_title,

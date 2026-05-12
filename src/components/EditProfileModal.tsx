@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { Camera, Loader2, X, Check } from 'lucide-react';
 import { updateProfileAction, uploadAvatarAction } from '@/app/actions/profile';
+import { uploadToCloudinary } from '@/utils/cloudinary';
 
 interface EditProfileModalProps {
   profile: {
@@ -39,23 +40,20 @@ export default function EditProfileModal({ profile, onClose, onSaved }: EditProf
     setError(null);
     
     try {
-      const fd = new FormData();
-      fd.append('avatar', file);
-      const result = await uploadAvatarAction(fd);
+      const secureUrl = await uploadToCloudinary(file, 'avatars');
+      const avatarUrlWithVersion = `${secureUrl}?v=${Date.now()}`;
+      
+      const { updateAvatarUrlAction } = await import('@/app/actions/profile');
+      const result = await updateAvatarUrlAction(avatarUrlWithVersion);
       
       if (result.success) {
-        if (result.avatarUrl) {
-          setAvatarPreview(`${result.avatarUrl}&t=${Date.now()}`);
-        }
+        setAvatarPreview(avatarUrlWithVersion);
       } else {
-        console.error('Avatar upload failed:', result.error);
-        setError(result.error || 'Avatar upload failed');
-        // Revert preview on error
-        setAvatarPreview(profile.avatar_url || null);
+        throw new Error(result.error);
       }
     } catch (err: any) {
-      console.error('Unexpected avatar upload error:', err);
-      setError(err.message || 'An unexpected error occurred');
+      console.error('Avatar upload failed:', err);
+      setError(err.message || 'Avatar upload failed');
       setAvatarPreview(profile.avatar_url || null);
     } finally {
       setAvatarUploading(false);

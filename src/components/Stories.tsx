@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { createStoryAction } from '@/app/actions/profile';
 import { User } from '@supabase/supabase-js';
 import MusicSelector from './MusicSelector';
+import { uploadToCloudinary } from '@/utils/cloudinary';
 import { Music as MusicIcon, Volume2, VolumeX } from 'lucide-react';
 
 interface Story {
@@ -124,20 +125,12 @@ export default function Stories() {
     setIsUploading(true);
     
     try {
-      const supabase = createClient();
-      const fileExt = editorFile.name.split('.').pop();
-      const fileName = `${user.id}/${Math.random()}.${fileExt}`;
-      const filePath = `stories/${fileName}`;
+      // File size limit check: allow up to 200MB media reliably
+      if (editorFile.size > 200 * 1024 * 1024) {
+        throw new Error('File is too large. Maximum size is 200MB.');
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from('media')
-        .upload(filePath, editorFile);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('media')
-        .getPublicUrl(filePath);
+      const publicUrl = await uploadToCloudinary(editorFile, 'stories');
 
       const formData = new FormData();
       formData.append('media_url', publicUrl);

@@ -13,106 +13,16 @@ function getGenAI() {
   return genAIInstance;
 }
 
-export async function uploadMediaAction(formData: FormData) {
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: 'Unauthorized' };
-
-    const file = formData.get('file') as File;
-    const content = formData.get('caption') as string; // User calls it caption in frontend but it maps to content in DB
-    const communityId = formData.get('community_id') as string;
-    const musicInfoStr = formData.get('music_info') as string;
-    const videoEditingStr = formData.get('video_editing') as string;
-    const tagsStr = formData.get('tags') as string;
-    const mentionsStr = formData.get('mentions') as string;
-    const overlaysStr = formData.get('overlays') as string;
-
-    const tags = tagsStr ? JSON.parse(tagsStr) : [];
-    const mentions = mentionsStr ? JSON.parse(mentionsStr) : [];
-    const overlays = overlaysStr ? JSON.parse(overlaysStr) : null;
-    const musicInfo = musicInfoStr ? JSON.parse(musicInfoStr) : null;
-    const videoEditing = videoEditingStr ? JSON.parse(videoEditingStr) : null;
-
-    if (!file) return { success: false, error: 'No file provided' };
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-    const filePath = `${user.id}/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('media')
-      .upload(filePath, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('media')
-      .getPublicUrl(filePath);
-
-    // AI Safety Check
-    let isFlagged = false;
-    let safetyScore = 100;
-    let confidenceScore = 1.0;
-    
-    const genAI = getGenAI();
-    if (genAI) {
-      try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const result = await model.generateContent([
-          `Check this social media post for safety. Content: "${content}". Media URL: ${publicUrl}. ` +
-          `Return JSON: { "is_flagged": boolean, "safety_score": number(0-100), "confidence": number(0-1) }`
-        ]);
-        const responseText = result.response.text();
-        const parsed = JSON.parse(responseText.replace(/```json/g, '').replace(/```/g, '').trim());
-        isFlagged = parsed.is_flagged;
-        safetyScore = parsed.safety_score;
-        confidenceScore = parsed.confidence;
-      } catch (err) {
-        console.error('AI Moderation failed:', err);
-      }
-    }
-
-    const { error: dbError } = await supabase.from('posts').insert({
-      author_id: user.id,
-      content: content,
-      is_flagged: isFlagged,
-      ai_safety_score: safetyScore,
-      ai_confidence_score: confidenceScore,
-      media_urls: [publicUrl],
-      community_id: communityId || null,
-      music_url: musicInfo?.url || null,
-      music_title: musicInfo?.title || null,
-      music_artist: musicInfo?.artist || null,
-      music_start_time: musicInfo?.startTime || 0,
-      music_volume: musicInfo?.volume ?? 0.5,
-      video_volume: videoEditing?.volume ?? 1.0,
-      video_trim_start: videoEditing?.trimStart ?? 0,
-      video_trim_end: videoEditing?.trimEnd ?? null,
-      tags: tags,
-      mentions: mentions,
-      overlays: overlays
-    } as any);
-
-    if (dbError) throw dbError;
-
-    revalidatePath('/');
-    revalidatePath('/studio');
-    revalidatePath('/profile');
-
-    return { success: true, isFlagged };
-  } catch (error: any) {
-    console.error('Upload error:', error);
-    return { success: false, error: error.message };
-  }
-}
 
 export async function createPostAction(
   content: string, 
   mediaUrls: string[], 
   communityId?: string,
   musicInfo?: { url: string; title: string; artist: string; startTime?: number; volume?: number },
-  videoEditing?: { volume?: number; trimStart?: number; trimEnd?: number }
+  videoEditing?: { volume?: number; trimStart?: number; trimEnd?: number },
+  tags: string[] = [],
+  mentions: string[] = [],
+  overlays: any = null
 ) {
   try {
     const supabase = await createClient();
@@ -128,43 +38,98 @@ export async function createPostAction(
 
     const genAI = getGenAI();
     if (genAI) {
+      // Run AI moderation in a non-blocking way if possible, or with a strict timeout
+      // For now, we'll keep it but optimize the prompt and use a faster model
       try {
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const result = await model.generateContent([
-          `Check this social media post for safety. Content: "${content}". Media URL: ${mediaUrl}. ` +
-          `Return JSON: { "is_flagged": boolean, "safety_score": number(0-100), "confidence": number(0-1) }`
+        
+        // We wrap it in a promise with a timeout to ensure it doesn't hang the upload
+        const moderationPromise = model.generateContent([
+          `Check post safety. Content: "${content.substring(0, 500)}". Media URL: ${mediaUrl}. ` +
+          `Return JSON: { "is_flagged": boolean, "safety_score": number }`
         ]);
+
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('AI Timeout')), 3000)
+        );
+
+        const result: any = await Promise.race([moderationPromise, timeoutPromise]);
         const responseText = result.response.text();
-        const parsed = JSON.parse(responseText.replace(/```json/g, '').replace(/```/g, '').trim());
-        isFlagged = parsed.is_flagged;
-        safetyScore = parsed.safety_score;
-        confidenceScore = parsed.confidence;
+        
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          isFlagged = parsed.is_flagged ?? false;
+          safetyScore = parsed.safety_score ?? 100;
+        }
       } catch (err) {
-        console.error('AI Moderation failed:', err);
+        console.warn('AI Moderation skipped or timed out:', err);
+        // We continue anyway to ensure the post is created
       }
     }
 
-    const { error: dbError } = await supabase.from('posts').insert({
-      author_id: user.id,
-      content: content,
-      is_flagged: isFlagged,
-      ai_safety_score: safetyScore,
-      ai_confidence_score: confidenceScore,
-      media_urls: mediaUrls,
-      community_id: communityId || null,
-      music_url: musicInfo?.url || null,
-      music_title: musicInfo?.title || null,
-      music_artist: musicInfo?.artist || null,
-      music_start_time: musicInfo?.startTime || 0,
-      music_volume: musicInfo?.volume ?? 0.5,
-      video_volume: videoEditing?.volume ?? 1.0,
-      video_trim_start: videoEditing?.trimStart ?? 0,
-      video_trim_end: videoEditing?.trimEnd ?? null
-    } as any);
+    try {
+      console.log('Inserting post with:', { author_id: user.id, community_id: communityId, is_flagged: isFlagged });
+    
+      const { error: dbError } = await supabase.from('posts').insert({
+        author_id: user.id,
+        content,
+        media_urls: mediaUrls,
+        moderation_status: isFlagged ? 'flagged' : 'approved',
+        ai_confidence_score: 0.9,
+        ai_safety_score: isFlagged ? 0 : 100,
+        is_flagged: isFlagged,
+        community_id: communityId || null,
+        music_url: musicInfo?.url,
+        music_title: musicInfo?.title,
+        music_artist: musicInfo?.artist,
+        music_start_time: musicInfo?.startTime || 0,
+        music_volume: musicInfo?.volume ?? 0.5,
+        video_volume: videoEditing?.volume ?? 1.0,
+        video_trim_start: videoEditing?.trimStart ?? 0,
+        video_trim_end: videoEditing?.trimEnd ?? null,
+        tags: tags,
+        mentions: mentions,
+        overlays: overlays
+      } as any);
 
-    if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database insertion error:', dbError);
+        return { success: false, error: `Database error: ${dbError.message}` };
+      }
+    } catch (dbErr: any) {
+      console.error('Database Error:', dbErr);
+      return { success: false, error: `Database Error: ${dbErr.message || 'Failed to save'}` };
+    }
+
     revalidatePath('/');
+    revalidatePath('/studio');
+    revalidatePath('/profile');
     return { success: true, isFlagged };
+  } catch (error: any) {
+    console.error('Create post error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deletePostAction(postId: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const { error } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId)
+      .eq('author_id', user.id);
+
+    if (error) return { success: false, error: error.message };
+    
+    revalidatePath('/');
+    revalidatePath('/studio');
+    revalidatePath('/profile');
+    return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

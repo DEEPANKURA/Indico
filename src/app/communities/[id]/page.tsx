@@ -139,14 +139,16 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         author: {
           name: p.author?.username || 'Anonymous',
           handle: `@${p.author?.username || 'anon'}`,
-          avatar: p.author?.avatar_url,
+          avatar: p.author?.avatar_url || '',
           isNew: false
         },
         authorId: p.author_id,
         likes: (p.like_count || 0).toLocaleString(),
         comments: (p.comment_count || 0).toLocaleString(),
         shares: '0',
-        tags: [],
+        tags: p.tags || [],
+        mentions: p.mentions || [],
+        overlays: p.overlays || undefined,
         timeAgo: new Date(p.created_at).toLocaleDateString(),
         mediaUrl: p.media_urls?.[0],
         mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
@@ -301,49 +303,78 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
 
-        {/* Community Tabs */}
-        <div style={{ display: 'flex', borderTop: '1px solid var(--border-light)', padding: '0 24px' }}>
-          {['Feed', 'Chat', 'Members', 'Settings'].map((tab) => {
-            if (tab === 'Settings' && !isMod) return null;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: '16px 24px',
-                  border: 'none',
-                  background: 'none',
-                  color: activeTab === tab ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  fontWeight: '700',
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                  borderBottom: `2px solid ${activeTab === tab ? 'var(--accent-primary)' : 'transparent'}`,
-                  transition: 'all 0.2s'
-                }}
-              >
-                {tab}
-              </button>
-            );
-          })}
-        </div>
+        {/* Community Tabs - Restricted for Private Communities */}
+        {(!community.is_public && !isMember) ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-light)' }}>
+            <Lock size={20} style={{ margin: '0 auto 8px', display: 'block' }} />
+            <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>This community is private. Join to see posts and members.</span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', borderTop: '1px solid var(--border-light)', padding: '0 24px', overflowX: 'auto' }} className="no-scrollbar">
+            {['Feed', 'Chat', 'Members', 'Settings'].map((tab) => {
+              if (tab === 'Settings' && !isMod) return null;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    padding: '16px 24px',
+                    border: 'none',
+                    background: 'none',
+                    color: activeTab === tab ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    fontWeight: '700',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    borderBottom: `2px solid ${activeTab === tab ? 'var(--accent-primary)' : 'transparent'}`,
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {tab}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px' }}>
+      <div className="community-content-grid" style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+        gap: '24px' 
+      }}>
         {/* Main Content Area */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {activeTab === 'Feed' && (
             <>
-              {isMember && <CreatePost communityId={id} onPostCreated={fetchCommunityData} />}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                {posts.map((post) => (
-                  <PostCard key={post.id} post={post} />
-                ))}
-                {posts.length === 0 && (
-                  <div className="glass-card" style={{ padding: '60px', textAlign: 'center', borderRadius: '24px' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No posts in this community yet.</p>
+              {(!community.is_public && !isMember) ? (
+                <div className="glass-card" style={{ padding: '60px 40px', textAlign: 'center', borderRadius: '24px', background: 'linear-gradient(135deg, rgba(139,92,246,0.05), transparent)' }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(139,92,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                    <Lock size={32} style={{ color: 'var(--accent-primary)' }} />
                   </div>
-                )}
-              </div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '8px' }}>Private Feed</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '300px', margin: '0 auto 20px' }}>
+                    Only members can see posts in this community.
+                  </p>
+                  {membershipStatus === 'none' && (
+                    <button onClick={handleJoinLeave} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px' }}>Request Access</button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {isMember && <CreatePost communityId={id} onPostCreated={fetchCommunityData} />}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    {posts.map((post) => (
+                      <PostCard key={post.id} post={post} />
+                    ))}
+                    {posts.length === 0 && (
+                      <div className="glass-card" style={{ padding: '60px', textAlign: 'center', borderRadius: '24px' }}>
+                        <p style={{ color: 'var(--text-muted)' }}>No posts in this community yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           )}
 

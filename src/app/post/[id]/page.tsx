@@ -21,7 +21,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     }
   );
 
-  const { data: post, error } = await supabase
+  const { data: postData, error } = await supabase
     .from('posts')
     .select(`
       *,
@@ -30,11 +30,12 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     .eq('id', id)
     .single();
 
-  if (error || !post) {
+  if (error || !postData) {
     notFound();
   }
 
   // Transform to match PostCard expectations
+  const post = postData as any;
   const formattedPost = {
     id: post.id,
     authorId: post.profiles?.id,
@@ -50,7 +51,9 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     likes: post.like_count?.toString() || "0",
     comments: post.comment_count?.toString() || "0",
     shares: "0",
-    tags: [],
+    tags: post.tags || [],
+    mentions: post.mentions || [],
+    overlays: post.overlays || undefined,
     timeAgo: new Date(post.created_at).toLocaleDateString(),
     musicUrl: post.music_url,
     musicTitle: post.music_title,

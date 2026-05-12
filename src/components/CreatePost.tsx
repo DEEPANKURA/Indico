@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { createPostAction } from '@/app/actions/post';
 import MusicSelector from './MusicSelector';
+import { uploadToCloudinary } from '@/utils/cloudinary';
 
 export default function CreatePost({ 
   communityId, 
@@ -40,25 +41,18 @@ export default function CreatePost({
       const newUrls: string[] = [];
 
       for (const file of Array.from(files)) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-        const filePath = `${user.id}/${fileName}`;
+        // File size limit: 200MB to reliably handle high-resolution media videos/reels
+        if (file.size > 200 * 1024 * 1024) {
+          throw new Error(`File "${file.name}" is too large. Maximum size is 200MB.`);
+        }
 
-        const { error: uploadError } = await supabase.storage
-          .from('media')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('media')
-          .getPublicUrl(filePath);
-
-        newUrls.push(publicUrl);
+        const secureUrl = await uploadToCloudinary(file, 'posts');
+        newUrls.push(secureUrl);
       }
 
       setMediaUrls(prev => [...prev, ...newUrls]);
     } catch (err: any) {
+      console.error('Upload error:', err);
       setError(err.message || 'Failed to upload media');
     } finally {
       setIsUploading(false);

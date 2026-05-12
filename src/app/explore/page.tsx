@@ -50,20 +50,32 @@ export default function ExplorePage() {
         .limit(10);
       
       // Map posts to match PostCard expectations
-      const mappedPosts = (posts || []).map(p => ({
+      const mappedPosts = (posts as any[] || []).map((p: any) => ({
         ...p,
         authorId: p.author_id,
         author: {
-          name: p.author.full_name || p.author.username,
-          handle: p.author.username,
-          avatar: p.author.avatar_url
+          name: p.author?.full_name || p.author?.username || 'Anonymous',
+          handle: `@${p.author?.username || 'unknown'}`,
+          avatar: p.author?.avatar_url || '',
+          isNew: false
         },
+        mediaUrl: p.media_urls?.[0],
+        mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
         likes: p.like_count || 0,
         comments: p.comment_count || 0,
-        timestamp: new Date(p.created_at).toLocaleDateString(),
+        shares: "0",
+        tags: p.tags || [],
+        mentions: p.mentions || [],
+        overlays: p.overlays || undefined,
+        timeAgo: new Date(p.created_at).toLocaleDateString(),
         musicUrl: p.music_url,
         musicTitle: p.music_title,
-        musicArtist: p.music_artist
+        musicArtist: p.music_artist,
+        musicStartTime: p.music_start_time,
+        musicVolume: p.music_volume,
+        videoVolume: p.video_volume,
+        videoTrimStart: p.video_trim_start,
+        videoTrimEnd: p.video_trim_end
       }));
       setTrendingPosts(mappedPosts);
     };
@@ -101,20 +113,32 @@ export default function ExplorePage() {
       setResults(userRes.data || []);
       
       // Map posts for PostCard
-      const mapped = (postRes.data || []).map(p => ({
+      const mapped = (postRes.data as any[] || []).map((p: any) => ({
         ...p,
-        authorId: p.author.id,
+        authorId: p.author?.id,
         author: {
-          name: p.author.full_name || p.author.username,
-          handle: p.author.username,
-          avatar: p.author.avatar_url
+          name: p.author?.full_name || p.author?.username || 'Anonymous',
+          handle: `@${p.author?.username || 'unknown'}`,
+          avatar: p.author?.avatar_url || '',
+          isNew: false
         },
+        mediaUrl: p.media_urls?.[0],
+        mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
         likes: p.like_count || 0,
         comments: p.comment_count || 0,
+        shares: "0",
+        tags: p.tags || [],
+        mentions: p.mentions || [],
+        overlays: p.overlays || undefined,
         timeAgo: new Date(p.created_at).toLocaleDateString(),
         musicUrl: p.music_url,
         musicTitle: p.music_title,
-        musicArtist: p.music_artist
+        musicArtist: p.music_artist,
+        musicStartTime: p.music_start_time,
+        musicVolume: p.music_volume,
+        videoVolume: p.video_volume,
+        videoTrimStart: p.video_trim_start,
+        videoTrimEnd: p.video_trim_end
       }));
       setPostResults(mapped);
       

@@ -6,10 +6,12 @@ import {
   Upload, Image as ImageIcon, Video as VideoIcon, Film, X, Loader2, 
   CheckCircle, Music, Volume2, Scissors, Settings2, Sparkles, 
   Type, Filter, Tag, AtSign, ChevronLeft, ChevronRight, Plus, Minus,
-  Trash2, Layers, Smile
+  Trash2, Layers, Smile, AlertCircle
 } from 'lucide-react';
 import MusicSelector from '@/components/MusicSelector';
-import { uploadMediaAction } from '@/app/actions/post';
+import { createPostAction } from '@/app/actions/post';
+import { createClient } from '@/utils/supabase/client';
+import { uploadToCloudinary } from '@/utils/cloudinary';
 
 type UploadType = 'photo' | 'video' | 'reel';
 type Step = 'SELECT' | 'EDIT' | 'POST';
@@ -135,35 +137,51 @@ export default function UploadClient() {
     setError(null);
 
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('caption', caption);
-      fd.append('type', type);
-      fd.append('tags', JSON.stringify(tags));
-      fd.append('mentions', JSON.stringify(mentions));
-      fd.append('overlays', JSON.stringify({
-        filter: selectedFilter,
-        textItems: overlays
-      }));
-      
-      if (selectedMusic) {
-        fd.append('music_info', JSON.stringify({
-          url: selectedMusic.audio,
-          title: selectedMusic.name,
-          artist: selectedMusic.artist_name,
-          startTime: selectedMusic.startTime || 0,
-          volume: musicVolume
-        }));
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Please login to upload media');
+
+      setProgress(20);
+
+      // File size limit: 200MB to reliably handle high-resolution media videos/reels
+      if (file.size > 200 * 1024 * 1024) {
+        throw new Error('File is too large. Maximum size is 200MB.');
       }
 
-      fd.append('video_editing', JSON.stringify({
+      const publicUrl = await uploadToCloudinary(file, 'posts');
+
+      setProgress(60);
+
+      const musicInfo = selectedMusic ? {
+        url: selectedMusic.audio,
+        title: selectedMusic.name,
+        artist: selectedMusic.artist_name,
+        startTime: selectedMusic.startTime || 0,
+        volume: musicVolume
+      } : undefined;
+
+      const videoEditing = {
         volume: videoVolume,
         trimStart: trimStart,
         trimEnd: trimEnd
-      }));
+      };
 
-      setProgress(30);
-      const res = await uploadMediaAction(fd);
+      const overlayData = {
+        filter: selectedFilter,
+        textItems: overlays
+      };
+
+      const res = await createPostAction(
+        caption,
+        [publicUrl],
+        undefined, // communityId not used in this specific client yet
+        musicInfo,
+        videoEditing,
+        tags,
+        mentions,
+        overlayData
+      );
+
       setProgress(100);
 
       if (!res.success) throw new Error(res.error);
@@ -185,12 +203,13 @@ export default function UploadClient() {
         position: 'relative', 
         width: '100%', 
         aspectRatio: type === 'reel' ? '9/16' : '1/1',
-        maxHeight: '600px',
+        maxHeight: '70vh',
         backgroundColor: '#000',
-        borderRadius: '12px',
+        borderRadius: '24px',
         overflow: 'hidden',
         boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-        cursor: step === 'EDIT' ? 'crosshair' : 'default'
+        cursor: step === 'EDIT' ? 'crosshair' : 'default',
+        margin: '0 auto'
       }}
     >
       <div style={{ width: '100%', height: '100%', filter: selectedFilter, transition: 'filter 0.3s' }}>
@@ -315,7 +334,12 @@ export default function UploadClient() {
   );
 
   const renderEditStep = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '32px' }}>
+    <div className="studio-layout" style={{ 
+      display: 'grid', 
+      gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+      gap: '24px',
+      paddingBottom: '80px'
+    }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {renderPreview()}
         

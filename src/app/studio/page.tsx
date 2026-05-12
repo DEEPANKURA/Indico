@@ -104,7 +104,12 @@ export default function StudioPage() {
       </div>
 
       {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '32px' }}>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
+        gap: '16px', 
+        marginBottom: '32px' 
+      }}>
         {[
           { label: 'Total Content', value: posts.length, icon: BarChart2, color: '#8b5cf6', gradient: 'linear-gradient(135deg, rgba(139,92,246,0.2), transparent)' },
           { label: 'Total Likes', value: totalLikes, icon: Heart, color: '#ec4899', gradient: 'linear-gradient(135deg, rgba(236,72,153,0.2), transparent)' },

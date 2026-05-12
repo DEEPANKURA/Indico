@@ -42,7 +42,39 @@ export async function updateProfileAction(formData: FormData) {
   }
 }
 
+export async function updateAvatarUrlAction(url: string) {
+  try {
+    const supabase = await createClient();
+    const { data, error: userError } = await supabase.auth.getUser();
+    const user = data?.user;
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ 
+        avatar_url: url, 
+        updated_at: new Date().toISOString() 
+      } as any)
+      .eq('id', user.id);
+
+    if (updateError) throw updateError;
+
+    await supabase.auth.updateUser({
+      data: { avatar_url: url }
+    });
+    
+    revalidatePath('/profile');
+    revalidatePath('/settings');
+    revalidatePath('/');
+    
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function uploadAvatarAction(formData: FormData) {
+  // Legacy server-side upload updated to use Cloudinary directly
   try {
     const supabase = await createClient();
     const { data, error: userError } = await supabase.auth.getUser();
@@ -54,53 +86,45 @@ export async function uploadAvatarAction(formData: FormData) {
       return { success: false, error: 'No valid image file provided' };
     }
 
-    // File size limit: 10MB
+    // File size limit: 10MB (but Netlify might reject at 6MB)
     if (file.size > 10 * 1024 * 1024) {
       return { success: false, error: 'File size too large. Max 10MB allowed.' };
     }
 
-    const ext = file.name.split('.').pop() || 'jpg';
-    const filePath = `${user.id}/avatar_${Date.now()}.${ext}`;
+    const buffer = await file.arrayBuffer();
+    const base64Data = Buffer.from(buffer).toString('base64');
+    const dataUri = `data:${file.type};base64,${base64Data}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, file, { upsert: true });
-
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-    const avatarUrlWithVersion = `${publicUrl}?v=${Date.now()}`;
-
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ 
-        avatar_url: avatarUrlWithVersion, 
-        updated_at: new Date().toISOString() 
-      } as any)
-      .eq('id', user.id);
-
-    if (updateError) {
-      const username = user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 5)}`;
-      const { error: upsertError } = await supabase
-        .from('profiles')
-        .upsert({ 
-          id: user.id,
-          username: username,
-          avatar_url: avatarUrlWithVersion, 
-          updated_at: new Date().toISOString() 
-        } as any);
-      if (upsertError) throw upsertError;
+    const { getCloudinarySignatureAction } = await import('./cloudinary');
+    const sigData = await getCloudinarySignatureAction('avatars');
+    if (!sigData.success) {
+      return { success: false, error: sigData.error };
     }
 
-    await supabase.auth.updateUser({
-      data: { avatar_url: avatarUrlWithVersion }
+    const cdFormData = new FormData();
+    cdFormData.append('file', dataUri);
+    cdFormData.append('api_key', sigData.apiKey!);
+    cdFormData.append('timestamp', sigData.timestamp!.toString());
+    cdFormData.append('signature', sigData.signature!);
+    cdFormData.append('folder', 'avatars');
+
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${sigData.cloudName}/auto/upload`;
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      body: cdFormData,
     });
-    
-    revalidatePath('/profile');
-    revalidatePath('/settings');
-    revalidatePath('/');
-    
-    return { success: true, avatarUrl: avatarUrlWithVersion };
+    const resultData = await response.json();
+    if (!response.ok) {
+      throw new Error(resultData.error?.message || 'Cloudinary upload failed');
+    }
+
+    const secureUrl = resultData.secure_url;
+    const optimizedUrl = secureUrl.includes('/upload/') 
+      ? secureUrl.replace('/upload/', '/upload/f_auto,q_auto/') 
+      : secureUrl;
+    const avatarUrlWithVersion = `${optimizedUrl}?v=${Date.now()}`;
+
+    return await updateAvatarUrlAction(avatarUrlWithVersion);
   } catch (err: any) {
     console.error('Avatar Upload Error:', err);
     return { success: false, error: err.message };

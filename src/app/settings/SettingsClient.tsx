@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Settings, User, Camera, Save, Loader2, LogOut, Bell, Shield, CreditCard } from 'lucide-react';
 import { updateProfileAction, uploadAvatarAction } from '@/app/actions/profile';
 import { createClient } from '@/utils/supabase/client';
+import { uploadToCloudinary } from '@/utils/cloudinary';
 
 interface Props {
   profile: any;
@@ -28,19 +29,33 @@ export default function SettingsClient({ profile, email }: Props) {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Preview
-    setAvatarPreview(URL.createObjectURL(file));
+
+    // Set local preview immediately for optimistic UI
+    const localUrl = URL.createObjectURL(file);
+    setAvatarPreview(localUrl);
     setUploadingAvatar(true);
-    const fd = new FormData();
-    fd.append('avatar', file);
-    const result = await uploadAvatarAction(fd);
-    setUploadingAvatar(false);
-    if (result.success) {
-      if (result.avatarUrl) setAvatarPreview(result.avatarUrl);
-      setMessage({ type: 'success', text: 'Profile picture updated!' });
-      router.refresh();
-    } else {
-      setMessage({ type: 'error', text: result.error || 'Upload failed' });
+    setMessage(null);
+
+    try {
+      const secureUrl = await uploadToCloudinary(file, 'avatars');
+      const avatarUrlWithVersion = `${secureUrl}?v=${Date.now()}`;
+      
+      const { updateAvatarUrlAction } = await import('@/app/actions/profile');
+      const result = await updateAvatarUrlAction(avatarUrlWithVersion);
+      
+      if (result.success) {
+        setAvatarPreview(avatarUrlWithVersion);
+        setMessage({ type: 'success', text: 'Profile picture updated!' });
+        router.refresh();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err: any) {
+      console.error('Avatar upload failed:', err);
+      setMessage({ type: 'error', text: err.message || 'Avatar upload failed' });
+      setAvatarPreview(profile?.avatar_url || null);
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
