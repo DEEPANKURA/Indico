@@ -15,6 +15,10 @@ import {
   setMemberRoleAction
 } from '@/app/actions/communities';
 import {
+  createRazorpayOrderAction,
+  verifyRazorpayPaymentAction
+} from '@/app/actions/monetize';
+import {
   Users, Globe, Lock, ArrowLeft, Loader2, MessageSquare,
   Shield, Settings, Info, Check, X, UserPlus,
   LogOut, ShieldCheck, Mail, UserMinus
@@ -36,6 +40,7 @@ interface Community {
   description: string | null;
   is_public: boolean | null;
   color: string | null;
+  subscription_price?: number | null;
   member_count: number | null;
   creator_id: string;
   created_at: string | null;
@@ -66,6 +71,10 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
   const [pendingRequests, setPendingRequests] = useState<Member[]>([]);
   const [inviteList, setInviteList] = useState<Profile[]>([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showRzpModal, setShowRzpModal] = useState(false);
+  const [rzpProcessing, setRzpProcessing] = useState(false);
+  const [rzpSuccess, setRzpSuccess] = useState(false);
+  const [rzpOrderId, setRzpOrderId] = useState<string | null>(null);
 
   const supabase = createClient();
   const router = useRouter();
@@ -214,6 +223,36 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
     if (res.success) fetchCommunityData();
   };
 
+  const startSubscribeCheckout = async () => {
+    if (!user) {
+      router.push('/auth');
+      return;
+    }
+    const price = community?.subscription_price || 0;
+    const res = await createRazorpayOrderAction(price, 'subscribe_community', id);
+    if (res.success) {
+      setRzpOrderId(res.orderId || null);
+      setRzpSuccess(false);
+      setShowRzpModal(true);
+    } else {
+      alert('Error initiating checkout: ' + res.error);
+    }
+  };
+
+  const processSubscribePayment = async () => {
+    if (!rzpOrderId) return;
+    setRzpProcessing(true);
+    await new Promise(r => setTimeout(r, 1500));
+    const res = await verifyRazorpayPaymentAction(rzpOrderId, 'pay_comm_' + Date.now());
+    if (res.success) {
+      setRzpSuccess(true);
+      fetchCommunityData();
+    } else {
+      alert('Payment authorization failed: ' + res.error);
+    }
+    setRzpProcessing(false);
+  };
+
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this community? This cannot be undone.')) {
       const res = await deleteCommunityAction(id);
@@ -280,6 +319,14 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
               ) : membershipStatus === 'pending' ? (
                 <button disabled className="btn-secondary" style={{ opacity: 0.6, padding: '10px 24px' }}>
                   Request Pending
+                </button>
+              ) : (community.subscription_price || 0) > 0 ? (
+                <button 
+                  onClick={startSubscribeCheckout}
+                  className="btn-primary" 
+                  style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                >
+                  Subscribe Monthly (₹{community.subscription_price})
                 </button>
               ) : (
                 <button 
@@ -357,7 +404,13 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                     Only members can see posts in this community.
                   </p>
                   {membershipStatus === 'none' && (
-                    <button onClick={handleJoinLeave} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px' }}>Request Access</button>
+                    (community.subscription_price || 0) > 0 ? (
+                      <button onClick={startSubscribeCheckout} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px', background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                        Subscribe Monthly (₹{community.subscription_price})
+                      </button>
+                    ) : (
+                      <button onClick={handleJoinLeave} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px' }}>Request Access</button>
+                    )
                   )}
                 </div>
               ) : (
@@ -532,6 +585,104 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                 </div>
               )) : (
                 <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No more people to invite.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Simulated Premium Razorpay Gateway Dialog Overlay */}
+      {showRzpModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(16px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{
+            width: '100%', maxWidth: '440px', padding: '0', borderRadius: '24px', overflow: 'hidden',
+            border: '1px solid rgba(16,185,129,0.4)', background: '#0f172a',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.8)'
+          }}>
+            <div style={{ background: 'linear-gradient(90deg, #10b981, #059669)', padding: '20px 24px', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8, display: 'block', fontWeight: '700' }}>Secured Gateway</span>
+                <span style={{ fontSize: '1.2rem', fontWeight: '900', letterSpacing: '-0.5px' }}>Razorpay Subscription</span>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800' }}>
+                ₹{community.subscription_price} / mo
+              </div>
+            </div>
+
+            <div style={{ padding: '28px 24px' }}>
+              {!rzpSuccess ? (
+                <>
+                  <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Exclusive Community Access</span>
+                    <div style={{ fontSize: '2.2rem', fontWeight: '900', color: '#fff', marginTop: '2px' }}>
+                      {community.name}
+                    </div>
+                    <span style={{ fontSize: '0.8rem', color: '#10b981', display: 'block', marginTop: '4px' }}>✓ 70% Creator / 30% Platform Split applied</span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Select Payment Method</span>
+                    {[
+                      { name: 'UPI AutoPay', desc: 'Instant recurring setup via UPI', icon: '⚡' },
+                      { name: 'Credit / Debit Card', desc: 'Supports automated monthly charges', icon: '💳' },
+                    ].map((m, i) => (
+                      <div key={i} style={{ padding: '14px 16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} className="hover-glass">
+                        <span style={{ fontSize: '1.4rem' }}>{m.icon}</span>
+                        <div>
+                          <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#fff', display: 'block' }}>{m.name}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{m.desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button 
+                      onClick={() => setShowRzpModal(false)} 
+                      className="btn-secondary" 
+                      style={{ flex: 1, padding: '12px' }}
+                      disabled={rzpProcessing}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={processSubscribePayment} 
+                      className="btn-primary" 
+                      style={{ flex: 2, padding: '12px', background: 'linear-gradient(90deg, #10b981, #059669)' }}
+                      disabled={rzpProcessing}
+                    >
+                      {rzpProcessing ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Loader2 className="animate-spin" size={18} /> Processing...
+                        </div>
+                      ) : (
+                        `Pay ₹${community.subscription_price} Now`
+                      )}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: '#10b981' }}>
+                    <Check size={36} />
+                  </div>
+                  <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#fff', marginBottom: '8px' }}>Subscription Active!</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
+                    Welcome to the private community. Access to exclusive posts and member chat unlocked.
+                  </p>
+                  <button 
+                    onClick={() => setShowRzpModal(false)}
+                    className="btn-primary"
+                    style={{ width: '100%', background: '#10b981' }}
+                  >
+                    Enter Community
+                  </button>
+                </div>
               )}
             </div>
           </div>
