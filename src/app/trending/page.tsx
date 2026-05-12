@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { TrendingUp, Flame, Play } from 'lucide-react';
+import { TrendingUp, Play } from 'lucide-react';
 import ReelCard from '@/components/ReelCard';
 
 export default function TrendingPage() {
@@ -113,10 +113,10 @@ export default function TrendingPage() {
                   isBoosted: post.is_boosted,
                   boostCoins: post.boost_coins,
                   author: {
-                    id: post.profiles.id,
-                    name: post.profiles.full_name || 'Creator',
-                    username: post.profiles.username || 'user',
-                    avatar: post.profiles.avatar_url || ''
+                    id: post.profiles?.id || '',
+                    name: post.profiles?.full_name || 'Creator',
+                    username: post.profiles?.username || 'user',
+                    avatar: post.profiles?.avatar_url || ''
                   },
                   musicUrl: post.music_url,
                   musicTitle: post.music_title,
