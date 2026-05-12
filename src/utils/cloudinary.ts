@@ -7,7 +7,10 @@ export async function uploadToCloudinary(file: File, folder: string = 'indico'):
     throw new Error(sigData.error || 'Cloudinary configuration is missing.');
   }
 
-  const uploadUrl = `https://api.cloudinary.com/v1_1/${sigData.cloudName}/auto/upload`;
+  // Intelligently route reels and video bitstreams directly to the highly optimized /video/upload endpoint
+  const isVideo = file.type.startsWith('video/') || file.name?.match(/\.(mp4|webm|mov|ogg)$/i);
+  const resourceType = isVideo ? 'video' : 'auto';
+  const uploadUrl = `https://api.cloudinary.com/v1_1/${sigData.cloudName}/${resourceType}/upload`;
   const totalSize = file.size;
   
   // Standard single upload payload threshold: 100MB natively supported on standard Cloudinary tiers
