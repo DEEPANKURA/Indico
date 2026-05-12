@@ -390,21 +390,50 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
           {activeTab === 'Feed' && (
             <>
               {(!community.is_public && !isMember) ? (
-                <div className="glass-card" style={{ padding: '60px 40px', textAlign: 'center', borderRadius: '24px', background: 'linear-gradient(135deg, rgba(139,92,246,0.05), transparent)' }}>
-                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(139,92,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                    <Lock size={32} style={{ color: 'var(--accent-primary)' }} />
+                <div className="glass-card animate-fade-in" style={{ padding: '48px 32px', textAlign: 'center', borderRadius: '24px', background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(138,43,226,0.05))', border: '2px solid rgba(16,185,129,0.3)', position: 'relative', overflow: 'hidden' }}>
+                  {/* Glowing decorative indicator banner */}
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, background: 'linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6)', height: '5px' }} />
+                  <span style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(16,185,129,0.15)', color: '#10b981', fontSize: '0.7rem', fontWeight: '900', padding: '4px 10px', borderRadius: '20px', border: '1px solid rgba(16,185,129,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Razorpay Gateway Secured
+                  </span>
+
+                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(138,43,226,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 0 30px rgba(16,185,129,0.2)' }}>
+                    <Lock size={36} style={{ color: '#10b981' }} />
                   </div>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '8px' }}>Private Feed</h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '300px', margin: '0 auto 20px' }}>
-                    Only members can see posts in this community.
+                  
+                  <h3 style={{ fontSize: '1.6rem', fontWeight: '900', color: '#fff', marginBottom: '8px' }}>Exclusive Premium Channel</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '420px', margin: '0 auto 16px', lineHeight: '1.5' }}>
+                    Unlock full VIP access to view hidden updates, exclusive exclusive reels drops, and interact directly in active creator group chats.
                   </p>
+
+                  <div style={{ background: 'var(--bg-glass)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-around', alignItems: 'center', maxWidth: '460px', margin: '0 auto 24px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: '700' }}>Creator Payout Split</span>
+                      <strong style={{ fontSize: '1.05rem', color: '#10b981', fontWeight: '900' }}>70% Direct INR</strong>
+                    </div>
+                    <div style={{ width: '1px', height: '28px', background: 'var(--border-light)' }} />
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: '700' }}>Platform Split</span>
+                      <strong style={{ fontSize: '1.05rem', color: 'var(--accent-secondary)', fontWeight: '900' }}>30% Indico Share</strong>
+                    </div>
+                    <div style={{ width: '1px', height: '28px', background: 'var(--border-light)' }} />
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: '700' }}>Referral Rewards</span>
+                      <strong style={{ fontSize: '1.05rem', color: '#f59e0b', fontWeight: '900' }}>100c Welcome Bonus</strong>
+                    </div>
+                  </div>
+
                   {membershipStatus === 'none' && (
                     (community.subscription_price || 0) > 0 ? (
-                      <button onClick={startSubscribeCheckout} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px', background: 'linear-gradient(135deg, #10b981, #059669)' }}>
-                        Subscribe Monthly (₹{community.subscription_price})
-                      </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                        <button onClick={startSubscribeCheckout} className="btn-primary hover-scale" style={{ padding: '16px 40px', fontSize: '1.1rem', fontWeight: '900', borderRadius: '16px', background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 10px 25px rgba(16,185,129,0.4)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span>Subscribe Monthly Access</span>
+                          <span style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '8px', fontSize: '1rem' }}>₹{community.subscription_price}</span>
+                        </button>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>🔒 Fully secured verification via Razorpay • Supports UPI & Cards</span>
+                      </div>
                     ) : (
-                      <button onClick={handleJoinLeave} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px' }}>Request Access</button>
+                      <button onClick={handleJoinLeave} className="btn-primary hover-scale" style={{ padding: '14px 36px', borderRadius: '16px', fontSize: '1rem', fontWeight: '800' }}>Request Direct Access</button>
                     )
                   )}
                 </div>
