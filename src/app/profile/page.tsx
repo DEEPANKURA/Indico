@@ -183,7 +183,10 @@ export default function ProfilePage() {
         </div>
       </div>
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
       {/* Highlights Placeholder (Optional) */}
       <div style={{ display: 'flex', gap: '16px', padding: '0 16px 20px 16px', overflowX: 'auto', scrollbarWidth: 'none' }}>
         {[1, 2, 3].map(i => (

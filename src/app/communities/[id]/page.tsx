@@ -288,26 +288,22 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         <div style={{ padding: '24px', position: 'relative' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '900' }}>{community.name}</h1>
-                {!community.is_public && <Lock size={20} style={{ color: 'var(--accent-secondary)' }} />}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '900' }}>{community.name}</h1>
+                {community.is_public ? <Globe size={18} style={{ color: 'var(--text-muted)' }} /> : <Lock size={18} style={{ color: 'var(--text-muted)' }} />}
               </div>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', marginBottom: '16px', maxWidth: '600px' }}>
-                {community.description || 'Welcome to our community!'}
-              </p>
-              <div style={{ display: 'flex', gap: '20px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Users size={18} />
-                  <strong>{members.filter(m => m.status === 'joined').length}</strong> members
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Globe size={18} />
-                  {community.is_public ? 'Public' : 'Private'}
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem' }}>{community.description}</p>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.9rem', fontWeight: '700' }}>
+                  <Users size={16} />
+                  <span>{community.member_count} members</span>
                 </div>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
+<<<<<<< HEAD
               {membershipStatus === 'joined' ? (
                 <button 
                   onClick={handleJoinLeave}
@@ -337,15 +333,24 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                   {community.is_public ? 'Join Community' : 'Request to Join'}
                 </button>
               )}
+=======
+>>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
               {isMod && (
                 <button 
                   onClick={() => setShowInviteModal(true)}
-                  className="btn-primary" 
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', background: 'var(--accent-secondary)' }}
+                  className="hover-glass"
+                  style={{ background: 'var(--bg-secondary)', border: 'none', color: 'var(--text-primary)', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
                   <UserPlus size={18} /> Invite
                 </button>
               )}
+              <button 
+                onClick={handleJoinLeave}
+                className={isMember ? "btn-secondary" : "btn-primary"}
+                style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: '800' }}
+              >
+                {membershipStatus === 'joined' ? 'Leave' : membershipStatus === 'pending' ? 'Pending' : community.is_public ? 'Join' : 'Request Access'}
+              </button>
             </div>
           </div>
         </div>
@@ -404,6 +409,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                     Only members can see posts in this community.
                   </p>
                   {membershipStatus === 'none' && (
+<<<<<<< HEAD
                     (community.subscription_price || 0) > 0 ? (
                       <button onClick={startSubscribeCheckout} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px', background: 'linear-gradient(135deg, #10b981, #059669)' }}>
                         Subscribe Monthly (₹{community.subscription_price})
@@ -411,6 +417,9 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                     ) : (
                       <button onClick={handleJoinLeave} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px' }}>Request Access</button>
                     )
+=======
+                    <button onClick={handleJoinLeave} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px' }}>Request Access</button>
+>>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
                   )}
                 </div>
               ) : (

@@ -77,7 +77,7 @@ export default function StudioPage() {
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px', paddingBottom: '40px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ position: 'relative' }}>
             <Video size={28} style={{ color: 'var(--accent-secondary)' }} />
@@ -98,7 +98,7 @@ export default function StudioPage() {
             </div>
           </div>
         </div>
-        <Link href="/upload" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', padding: '10px 18px' }}>
+        <Link href="/upload" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', padding: '10px 18px', borderRadius: '12px' }}>
           <Plus size={18} /> New Post
         </Link>
       </div>
@@ -160,7 +160,7 @@ export default function StudioPage() {
                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                onClick={() => router.push(`/post/${post.id}`)}>
               
-              <div style={{ display: 'flex', gap: '16px' }}>
+              <div style={{ display: 'flex', gap: '16px', flexDirection: 'row', flexWrap: 'wrap' }}>
                 {post.media_urls?.[0] && (
                   <div style={{ width: '80px', height: '80px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }}>
                     {post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
@@ -170,7 +170,7 @@ export default function StudioPage() {
                     )}
                   </div>
                 )}
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: '200px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                     <p style={{ margin: 0, lineHeight: '1.5', fontSize: '0.95rem', fontWeight: '500', color: 'var(--text-primary)' }}>
                       {post.content?.slice(0, 100)}{(post.content?.length || 0) > 100 ? '...' : ''}
@@ -187,7 +187,7 @@ export default function StudioPage() {
                     )}
                   </div>
                   
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '12px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '12px', color: 'var(--text-secondary)', fontSize: '0.85rem', flexWrap: 'wrap' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: post.like_count > 0 ? 'var(--accent-neon)' : 'inherit' }}>
                       <Heart size={16} fill={post.like_count > 0 ? 'var(--accent-neon)' : 'none'} /> 
                       <strong>{post.like_count || 0}</strong>
@@ -196,9 +196,6 @@ export default function StudioPage() {
                       <MessageCircle size={16} /> 
                       <strong>{post.comment_count || 0}</strong>
                     </span>
-                    <div style={{ 
-                      height: '14px', width: '1px', background: 'var(--border-light)' 
-                    }} />
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: post.ai_safety_score < 70 ? '#fca5a5' : '#10b981' }}>
                       <TrendingUp size={16} /> 
                       Score: {post.ai_safety_score || 100}%

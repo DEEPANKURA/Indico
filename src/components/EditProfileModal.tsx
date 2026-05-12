@@ -2,8 +2,11 @@
 
 import { useState, useRef } from 'react';
 import { Camera, Loader2, X, Check } from 'lucide-react';
+<<<<<<< HEAD
 import { updateProfileAction, uploadAvatarAction } from '@/app/actions/profile';
 import { uploadToCloudinary } from '@/utils/cloudinary';
+=======
+>>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
 
 interface EditProfileModalProps {
   profile: {
@@ -40,8 +43,28 @@ export default function EditProfileModal({ profile, onClose, onSaved }: EditProf
     setError(null);
     
     try {
+<<<<<<< HEAD
       const secureUrl = await uploadToCloudinary(file, 'avatars');
       const avatarUrlWithVersion = `${secureUrl}?v=${Date.now()}`;
+=======
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Unauthorized');
+
+      const ext = file.name.split('.').pop() || 'jpg';
+      const filePath = `${user.id}/avatar_${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const avatarUrlWithVersion = `${publicUrl}?v=${Date.now()}`;
+>>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
       
       const { updateAvatarUrlAction } = await import('@/app/actions/profile');
       const result = await updateAvatarUrlAction(avatarUrlWithVersion);
@@ -49,7 +72,11 @@ export default function EditProfileModal({ profile, onClose, onSaved }: EditProf
       if (result.success) {
         setAvatarPreview(avatarUrlWithVersion);
       } else {
+<<<<<<< HEAD
         throw new Error(result.error);
+=======
+        throw new Error((result as any).error);
+>>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
       }
     } catch (err: any) {
       console.error('Avatar upload failed:', err);
@@ -69,6 +96,7 @@ export default function EditProfileModal({ profile, onClose, onSaved }: EditProf
       fd.append('username', username);
       fd.append('bio', bio);
       fd.append('website', website);
+      const { updateProfileAction } = await import('@/app/actions/profile');
       const result = await updateProfileAction(fd);
       if (result.success) {
         setIsSaved(true);
@@ -76,7 +104,7 @@ export default function EditProfileModal({ profile, onClose, onSaved }: EditProf
           onSaved();
         }, 800);
       } else {
-        setError(result.error || 'Failed to save profile changes');
+        setError((result as any).error || 'Failed to save profile changes');
       }
     } catch (err: any) {
       setError(err.message || 'Connection error. Please try again.');
