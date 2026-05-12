@@ -22,6 +22,8 @@ export default function TrendingPage() {
           media_urls,
           like_count,
           comment_count,
+          is_boosted,
+          boost_coins,
           music_url, music_title, music_artist, music_start_time,
           music_volume, video_volume, video_trim_start, video_trim_end,
           profiles:author_id ( id, username, full_name, avatar_url )
@@ -108,6 +110,8 @@ export default function TrendingPage() {
                   mediaUrl: post.media_urls[0],
                   likes: post.like_count || 0,
                   comments: post.comment_count || 0,
+                  isBoosted: post.is_boosted,
+                  boostCoins: post.boost_coins,
                   author: {
                     id: post.profiles.id,
                     name: post.profiles.full_name || 'Creator',

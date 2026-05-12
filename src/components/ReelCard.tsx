@@ -1,8 +1,9 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { Heart, MessageCircle, Share2, Music2, User, Volume2, VolumeX } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Music2, User, Volume2, VolumeX, Flame } from 'lucide-react';
 import { toggleLikeAction } from '@/app/actions/social';
+import { boostReelWithCoinsAction } from '@/app/actions/monetize';
 import { createClient } from '@/utils/supabase/client';
 import CommentModal from './CommentModal';
 import ShareModal from './ShareModal';
@@ -14,6 +15,8 @@ interface ReelCardProps {
     mediaUrl: string;
     likes: number;
     comments: number;
+    isBoosted?: boolean;
+    boostCoins?: number;
     author: {
       id: string;
       name: string;
@@ -37,6 +40,9 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes);
+  const [isBoosted, setIsBoosted] = useState(post.isBoosted || false);
+  const [boostCoins, setBoostCoins] = useState(post.boostCoins || 0);
+  const [boosting, setBoosting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -150,6 +156,27 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
     } catch (err) {}
   };
 
+  const handleBoost = async () => {
+    if (boosting) return;
+    setBoosting(true);
+    // Cost to boost is 100 coins
+    const res = await boostReelWithCoinsAction(post.id, 100);
+    if (res.success) {
+      setIsBoosted(true);
+      setBoostCoins(prev => prev + 100);
+      alert('🚀 Reel boosted successfully using 100 Coins! Indico Platform earned from boost.');
+    } else {
+      if (res.error?.includes('Insufficient')) {
+        if (confirm('Insufficient Coins to boost reel (Costs 100 coins). Would you like to recharge 100 Coins for ₹80 via secure gateway?')) {
+          window.location.href = '/monetize';
+        }
+      } else {
+        alert('Boost failed: ' + res.error);
+      }
+    }
+    setBoosting(false);
+  };
+
   return (
     <div style={{
       height: 'calc(100vh - 120px)',
@@ -256,6 +283,34 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
           <div style={{ padding: '10px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
             <Share2 size={24} />
           </div>
+        </button>
+
+        {/* Boost Reel Option */}
+        <button 
+          onClick={handleBoost} 
+          disabled={boosting}
+          style={{ 
+            background: 'none', border: 'none', 
+            color: isBoosted ? '#f59e0b' : 'white', 
+            cursor: boosting ? 'wait' : 'pointer', 
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+            transition: 'all 0.2s'
+          }}
+          title="Boost this Reel with 100 Coins"
+          className="hover-scale"
+        >
+          <div style={{ 
+            padding: '10px', borderRadius: '50%', 
+            background: isBoosted ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.1)', 
+            border: isBoosted ? '2px solid #f59e0b' : 'none',
+            backdropFilter: 'blur(10px)',
+            boxShadow: isBoosted ? '0 0 15px rgba(245,158,11,0.5)' : 'none'
+          }}>
+            <Flame size={24} style={{ fill: isBoosted ? '#f59e0b' : 'none' }} className={boosting ? "animate-bounce" : ""} />
+          </div>
+          <span style={{ fontSize: '0.65rem', fontWeight: '900', color: isBoosted ? '#f59e0b' : 'rgba(255,255,255,0.8)', textTransform: 'uppercase' }}>
+            {isBoosted ? `${boostCoins}c` : 'Boost'}
+          </span>
         </button>
       </div>
 

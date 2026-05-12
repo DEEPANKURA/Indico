@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Compass, TrendingUp, MessageSquare, User } from 'lucide-react';
+import { Home, Compass, TrendingUp, MessageSquare, User, Coins } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState } from 'react';
 
 const navItems = [
   { icon: Home,          label: 'Home',     href: '/' },
   { icon: Compass,       label: 'Explore',  href: '/explore' },
+  { icon: Coins,         label: 'Monetize', href: '/monetize' },
   { icon: TrendingUp,    label: 'Trending', href: '/trending' },
   { icon: MessageSquare, label: 'Messages', href: '/messages' },
   { icon: User,          label: 'Profile',  href: '/profile' },
@@ -89,15 +90,16 @@ export default function BottomNav() {
       {navItems.map((item) => {
         const isActive = pathname === item.href;
         const isMessages = item.label === 'Messages';
+        const isMonetize = item.label === 'Monetize';
         return (
           <Link
             key={item.href}
             href={item.href}
             className={`bottom-nav-item${isActive ? ' active' : ''}`}
-            style={{ position: 'relative' }}
+            style={{ position: 'relative', color: isMonetize ? '#f59e0b' : undefined }}
           >
             <div style={{ position: 'relative' }}>
-              <item.icon size={22} />
+              <item.icon size={22} style={{ color: isMonetize ? '#f59e0b' : undefined }} />
               {isMessages && unreadCount > 0 && (
                 <span style={{
                   position: 'absolute', top: '-6px', right: '-8px',
