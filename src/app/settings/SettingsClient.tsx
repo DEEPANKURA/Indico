@@ -36,28 +36,8 @@ export default function SettingsClient({ profile, email }: Props) {
     setMessage(null);
 
     try {
-<<<<<<< HEAD
       const secureUrl = await uploadToCloudinary(file, 'avatars');
       const avatarUrlWithVersion = `${secureUrl}?v=${Date.now()}`;
-=======
-      const { createClient } = await import('@/utils/supabase/client');
-      const supabase = createClient();
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Unauthorized');
-
-      const ext = file.name.split('.').pop() || 'jpg';
-      const filePath = `${user.id}/avatar_${Date.now()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const avatarUrlWithVersion = `${publicUrl}?v=${Date.now()}`;
->>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
       
       const { updateAvatarUrlAction } = await import('@/app/actions/profile');
       const result = await updateAvatarUrlAction(avatarUrlWithVersion);
@@ -67,11 +47,7 @@ export default function SettingsClient({ profile, email }: Props) {
         setMessage({ type: 'success', text: 'Profile picture updated!' });
         router.refresh();
       } else {
-<<<<<<< HEAD
         throw new Error(result.error);
-=======
-        throw new Error((result as any).error);
->>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
       }
     } catch (err: any) {
       console.error('Avatar upload failed:', err);

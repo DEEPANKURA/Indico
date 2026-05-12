@@ -34,10 +34,7 @@ export async function createPostAction(
     // AI Safety Check
     let isFlagged = false;
     let safetyScore = 100;
-<<<<<<< HEAD
     let confidenceScore = 1.0;
-=======
->>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
 
     const genAI = getGenAI();
     if (genAI) {

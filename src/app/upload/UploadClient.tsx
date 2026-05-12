@@ -6,18 +6,12 @@ import {
   Upload, Image as ImageIcon, Video as VideoIcon, Film, X, Loader2, 
   CheckCircle, Music, Volume2, Scissors, Settings2, Sparkles, 
   Type, Filter, Tag, AtSign, ChevronLeft, ChevronRight, Plus, Minus,
-<<<<<<< HEAD
-  Trash2, Layers, Smile, AlertCircle
+  Trash2, Layers, Smile, AlertCircle, Play, Bookmark, Grid3x3
 } from 'lucide-react';
 import MusicSelector from '@/components/MusicSelector';
 import { createPostAction } from '@/app/actions/post';
 import { createClient } from '@/utils/supabase/client';
 import { uploadToCloudinary } from '@/utils/cloudinary';
-=======
-  Trash2, Layers, Smile, AlertCircle, Play, Bookmark, Grid3x3
-} from 'lucide-react';
-import MusicSelector from '@/components/MusicSelector';
->>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
 
 type UploadType = 'photo' | 'video' | 'reel';
 type Step = 'SELECT' | 'EDIT' | 'POST';
@@ -143,16 +137,11 @@ export default function UploadClient() {
     setError(null);
 
     try {
-<<<<<<< HEAD
-=======
-      const { createClient } = await import('@/utils/supabase/client');
->>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Please login to upload media');
 
       setProgress(20);
-<<<<<<< HEAD
 
       // File size limit: 200MB to reliably handle high-resolution media videos/reels
       if (file.size > 200 * 1024 * 1024) {
@@ -160,27 +149,6 @@ export default function UploadClient() {
       }
 
       const publicUrl = await uploadToCloudinary(file, 'posts');
-=======
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
-
-      // File size limit: 100MB
-      if (file.size > 100 * 1024 * 1024) {
-        throw new Error('File is too large. Maximum size is 100MB.');
-      }
-
-      const { error: uploadError } = await supabase.storage
-        .from('media')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('media')
-        .getPublicUrl(filePath);
->>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
 
       setProgress(60);
 
@@ -203,18 +171,10 @@ export default function UploadClient() {
         textItems: overlays
       };
 
-<<<<<<< HEAD
-      const res = await createPostAction(
-        caption,
-        [publicUrl],
-        undefined, // communityId not used in this specific client yet
-=======
-      const { createPostAction } = await import('@/app/actions/post');
       const res = await createPostAction(
         caption,
         [publicUrl],
         undefined, 
->>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
         musicInfo,
         videoEditing,
         tags,
@@ -279,10 +239,7 @@ export default function UploadClient() {
           onMouseDown={(e) => {
             if (step !== 'EDIT') return;
             setActiveOverlayId(overlay.id);
-<<<<<<< HEAD
             // Basic drag logic could go here
-=======
->>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
           }}
           style={{
             position: 'absolute',

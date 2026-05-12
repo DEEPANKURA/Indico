@@ -303,38 +303,6 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
-<<<<<<< HEAD
-              {membershipStatus === 'joined' ? (
-                <button 
-                  onClick={handleJoinLeave}
-                  className="btn-secondary" 
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px' }}
-                >
-                  <LogOut size={18} /> Leave
-                </button>
-              ) : membershipStatus === 'pending' ? (
-                <button disabled className="btn-secondary" style={{ opacity: 0.6, padding: '10px 24px' }}>
-                  Request Pending
-                </button>
-              ) : (community.subscription_price || 0) > 0 ? (
-                <button 
-                  onClick={startSubscribeCheckout}
-                  className="btn-primary" 
-                  style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #10b981, #059669)' }}
-                >
-                  Subscribe Monthly (₹{community.subscription_price})
-                </button>
-              ) : (
-                <button 
-                  onClick={handleJoinLeave}
-                  className="btn-primary" 
-                  style={{ padding: '10px 24px' }}
-                >
-                  {community.is_public ? 'Join Community' : 'Request to Join'}
-                </button>
-              )}
-=======
->>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
               {isMod && (
                 <button 
                   onClick={() => setShowInviteModal(true)}
@@ -344,13 +312,35 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                   <UserPlus size={18} /> Invite
                 </button>
               )}
-              <button 
-                onClick={handleJoinLeave}
-                className={isMember ? "btn-secondary" : "btn-primary"}
-                style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: '800' }}
-              >
-                {membershipStatus === 'joined' ? 'Leave' : membershipStatus === 'pending' ? 'Pending' : community.is_public ? 'Join' : 'Request Access'}
-              </button>
+              {membershipStatus === 'joined' ? (
+                <button 
+                  onClick={handleJoinLeave}
+                  className="btn-secondary" 
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', borderRadius: '12px', fontWeight: '800' }}
+                >
+                  <LogOut size={18} /> Leave
+                </button>
+              ) : membershipStatus === 'pending' ? (
+                <button disabled className="btn-secondary" style={{ opacity: 0.6, padding: '10px 24px', borderRadius: '12px', fontWeight: '800' }}>
+                  Pending
+                </button>
+              ) : (community.subscription_price || 0) > 0 ? (
+                <button 
+                  onClick={startSubscribeCheckout}
+                  className="btn-primary" 
+                  style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: '800', background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                >
+                  Subscribe Monthly (₹{community.subscription_price})
+                </button>
+              ) : (
+                <button 
+                  onClick={handleJoinLeave}
+                  className="btn-primary" 
+                  style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: '800' }}
+                >
+                  {community.is_public ? 'Join' : 'Request Access'}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -409,7 +399,6 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                     Only members can see posts in this community.
                   </p>
                   {membershipStatus === 'none' && (
-<<<<<<< HEAD
                     (community.subscription_price || 0) > 0 ? (
                       <button onClick={startSubscribeCheckout} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px', background: 'linear-gradient(135deg, #10b981, #059669)' }}>
                         Subscribe Monthly (₹{community.subscription_price})
@@ -417,9 +406,6 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                     ) : (
                       <button onClick={handleJoinLeave} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px' }}>Request Access</button>
                     )
-=======
-                    <button onClick={handleJoinLeave} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px' }}>Request Access</button>
->>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
                   )}
                 </div>
               ) : (

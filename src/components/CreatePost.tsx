@@ -41,21 +41,10 @@ export default function CreatePost({
       const newUrls: string[] = [];
 
       for (const file of Array.from(files)) {
-<<<<<<< HEAD
         // File size limit: 200MB to reliably handle high-resolution media videos/reels
         if (file.size > 200 * 1024 * 1024) {
           throw new Error(`File "${file.name}" is too large. Maximum size is 200MB.`);
         }
-=======
-        // File size limit: 100MB
-        if (file.size > 100 * 1024 * 1024) {
-          throw new Error(`File "${file.name}" is too large. Maximum size is 100MB.`);
-        }
-
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-        const filePath = `${user.id}/${fileName}`;
->>>>>>> 4b60b19ecb88200c722f111cd7e524680c001fb2
 
         const secureUrl = await uploadToCloudinary(file, 'posts');
         newUrls.push(secureUrl);
