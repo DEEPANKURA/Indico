@@ -7,34 +7,84 @@ export async function uploadToCloudinary(file: File, folder: string = 'indico'):
     throw new Error(sigData.error || 'Cloudinary configuration is missing.');
   }
 
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('api_key', sigData.apiKey);
-  formData.append('timestamp', sigData.timestamp!.toString());
-  formData.append('signature', sigData.signature!);
-  formData.append('folder', sigData.folder!);
-
-  // Determine resource_type based on file type. Cloudinary supports 'auto', 'image', 'video', 'raw'
-  // Using 'auto' is highly recommended as it automatically handles photos, videos, and reels perfectly.
   const uploadUrl = `https://api.cloudinary.com/v1_1/${sigData.cloudName}/auto/upload`;
+  const totalSize = file.size;
+  // Chunk size: 10MB limit per chunk to guarantee safe REST streaming below single-payload API caps
+  const chunkSize = 10 * 1024 * 1024; 
 
-  const response = await fetch(uploadUrl, {
-    method: 'POST',
-    body: formData,
-  });
+  let finalSecureUrl = '';
 
-  const data = await response.json();
+  // If file size is within single payload threshold, do standard unchunked upload
+  if (totalSize <= chunkSize) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('api_key', sigData.apiKey);
+    formData.append('timestamp', sigData.timestamp!.toString());
+    formData.append('signature', sigData.signature!);
+    formData.append('folder', sigData.folder!);
 
-  if (!response.ok) {
-    console.error('Cloudinary upload error details:', data);
-    throw new Error(data.error?.message || 'Failed to upload media to Cloudinary.');
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Cloudinary single upload error details:', data);
+      throw new Error(data.error?.message || 'Failed to upload media to Cloudinary.');
+    }
+
+    finalSecureUrl = data.secure_url;
+  } else {
+    // Perform robust High-Performance Chunked Streaming Upload for large files up to 200MB+
+    const uniqueUploadId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+    for (let start = 0; start < totalSize; start += chunkSize) {
+      const end = Math.min(start + chunkSize, totalSize);
+      const chunk = file.slice(start, end);
+
+      const formData = new FormData();
+      // Pass original filename so Cloudinary detects media extension flawlessly
+      formData.append('file', chunk, file.name || 'blob');
+      formData.append('api_key', sigData.apiKey);
+      formData.append('timestamp', sigData.timestamp!.toString());
+      formData.append('signature', sigData.signature!);
+      formData.append('folder', sigData.folder!);
+
+      const headers = {
+        'X-Unique-Upload-Id': uniqueUploadId,
+        'Content-Range': `bytes ${start}-${end - 1}/${totalSize}`,
+      };
+
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error(`Cloudinary chunk upload error at range ${start}-${end - 1}:`, data);
+        throw new Error(data.error?.message || 'Failed to upload large media chunk to Cloudinary.');
+      }
+
+      if (data.secure_url) {
+        finalSecureUrl = data.secure_url;
+      }
+    }
   }
 
-  const secureUrl = data.secure_url;
+  if (!finalSecureUrl) {
+    throw new Error('Upload completed but no secure URL was returned from Cloudinary.');
+  }
+
   // Apply premium automatic intelligent lossless/perceptual compression (f_auto,q_auto)
   // slashes file sizes by up to 70% while preserving perfect visual quality
-  if (secureUrl.includes('/upload/')) {
-    return secureUrl.replace('/upload/', '/upload/f_auto,q_auto/');
+  if (finalSecureUrl.includes('/upload/')) {
+    return finalSecureUrl.replace('/upload/', '/upload/f_auto,q_auto/');
   }
-  return secureUrl;
+  
+  return finalSecureUrl;
 }
