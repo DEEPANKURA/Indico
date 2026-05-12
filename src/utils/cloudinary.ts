@@ -7,15 +7,19 @@ export async function uploadToCloudinary(file: File, folder: string = 'indico'):
     throw new Error(sigData.error || 'Cloudinary configuration is missing.');
   }
 
-  const uploadUrl = `https://api.cloudinary.com/v1_1/${sigData.cloudName}/auto/upload`;
+  // Intelligently route reels and video bitstreams directly to the highly optimized /video/upload endpoint
+  const isVideo = file.type.startsWith('video/') || file.name?.match(/\.(mp4|webm|mov|ogg)$/i);
+  const resourceType = isVideo ? 'video' : 'auto';
+  const uploadUrl = `https://api.cloudinary.com/v1_1/${sigData.cloudName}/${resourceType}/upload`;
   const totalSize = file.size;
-  // Chunk size: 10MB limit per chunk to guarantee safe REST streaming below single-payload API caps
-  const chunkSize = 10 * 1024 * 1024; 
+  
+  // Standard single upload payload threshold: 100MB natively supported on standard Cloudinary tiers
+  const singleUploadLimit = 100 * 1024 * 1024; 
 
   let finalSecureUrl = '';
 
-  // If file size is within single payload threshold, do standard unchunked upload
-  if (totalSize <= chunkSize) {
+  // Route files up to 100MB through native foolproof standard POST upload to prevent chunk range rejections
+  if (totalSize <= singleUploadLimit) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('api_key', sigData.apiKey);
@@ -31,13 +35,14 @@ export async function uploadToCloudinary(file: File, folder: string = 'indico'):
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Cloudinary single upload error details:', data);
+      console.error('Cloudinary upload error details:', data);
       throw new Error(data.error?.message || 'Failed to upload media to Cloudinary.');
     }
 
     finalSecureUrl = data.secure_url;
   } else {
-    // Perform robust High-Performance Chunked Streaming Upload for large files up to 200MB+
+    // Fallback chunked streaming for files exceeding 100MB single payload caps
+    const chunkSize = 10 * 1024 * 1024;
     const uniqueUploadId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
     for (let start = 0; start < totalSize; start += chunkSize) {
@@ -45,7 +50,6 @@ export async function uploadToCloudinary(file: File, folder: string = 'indico'):
       const chunk = file.slice(start, end);
 
       const formData = new FormData();
-      // Pass original filename so Cloudinary detects media extension flawlessly
       formData.append('file', chunk, file.name || 'blob');
       formData.append('api_key', sigData.apiKey);
       formData.append('timestamp', sigData.timestamp!.toString());
