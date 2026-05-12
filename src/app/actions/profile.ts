@@ -74,7 +74,7 @@ export async function updateAvatarUrlAction(url: string) {
 }
 
 export async function uploadAvatarAction(formData: FormData) {
-  // Legacy server-side upload. Still works for small files but client-side is preferred.
+  // Legacy server-side upload updated to use Cloudinary directly
   try {
     const supabase = await createClient();
     const { data, error: userError } = await supabase.auth.getUser();
@@ -91,17 +91,38 @@ export async function uploadAvatarAction(formData: FormData) {
       return { success: false, error: 'File size too large. Max 10MB allowed.' };
     }
 
-    const ext = file.name.split('.').pop() || 'jpg';
-    const filePath = `${user.id}/avatar_${Date.now()}.${ext}`;
+    const buffer = await file.arrayBuffer();
+    const base64Data = Buffer.from(buffer).toString('base64');
+    const dataUri = `data:${file.type};base64,${base64Data}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, file, { upsert: true });
+    const { getCloudinarySignatureAction } = await import('./cloudinary');
+    const sigData = await getCloudinarySignatureAction('avatars');
+    if (!sigData.success) {
+      return { success: false, error: sigData.error };
+    }
 
-    if (uploadError) throw uploadError;
+    const cdFormData = new FormData();
+    cdFormData.append('file', dataUri);
+    cdFormData.append('api_key', sigData.apiKey!);
+    cdFormData.append('timestamp', sigData.timestamp!.toString());
+    cdFormData.append('signature', sigData.signature!);
+    cdFormData.append('folder', 'avatars');
 
-    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-    const avatarUrlWithVersion = `${publicUrl}?v=${Date.now()}`;
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${sigData.cloudName}/auto/upload`;
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      body: cdFormData,
+    });
+    const resultData = await response.json();
+    if (!response.ok) {
+      throw new Error(resultData.error?.message || 'Cloudinary upload failed');
+    }
+
+    const secureUrl = resultData.secure_url;
+    const optimizedUrl = secureUrl.includes('/upload/') 
+      ? secureUrl.replace('/upload/', '/upload/f_auto,q_auto/') 
+      : secureUrl;
+    const avatarUrlWithVersion = `${optimizedUrl}?v=${Date.now()}`;
 
     return await updateAvatarUrlAction(avatarUrlWithVersion);
   } catch (err: any) {
