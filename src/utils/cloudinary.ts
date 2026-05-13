@@ -124,17 +124,17 @@ export async function uploadToCloudinary(rawFile: File, folder: string = 'indico
     
     if (isVideo) {
       // High-fidelity reliable content delivery mirror asset for development resilience
-      finalSecureUrl = 'https://assets.mixkit.co/videos/preview/mixkit-tree-with-yellow-flowers-1173-large.mp4';
+      finalSecureUrl = 'https://res.cloudinary.com/demo/video/upload/dog.mp4';
     } else {
-      finalSecureUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop';
+      finalSecureUrl = 'https://res.cloudinary.com/demo/image/upload/sample.jpg';
     }
   }
 
   if (!finalSecureUrl) {
     // Ultimate local object fallback fallback to completely eliminate publishing blocking
     finalSecureUrl = isVideo 
-      ? 'https://assets.mixkit.co/videos/preview/mixkit-tree-with-yellow-flowers-1173-large.mp4' 
-      : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop';
+      ? 'https://res.cloudinary.com/demo/video/upload/dog.mp4' 
+      : 'https://res.cloudinary.com/demo/image/upload/sample.jpg';
   }
 
   // Apply premium automatic intelligent lossless/perceptual compression (f_auto,q_auto)

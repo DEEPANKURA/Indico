@@ -48,6 +48,17 @@ export default function TrendingPage() {
     };
 
     fetchReels();
+
+    const channel = supabase
+      .channel('trending_reels')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
+        fetchReels();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {

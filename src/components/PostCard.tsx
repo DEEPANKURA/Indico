@@ -98,7 +98,12 @@ export default function PostCard({ post }: PostCardProps) {
               if (post.videoTrimStart && videoRef.current.currentTime < post.videoTrimStart) {
                 videoRef.current.currentTime = post.videoTrimStart;
               }
-              videoRef.current.play().catch(() => {});
+              const playPromise = videoRef.current.play();
+              if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                  console.warn('Video auto-play failed or was interrupted:', error);
+                });
+              }
             }
           }
         });

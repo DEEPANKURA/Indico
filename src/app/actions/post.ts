@@ -105,6 +105,8 @@ export async function createPostAction(
     revalidatePath('/');
     revalidatePath('/studio');
     revalidatePath('/profile');
+    revalidatePath('/trending');
+    revalidatePath('/explore');
     return { success: true, isFlagged };
   } catch (error: any) {
     console.error('Create post error:', error);
