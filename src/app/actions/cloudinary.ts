@@ -4,9 +4,9 @@ import crypto from 'crypto';
 
 export async function getCloudinarySignatureAction(folder: string = 'indico') {
   try {
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dm6nsathe';
+    const apiKey = process.env.CLOUDINARY_API_KEY || '441661358918689';
+    const apiSecret = process.env.CLOUDINARY_API_SECRET || 'EWj8w2BB4-eJd-9jVgJ9ohe9uEs';
 
     if (!cloudName || !apiKey || !apiSecret) {
       return {
