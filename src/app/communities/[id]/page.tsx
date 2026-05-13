@@ -92,6 +92,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
   const [rulesEdit, setRulesEdit] = useState('');
   const [isAnnouncementEdit, setIsAnnouncementEdit] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [selectedMediaForModal, setSelectedMediaForModal] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
 
   const supabase = createClient();
   const router = useRouter();
@@ -395,7 +396,19 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {(community.subscription_price && community.subscription_price > 0) ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', padding: '6px 12px', borderRadius: '12px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '700' }}>PRICE TO JOIN:</span>
+                  <strong style={{ color: '#10b981', fontSize: '0.95rem' }}>₹{community.subscription_price}/mo</strong>
+                </div>
+              ) : (community.join_price && community.join_price > 0) ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', padding: '6px 12px', borderRadius: '12px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '700' }}>PRICE TO JOIN:</span>
+                  <strong style={{ color: '#f59e0b', fontSize: '0.95rem' }}>🪙{community.join_price}</strong>
+                </div>
+              ) : null}
+
               {isMod && (
                 <button 
                   onClick={() => setShowInviteModal(true)}
@@ -417,13 +430,13 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                 <button disabled className="btn-secondary" style={{ opacity: 0.6, padding: '10px 24px', borderRadius: '12px', fontWeight: '800' }}>
                   Pending
                 </button>
-              ) : community.is_exclusive ? (
+              ) : (community.is_exclusive || (community.subscription_price && community.subscription_price > 0) || (community.join_price && community.join_price > 0)) ? (
                 <button 
                   onClick={startSubscribeCheckout}
                   className="btn-primary" 
                   style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: '800', background: 'linear-gradient(135deg, #10b981, #059669)' }}
                 >
-                  Pay 🪙{community.join_price} & Join
+                  {community.subscription_price ? `Subscribe & Join` : `Pay 🪙${community.join_price} & Join`}
                 </button>
               ) : (
                 <button 
@@ -446,7 +459,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
           </div>
         ) : (
           <div style={{ display: 'flex', borderTop: '1px solid var(--border-light)', padding: '0 24px', overflowX: 'auto' }} className="no-scrollbar">
-            {['Feed', 'Chat', 'Members', 'Settings'].map((tab) => {
+            {['Feed', 'Media', 'Chat', 'Members', 'Settings'].map((tab) => {
               if (tab === 'Settings' && !isMod) return null;
               const hasPending = tab === 'Settings' && pendingRequests.length > 0;
               return (
@@ -530,13 +543,15 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                   </div>
 
                   {membershipStatus === 'none' && (
-                    community.is_exclusive ? (
+                    (community.is_exclusive || (community.subscription_price && community.subscription_price > 0) || (community.join_price && community.join_price > 0)) ? (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                         <button onClick={startSubscribeCheckout} className="btn-primary hover-scale" style={{ padding: '16px 40px', fontSize: '1.1rem', fontWeight: '900', borderRadius: '16px', background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 10px 25px rgba(16,185,129,0.4)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span>Pay Once to Join</span>
-                          <span style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '8px', fontSize: '1rem' }}>🪙{community.join_price}</span>
+                          <span>{community.subscription_price ? 'Subscribe via Razorpay' : 'Pay Once to Join'}</span>
+                          <span style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '8px', fontSize: '1rem' }}>
+                            {community.subscription_price ? `₹${community.subscription_price}/mo` : `🪙${community.join_price}`}
+                          </span>
                         </button>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>🔒 Secure Coin Transfer • Lifetime Access</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>🔒 Secure Gateway Checkout • Cancel Anytime</span>
                       </div>
                     ) : (
                       <button onClick={handleJoinLeave} className="btn-primary hover-scale" style={{ padding: '14px 36px', borderRadius: '16px', fontSize: '1rem', fontWeight: '800' }}>Request Direct Access</button>
@@ -571,6 +586,58 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                 </>
               )}
             </>
+          )}
+
+          {activeTab === 'Media' && (
+            <div className="glass-card animate-fade-in" style={{ padding: '32px', borderRadius: '24px' }}>
+              <h3 style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ImageIcon size={20} style={{ color: 'var(--accent-primary)' }} /> Shared Media Grid
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
+                Tap on any shared image or video to view the full picture.
+              </p>
+
+              {posts.filter(p => p.mediaUrl).length > 0 ? (
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', 
+                  gap: '16px' 
+                }}>
+                  {posts.filter(p => p.mediaUrl).map((post) => (
+                    <div 
+                      key={post.id} 
+                      onClick={() => setSelectedMediaForModal({ url: post.mediaUrl, type: post.mediaType })}
+                      className="hover-scale"
+                      style={{ 
+                        aspectRatio: '1', 
+                        borderRadius: '16px', 
+                        overflow: 'hidden', 
+                        background: '#000',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        border: '1px solid var(--border-light)'
+                      }}
+                    >
+                      {post.mediaType === 'video' ? (
+                        <>
+                          <video src={post.mediaUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                          <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', padding: '4px', borderRadius: '50%', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            ▶️
+                          </div>
+                        </>
+                      ) : (
+                        <img src={post.mediaUrl} alt="media" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <p>No media files shared in this community yet.</p>
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === 'Chat' && (
@@ -903,6 +970,63 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Picture / Media Lightbox Modal */}
+      {selectedMediaForModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999,
+          padding: '20px'
+        }} onClick={() => setSelectedMediaForModal(null)}>
+          <div style={{
+            position: 'relative',
+            maxWidth: '90vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }} onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setSelectedMediaForModal(null)}
+              style={{
+                position: 'absolute',
+                top: '-40px',
+                right: '0',
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: '#fff',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-scale"
+            >
+              <X size={20} />
+            </button>
+
+            {selectedMediaForModal.type === 'video' ? (
+              <video 
+                src={selectedMediaForModal.url} 
+                style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '16px', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }} 
+                controls 
+                autoPlay 
+              />
+            ) : (
+              <img 
+                src={selectedMediaForModal.url} 
+                alt="Full View" 
+                style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '16px', objectFit: 'contain', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }} 
+              />
+            )}
           </div>
         </div>
       )}
