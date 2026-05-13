@@ -163,7 +163,7 @@ export default function StudioPage() {
               <div style={{ display: 'flex', gap: '16px', flexDirection: 'row', flexWrap: 'wrap' }}>
                 {post.media_urls?.[0] && (
                   <div style={{ width: '80px', height: '80px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }}>
-                    {post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
+                    {typeof post.media_urls[0] === 'string' && post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
                       <video src={post.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                       <img src={post.media_urls[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

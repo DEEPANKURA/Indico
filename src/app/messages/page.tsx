@@ -392,7 +392,7 @@ export default function MessagesPage() {
                         }} onClick={() => router.push(`/post/${msg.post_id}`)}>
                           {msg.posts.media_urls?.[0] && (
                             <div style={{ width: '100%', aspectRatio: '16/9', overflow: 'hidden' }}>
-                              {msg.posts.media_urls[0].includes('mp4') ? (
+                              {typeof msg.posts.media_urls[0] === 'string' && msg.posts.media_urls[0].includes('mp4') ? (
                                 <video src={msg.posts.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
                               ) : (
                                 <img src={msg.posts.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

@@ -235,7 +235,7 @@ export default function ProfilePage() {
               }}
             >
               {post.media_urls?.[0] ? (
-                post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
+                typeof post.media_urls[0] === 'string' && post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
                   <>
                     <video src={post.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', top: '8px', right: '8px' }}><Play size={14} color="white" fill="white" /></div>

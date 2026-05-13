@@ -35,10 +35,13 @@ export default function TrendingPage() {
 
       if (data) {
         // Filter for videos (simple check by extension or presence of multiple URLs if we had better metadata)
-        const videoPosts = data.filter(p => 
-          p.media_urls?.[0]?.toLowerCase().match(/\.(mp4|webm|mov|m4v)$/) || 
-          p.media_urls?.[0]?.includes('video')
-        );
+        const videoPosts = (data as any[]).filter((p: any) => {
+          if (!p || !Array.isArray(p.media_urls) || typeof p.media_urls[0] !== 'string') {
+            return false;
+          }
+          const lower = p.media_urls[0].toLowerCase();
+          return lower.match(/\.(mp4|webm|mov|m4v)$/) || lower.includes('video');
+        });
         setReels(videoPosts);
       }
       setLoading(false);

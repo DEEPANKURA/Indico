@@ -60,7 +60,7 @@ export default function ExplorePage() {
           isNew: false
         },
         mediaUrl: p.media_urls?.[0],
-        mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
+        mediaType: typeof p.media_urls?.[0] === 'string' && p.media_urls[0].match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
         likes: p.like_count || 0,
         comments: p.comment_count || 0,
         shares: "0",
@@ -123,7 +123,7 @@ export default function ExplorePage() {
           isNew: false
         },
         mediaUrl: p.media_urls?.[0],
-        mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
+        mediaType: typeof p.media_urls?.[0] === 'string' && p.media_urls[0].match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
         likes: p.like_count || 0,
         comments: p.comment_count || 0,
         shares: "0",
@@ -332,12 +332,12 @@ export default function ExplorePage() {
                     >
                       {post.media_urls?.[0] ? (
                         <>
-                          {post.media_urls[0].includes('mp4') ? (
+                          {typeof post.media_urls[0] === 'string' && post.media_urls[0].includes('mp4') ? (
                             <video src={post.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
                           ) : (
                             <img src={post.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           )}
-                          {post.media_urls[0].includes('mp4') && (
+                          {typeof post.media_urls[0] === 'string' && post.media_urls[0].includes('mp4') && (
                             <PlayCircle size={20} color="white" style={{ position: 'absolute', top: '8px', right: '8px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />
                           )}
                         </>
@@ -384,7 +384,7 @@ export default function ExplorePage() {
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 0 120px 0' }}>
             {selectedPost.media_urls?.[0] ? (
                <div style={{ width: '100%', maxHeight: '70vh', position: 'relative' }}>
-                  {selectedPost.media_urls[0].includes('mp4') ? (
+                  {typeof selectedPost.media_urls[0] === 'string' && selectedPost.media_urls[0].includes('mp4') ? (
                     <video src={selectedPost.media_urls[0]} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain' }} controls autoPlay loop />
                   ) : (
                     <img src={selectedPost.media_urls[0]} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain' }} />

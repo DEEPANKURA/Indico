@@ -47,7 +47,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     },
     content: post.content,
     mediaUrl: post.media_urls?.[0] || undefined,
-    mediaType: (post.media_urls?.[0]?.includes('mp4') ? 'video' : 'image') as "image" | "video",
+    mediaType: (typeof post.media_urls?.[0] === 'string' && post.media_urls[0].includes('mp4') ? 'video' : 'image') as "image" | "video",
     likes: post.like_count?.toString() || "0",
     comments: post.comment_count?.toString() || "0",
     shares: "0",

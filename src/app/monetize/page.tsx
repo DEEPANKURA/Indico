@@ -555,7 +555,7 @@ export default function MonetizePage() {
                   </p>
                   {post.media_urls?.[0] && (
                     <div style={{ width: '100%', height: '140px', borderRadius: '10px', overflow: 'hidden', marginBottom: '12px', background: '#000' }}>
-                      {post.media_urls[0].match(/\.(mp4|webm)/i) ? (
+                      {typeof post.media_urls[0] === 'string' && post.media_urls[0].match(/\.(mp4|webm)/i) ? (
                         <video src={post.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
                       ) : (
                         <img src={post.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

@@ -76,7 +76,7 @@ export default async function Home() {
               },
               content: post.content,
               mediaUrl: post.media_urls?.[0] || undefined,
-              mediaType: post.media_urls?.[0]?.toLowerCase().match(/\.(mp4|webm|ogg)/) ? 'video' : 'image',
+              mediaType: typeof post.media_urls?.[0] === 'string' && post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? 'video' : 'image',
               likes: post.like_count?.toString() || "0",
               comments: post.comment_count?.toString() || "0",
               shares: "0",

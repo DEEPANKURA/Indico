@@ -160,7 +160,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         overlays: p.overlays || undefined,
         timeAgo: new Date(p.created_at).toLocaleDateString(),
         mediaUrl: p.media_urls?.[0],
-        mediaType: p.media_urls?.[0]?.match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
+        mediaType: typeof p.media_urls?.[0] === 'string' && p.media_urls[0].match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
         musicUrl: p.music_url,
         musicTitle: p.music_title,
         musicArtist: p.music_artist,

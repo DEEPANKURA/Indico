@@ -208,7 +208,7 @@ export default function UserProfilePage() {
                 }}
               >
                 {post.media_urls?.[0] ? (
-                  post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
+                  typeof post.media_urls[0] === 'string' && post.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
                     <video src={post.media_urls[0]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <img src={post.media_urls[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -262,7 +262,7 @@ export default function UserProfilePage() {
               maxHeight: isMobile ? '40vh' : 'none', position: 'relative'
             }}>
               {selectedPost.media_urls?.[0] ? (
-                selectedPost.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
+                typeof selectedPost.media_urls[0] === 'string' && selectedPost.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
                   <video src={selectedPost.media_urls[0]} controls autoPlay style={{ width: '100%', maxHeight: '100%', display: 'block' }} />
                 ) : (
                   <img src={selectedPost.media_urls[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
