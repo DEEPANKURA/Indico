@@ -16,7 +16,9 @@ export default function CreateCommunityModal({ onClose, onSuccess }: CreateCommu
     description: '',
     category: 'General',
     isPublic: true,
-    color: '#8b5cf6'
+    color: '#8b5cf6',
+    isExclusive: false,
+    joinPrice: 0
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,7 +115,7 @@ export default function CreateCommunityModal({ onClose, onSuccess }: CreateCommu
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-light)' }}>
             <button 
               type="button"
-              onClick={() => setFormData({...formData, isPublic: !formData.isPublic})}
+              onClick={() => setFormData({...formData, isPublic: true, isExclusive: false})}
               style={{ 
                 flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                 padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
@@ -125,17 +127,48 @@ export default function CreateCommunityModal({ onClose, onSuccess }: CreateCommu
             </button>
             <button 
               type="button"
-              onClick={() => setFormData({...formData, isPublic: !formData.isPublic})}
+              onClick={() => setFormData({...formData, isPublic: false})}
               style={{ 
                 flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                 padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                background: !formData.isPublic ? 'var(--accent-secondary)' : 'transparent',
+                background: !formData.isPublic && !formData.isExclusive ? 'var(--accent-secondary)' : 'transparent',
                 color: 'white', fontWeight: '600', transition: 'all 0.2s'
               }}
             >
               <Lock size={18} /> Private
             </button>
           </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-light)' }}>
+             <div>
+               <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>Exclusive Community</div>
+               <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Require a coin payment to join</div>
+             </div>
+             <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+               <input 
+                 type="checkbox" 
+                 checked={formData.isExclusive} 
+                 onChange={(e) => setFormData({...formData, isExclusive: e.target.checked, isPublic: false})} 
+                 style={{ width: '20px', height: '20px', accentColor: 'var(--accent-neon)' }} 
+               />
+             </label>
+          </div>
+
+          {formData.isExclusive && (
+            <div className="animate-fade-in">
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '8px', color: 'var(--accent-neon)' }}>JOINING PRICE (COINS)</label>
+              <input 
+                required={formData.isExclusive}
+                type="number" 
+                min="1"
+                placeholder="e.g. 50"
+                value={formData.joinPrice}
+                onChange={(e) => setFormData({...formData, joinPrice: parseInt(e.target.value) || 0})}
+                className="glass-card"
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--accent-neon)', color: 'white', background: 'rgba(255,255,255,0.05)' }}
+              />
+            </div>
+          )}
 
           <button 
             type="submit" 

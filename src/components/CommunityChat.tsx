@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Send, Smile, Loader2, User, ExternalLink, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
-import PostCard from './PostCard';
+import { encryptText, decryptText } from '@/utils/e2ee';
 
 const STICKERS = [
   'https://fonts.gstatic.com/s/e/notoemoji/latest/1f600/512.gif',
@@ -14,7 +14,15 @@ const STICKERS = [
   'https://fonts.gstatic.com/s/e/notoemoji/latest/1f60e/512.gif',
 ];
 
-export default function CommunityChat({ communityId }: { communityId: string }) {
+export default function CommunityChat({ 
+  communityId, 
+  isAnnouncementOnly = false, 
+  isMod = false 
+}: { 
+  communityId: string;
+  isAnnouncementOnly?: boolean;
+  isMod?: boolean;
+}) {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
@@ -40,11 +48,18 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
         filter: `community_id=eq.${communityId}`
       }, async (payload) => {
         const newMsg = payload.new;
+        if (newMsg.message_type === 'text' && newMsg.content) {
+          newMsg.content = decryptText(newMsg.content, communityId);
+        }
         
         const [profRes, postRes] = await Promise.all([
           supabase.from('profiles').select('username, avatar_url, full_name').eq('id', newMsg.sender_id).single(),
           newMsg.post_id ? supabase.from('posts').select('*, author:profiles(username, avatar_url)').eq('id', newMsg.post_id).single() : Promise.resolve({ data: null })
         ]);
+
+        if (postRes.data && postRes.data.content) {
+          postRes.data.content = decryptText(postRes.data.content, communityId);
+        }
 
         setMessages(prev => {
           // Remove optimistic version (random ID) if it matches the incoming real message
@@ -70,7 +85,17 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
       .eq('community_id', communityId)
       .order('created_at', { ascending: true });
 
-    setMessages(data || []);
+    const decryptedData = (data || []).map(msg => {
+      if (msg.message_type === 'text' && msg.content) {
+        msg.content = decryptText(msg.content, communityId);
+      }
+      if (msg.post && msg.post.content) {
+        msg.post.content = decryptText(msg.post.content, communityId);
+      }
+      return msg;
+    });
+
+    setMessages(decryptedData);
     setLoading(false);
   };
 
@@ -81,16 +106,20 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
   const handleSend = async (stickerUrl?: string) => {
     if ((!input.trim() && !stickerUrl) || !user) return;
 
+    const rawContent = stickerUrl ? '' : input;
+    const isText = !stickerUrl;
+
     const newMsg = {
       community_id: communityId,
       sender_id: user.id,
-      content: stickerUrl ? '' : input,
+      content: isText ? encryptText(rawContent, communityId) : rawContent,
       message_type: stickerUrl ? 'sticker' : 'text',
       sticker_url: stickerUrl || null
     };
 
     const optimisticMsg = {
       ...newMsg,
+      content: rawContent, // Keep plain text for optimistic rendering
       id: Math.random().toString(),
       isOptimistic: true,
       created_at: new Date().toISOString(),
@@ -170,35 +199,41 @@ export default function CommunityChat({ communityId }: { communityId: string }) 
         ))}
       </div>
 
-      <div style={{ padding: '16px', borderTop: '1px solid #eeeeee', display: 'flex', gap: '8px', position: 'relative', background: '#ffffff' }}>
-        <button onClick={() => setShowStickers(!showStickers)} style={{ background: 'none', border: 'none', color: '#666666', cursor: 'pointer' }}>
-          <Smile size={20} />
-        </button>
+      {isAnnouncementOnly && !isMod ? (
+        <div style={{ padding: '16px', borderTop: '1px solid #eeeeee', textAlign: 'center', background: '#fafafa', color: '#888888', fontSize: '0.85rem' }}>
+          📢 Broadcast channel: Only admins can send messages here.
+        </div>
+      ) : (
+        <div style={{ padding: '16px', borderTop: '1px solid #eeeeee', display: 'flex', gap: '8px', position: 'relative', background: '#ffffff' }}>
+          <button onClick={() => setShowStickers(!showStickers)} style={{ background: 'none', border: 'none', color: '#666666', cursor: 'pointer' }}>
+            <Smile size={20} />
+          </button>
 
-        {showStickers && (
-          <div className="glass-card" style={{ 
-            position: 'absolute', bottom: '100%', left: '16px', width: '200px', 
-            padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px',
-            borderRadius: '16px', marginBottom: '10px', zIndex: 10, boxShadow: '0 -4px 20px rgba(0,0,0,0.3)'
-          }}>
-            {STICKERS.map((s, i) => (
-              <img key={i} src={s} style={{ width: '100%', cursor: 'pointer' }} onClick={() => handleSend(s)} />
-            ))}
-          </div>
-        )}
+          {showStickers && (
+            <div className="glass-card" style={{ 
+              position: 'absolute', bottom: '100%', left: '16px', width: '200px', 
+              padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px',
+              borderRadius: '16px', marginBottom: '10px', zIndex: 10, boxShadow: '0 -4px 20px rgba(0,0,0,0.3)'
+            }}>
+              {STICKERS.map((s, i) => (
+                <img key={i} src={s} style={{ width: '100%', cursor: 'pointer' }} onClick={() => handleSend(s)} />
+              ))}
+            </div>
+          )}
 
-        <input 
-          type="text" 
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-          placeholder="Message community..." 
-          style={{ flex: 1, background: '#f0f2f5', border: 'none', borderRadius: '20px', padding: '8px 16px', color: '#000000', outline: 'none' }}
-        />
-        <button onClick={() => handleSend()} style={{ background: 'var(--accent-primary)', border: 'none', color: 'white', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-          <Send size={18} />
-        </button>
-      </div>
+          <input 
+            type="text" 
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+            placeholder="Message community..." 
+            style={{ flex: 1, background: '#f0f2f5', border: 'none', borderRadius: '20px', padding: '8px 16px', color: '#000000', outline: 'none' }}
+          />
+          <button onClick={() => handleSend()} style={{ background: 'var(--accent-primary)', border: 'none', color: 'white', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <Send size={18} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

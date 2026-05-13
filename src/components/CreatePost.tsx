@@ -1,12 +1,13 @@
 'use client';
 
-import { Send, Image as ImageIcon, Loader2, X, Video, Music as MusicIcon, Scissors, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
+import { Send, Image as ImageIcon, Loader2, X, Video, Music as MusicIcon, Scissors, ChevronLeft, ChevronRight, Edit3, ShieldCheck } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { createPostAction } from '@/app/actions/post';
 import MusicSelector from './MusicSelector';
 import { uploadToCloudinary } from '@/utils/cloudinary';
+import { encryptText } from '@/utils/e2ee';
 
 export default function CreatePost({ 
   communityId, 
@@ -86,7 +87,9 @@ export default function CreatePost({
         startTime: musicStartTime
       } : undefined;
 
-      const result = await createPostAction(content, mediaUrls, communityId, musicInfo);
+      const finalContent = communityId ? encryptText(content, communityId) : content;
+
+      const result = await createPostAction(finalContent, mediaUrls, communityId, musicInfo);
       
       if (!result.success) {
         throw new Error(result.error);
@@ -121,11 +124,18 @@ export default function CreatePost({
 
   return (
     <div className="glass-card" style={{ padding: '24px', marginBottom: '24px', borderRadius: '24px', border: '1px solid var(--border-light)', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Edit3 size={20} color="white" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Edit3 size={20} color="white" />
+          </div>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800' }}>Create Post</h3>
         </div>
-        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800' }}>Create Post</h3>
+        {communityId && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: '800', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '4px 10px', borderRadius: '20px', border: '1px solid rgba(16,185,129,0.2)' }}>
+            <ShieldCheck size={14} /> E2EE Secured
+          </div>
+        )}
       </div>
 
       <textarea

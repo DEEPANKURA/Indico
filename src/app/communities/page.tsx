@@ -23,23 +23,25 @@ export default function CommunitiesPage() {
   const fetchCommunities = async () => {
     try {
       setLoading(true);
-      const [userRes, commsRes] = await Promise.all([
-        supabase.auth.getUser(),
-        getCommunitiesAction()
-      ]);
-
-      if (userRes.data?.user) {
-        setUser(userRes.data.user);
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        setUser(currentUser);
       }
 
-      if (commsRes.success) {
-        setCommunities(commsRes.communities || []);
-        setError(null);
-      } else {
-        setError(commsRes.error || 'Failed to connect to the server');
+      const { data, error: fetchErr } = await supabase
+        .from('communities')
+        .select('*, community_members(user_id, status)')
+        .order('member_count', { ascending: false });
+
+      if (fetchErr) {
+        throw fetchErr;
       }
+
+      setCommunities(data || []);
+      setError(null);
     } catch (err: any) {
-      setError('An unexpected error occurred while loading communities.');
+      console.error('Fetch communities client error:', err);
+      setError(err.message || 'An unexpected error occurred while loading communities.');
     } finally {
       setLoading(false);
     }
@@ -238,24 +240,36 @@ export default function CommunitiesPage() {
                     </div>
                   </div>
 
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!membership) handleJoin(comm.id);
-                    }}
-                    className={isJoined ? "btn-secondary" : isPending ? "btn-secondary" : "btn-primary"} 
-                    style={{ 
-                      marginLeft: '16px', padding: '10px 24px', flexShrink: 0, borderRadius: '14px',
-                      background: isJoined ? 'rgba(255,255,255,0.05)' : isPending ? 'rgba(245,158,11,0.1)' : (comm.color || 'var(--accent-primary)'),
-                      border: isJoined ? '1px solid var(--border-light)' : isPending ? '1px solid #f59e0b' : 'none',
-                      color: isJoined ? 'var(--text-secondary)' : isPending ? '#f59e0b' : 'white',
-                      fontWeight: '700', fontSize: '0.9rem',
-                      cursor: (isJoined || isPending) ? 'default' : 'pointer'
-                    }}
-                    disabled={isJoined || isPending}
-                  >
-                    {isJoined ? 'Joined' : isPending ? 'Pending' : comm.is_public ? 'Join' : 'Request'}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {comm.is_exclusive && !isJoined && (
+                      <div style={{ 
+                        background: 'rgba(250,204,21,0.1)', border: '1px solid rgba(250,204,21,0.3)',
+                        padding: '6px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px',
+                        boxShadow: '0 0 15px rgba(250,204,21,0.2)'
+                      }}>
+                        <span style={{ fontSize: '1rem' }}>🪙</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: '900', color: '#fbbf24', fontFamily: 'monospace' }}>{comm.join_price || 0}</span>
+                      </div>
+                    )}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!membership) handleJoin(comm.id);
+                      }}
+                      className={isJoined ? "btn-secondary" : isPending ? "btn-secondary" : "btn-primary"} 
+                      style={{ 
+                        marginLeft: '8px', padding: '10px 24px', flexShrink: 0, borderRadius: '14px',
+                        background: isJoined ? 'rgba(255,255,255,0.05)' : isPending ? 'rgba(245,158,11,0.1)' : (comm.color || 'var(--accent-primary)'),
+                        border: isJoined ? '1px solid var(--border-light)' : isPending ? '1px solid #f59e0b' : 'none',
+                        color: isJoined ? 'var(--text-secondary)' : isPending ? '#f59e0b' : 'white',
+                        fontWeight: '700', fontSize: '0.9rem',
+                        cursor: (isJoined || isPending) ? 'default' : 'pointer'
+                      }}
+                      disabled={isJoined || isPending}
+                    >
+                      {isJoined ? 'Joined' : isPending ? 'Pending' : comm.is_exclusive ? 'Pay & Join' : comm.is_public ? 'Join' : 'Request'}
+                    </button>
+                  </div>
                 </div>
               </div>
             );

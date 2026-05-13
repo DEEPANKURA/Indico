@@ -9,6 +9,8 @@ export async function createCommunityAction(formData: {
   category: string;
   isPublic: boolean;
   color: string;
+  isExclusive?: boolean;
+  joinPrice?: number;
 }) {
   try {
     const supabase = await createClient();
@@ -23,7 +25,9 @@ export async function createCommunityAction(formData: {
         category: formData.category,
         is_public: formData.isPublic,
         color: formData.color,
-        creator_id: user.id
+        creator_id: user.id,
+        is_exclusive: formData.isExclusive || false,
+        join_price: formData.joinPrice || 0
       } as any)
       .select()
       .single();
@@ -317,6 +321,58 @@ export async function getCommunitiesAction() {
     return { success: true, communities: data || [] };
   } catch (error: any) {
     console.error('getCommunitiesAction error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateCommunitySettingsAction(
+  communityId: string, 
+  settings: {
+    name?: string;
+    description?: string;
+    banner_url?: string;
+    avatar_url?: string;
+    is_announcement_only?: boolean;
+    slow_mode_seconds?: number;
+    rules?: string;
+    pinned_text?: string;
+  }
+) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    // Verify user is owner/moderator or creator
+    const { data: member } = await supabase
+      .from('community_members')
+      .select('role')
+      .eq('community_id', communityId)
+      .eq('user_id', user.id)
+      .single();
+
+    const { data: comm } = await supabase
+      .from('communities')
+      .select('creator_id')
+      .eq('id', communityId)
+      .single();
+
+    const isAuthorized = (member && ['owner', 'moderator'].includes((member as any).role)) || (comm?.creator_id === user.id);
+    if (!isAuthorized) {
+      return { success: false, error: 'Only owners or moderators can update settings' };
+    }
+
+    const { error } = await supabase
+      .from('communities')
+      .update(settings as any)
+      .eq('id', communityId);
+
+    if (error) throw error;
+
+    revalidatePath(`/communities/${communityId}`);
+    revalidatePath('/communities');
+    return { success: true };
+  } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
