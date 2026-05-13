@@ -229,20 +229,24 @@ export default function MonetizePage() {
 
         <div className="glass-card" style={{ padding: '24px', borderRadius: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600', display: 'block', marginBottom: '4px' }}>My Referral Code</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600', display: 'block', marginBottom: '4px' }}>My Shareable Referral Link</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-              <code style={{ fontSize: '1.4rem', fontWeight: '900', background: 'var(--bg-glass)', padding: '6px 16px', borderRadius: '10px', color: 'var(--accent-neon)', border: '1px dashed rgba(255,0,255,0.4)' }}>
-                {profile.referral_code}
+              <code style={{ fontSize: '0.8rem', fontWeight: '700', background: 'var(--bg-glass)', padding: '8px 12px', borderRadius: '10px', color: 'var(--accent-neon)', border: '1px dashed rgba(255,0,255,0.4)', wordBreak: 'break-all', display: 'block', width: '100%' }}>
+                {typeof window !== 'undefined' ? `${window.location.origin}/auth?ref=${profile.referral_code}` : `https://indico.app/auth?ref=${profile.referral_code}`}
               </code>
             </div>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>Both friends receive 100 coins upon activation</p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>Tapping redirects to signup; rewards 100 coins to both on login</p>
           </div>
           <button 
-            onClick={() => { navigator.clipboard.writeText(profile.referral_code); alert('Referral code copied!'); }} 
+            onClick={() => { 
+              const link = `${window.location.origin}/auth?ref=${profile.referral_code}`;
+              navigator.clipboard.writeText(link); 
+              alert('Individual direct signup referral link copied to clipboard!'); 
+            }} 
             className="btn-secondary" 
-            style={{ padding: '8px 12px', fontSize: '0.8rem', width: 'fit-content' }}
+            style={{ padding: '8px 12px', fontSize: '0.8rem', width: '100%', marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
-            <Share2 size={14} style={{ marginRight: '6px' }} /> Copy Invite Link
+            <Share2 size={14} /> Copy Direct Signup Link
           </button>
         </div>
       </div>
@@ -467,19 +471,23 @@ export default function MonetizePage() {
               When a friend joins Indico and enters your invitation code, <strong style={{ color: '#10b981' }}>both of you instantly receive 100 Bonus Coins</strong>. Use these coins to boost content visibility!
             </p>
 
-            <div style={{ padding: '20px', borderRadius: '16px', background: 'var(--bg-glass)', textAlign: 'center', marginBottom: '24px' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Your Referral Code</span>
-              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--accent-secondary)', letterSpacing: '2px' }}>
-                {profile.referral_code}
-              </div>
+            <div style={{ padding: '16px', borderRadius: '16px', background: 'var(--bg-glass)', textAlign: 'center', marginBottom: '20px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Your Direct Signup Referral Link</span>
+              <code style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-neon)', wordBreak: 'break-all', display: 'block', padding: '6px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                {typeof window !== 'undefined' ? `${window.location.origin}/auth?ref=${profile.referral_code}` : `https://indico.app/auth?ref=${profile.referral_code}`}
+              </code>
             </div>
 
             <button 
-              onClick={() => { navigator.clipboard.writeText(`Join Indico App using my referral code: ${profile.referral_code}`); alert('Link Copied!'); }}
+              onClick={() => { 
+                const link = `${window.location.origin}/auth?ref=${profile.referral_code}`;
+                navigator.clipboard.writeText(link); 
+                alert('Direct Signup Link Copied! Send this link to friends so they land on the signup page.'); 
+              }}
               className="btn-primary" 
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              <Share2 size={18} /> Invite Friends Now
+              <Share2 size={18} /> Copy Direct Share Link
             </button>
           </div>
 
