@@ -2,14 +2,24 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Need service role to delete/update without RLS restrictions
-);
-
 export async function POST(req: Request) {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
+
+    if (!supabaseUrl || !supabaseKey || !geminiKey) {
+      console.error('[Moderation] Missing configuration:', { 
+        hasUrl: !!supabaseUrl, 
+        hasKey: !!supabaseKey, 
+        hasGemini: !!geminiKey 
+      });
+      return NextResponse.json({ error: 'Moderation service misconfigured' }, { status: 500 });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const genAI = new GoogleGenerativeAI(geminiKey);
+
     const { record } = await req.json();
     
     if (!record || !record.id) {
