@@ -7,6 +7,7 @@ const PUBLIC_ROUTES = [
   '/auth', 
   '/explore', 
   '/trending', 
+  '/api/moderate', // Allow background moderation from Supabase
   '/manifest.json', 
   '/sw.js', 
   '/icon.png', 

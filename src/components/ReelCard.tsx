@@ -31,6 +31,9 @@ interface ReelCardProps {
     videoVolume?: number;
     videoTrimStart?: number;
     videoTrimEnd?: number;
+    initialIsLiked?: boolean;
+    initialIsFollowing?: boolean;
+    currentUserId?: string | null;
   };
   isActive: boolean;
 }
@@ -38,15 +41,16 @@ interface ReelCardProps {
 export default function ReelCard({ post, isActive }: ReelCardProps) {
   const supabase = createClient();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(post.initialIsLiked || false);
   const [likesCount, setLikesCount] = useState(post.likes);
   const [isBoosted, setIsBoosted] = useState(post.isBoosted || false);
+  const [isFollowing, setIsFollowing] = useState(post.initialIsFollowing || false);
   const [boostCoins, setBoostCoins] = useState(post.boostCoins || 0);
   const [boosting, setBoosting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(post.currentUserId || null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
 
@@ -65,9 +69,15 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
   };
 
   useEffect(() => {
+    // Skip if data already provided or not logged in
+    if (post.initialIsLiked !== undefined || post.currentUserId === null) return;
+    
     const checkLike = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setCurrentUserId(null);
+        return;
+      }
       setCurrentUserId(user.id);
       
       const { data } = await supabase
@@ -80,7 +90,7 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
       if (data) setLiked(true);
     };
     checkLike();
-  }, [post.id]);
+  }, [post.id, post.initialIsLiked, post.currentUserId]);
 
   useEffect(() => {
     if (videoRef.current) {

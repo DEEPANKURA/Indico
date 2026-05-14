@@ -38,7 +38,7 @@ export default function MonetizePage() {
   const [rzpModal, setRzpModal] = useState<{
     show: boolean;
     amount: number;
-    type: 'buy_coins' | 'subscribe_community' | 'boost_reel';
+    type: 'buy_coins' | 'subscribe_community' | 'subscribe_profile' | 'boost_reel';
     targetId?: string;
     orderId?: string;
     processing: boolean;

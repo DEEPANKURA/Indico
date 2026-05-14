@@ -14,36 +14,44 @@ export default function TrendingPage() {
 
   useEffect(() => {
     const fetchReels = async () => {
-      const { data, error } = await supabase
-        .from('posts')
-        .select(`
-          id,
-          content,
-          media_urls,
-          like_count,
-          comment_count,
-          is_boosted,
-          boost_coins,
-          music_url, music_title, music_artist, music_start_time,
-          music_volume, video_volume, video_trim_start, video_trim_end,
-          profiles:author_id ( id, username, full_name, avatar_url )
-        `)
-        .not('media_urls', 'is', null)
-        .is('community_id', null)
-        .or('is_exclusive.is.null,is_exclusive.eq.false')
-        .order('like_count', { ascending: false })
-        .limit(10);
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+      
+      const { data: reelsData, error: rpcError } = await supabase.rpc('get_trending_reels', { limit_count: 20 });
 
-      if (data) {
-        // Filter for videos (simple check by extension or presence of multiple URLs if we had better metadata)
-        const videoPosts = (data as any[]).filter((p: any) => {
-          if (!p || !Array.isArray(p.media_urls) || typeof p.media_urls[0] !== 'string') {
-            return false;
-          }
-          const lower = p.media_urls[0].toLowerCase();
-          return lower.match(/\.(mp4|webm|mov|m4v)$/) || lower.includes('video');
-        });
-        setReels(videoPosts);
+      if (rpcError) {
+        console.error('Error fetching trending reels:', rpcError);
+        setLoading(false);
+        return;
+      }
+
+      if (reelsData) {
+        setReels(reelsData.map((p: any) => ({
+          id: p.id,
+          content: p.content,
+          mediaUrl: p.media_urls[0],
+          likes: p.like_count,
+          comments: p.comment_count,
+          isBoosted: p.is_boosted,
+          boostCoins: p.boost_coins,
+          initialIsLiked: p.is_liked,
+          initialIsFollowing: p.is_following,
+          currentUserId: user?.id || null,
+          author: {
+            id: p.author_id,
+            name: p.author_full_name,
+            username: p.author_username,
+            avatar: p.author_avatar_url
+          },
+          musicUrl: p.music_url,
+          musicTitle: p.music_title,
+          musicArtist: p.music_artist,
+          musicStartTime: p.music_start_time,
+          musicVolume: p.music_volume,
+          videoVolume: p.video_volume,
+          videoTrimStart: p.video_trim_start,
+          videoTrimEnd: p.video_trim_end
+        })));
       }
       setLoading(false);
     };
@@ -119,29 +127,7 @@ export default function TrendingPage() {
             <div key={post.id} className="reel-item" data-index={index}>
               <ReelCard 
                 isActive={index === activeIndex}
-                post={{
-                  id: post.id,
-                  content: post.content,
-                  mediaUrl: post.media_urls[0],
-                  likes: post.like_count || 0,
-                  comments: post.comment_count || 0,
-                  isBoosted: post.is_boosted,
-                  boostCoins: post.boost_coins,
-                  author: {
-                    id: post.profiles?.id || '',
-                    name: post.profiles?.full_name || 'Creator',
-                    username: post.profiles?.username || 'user',
-                    avatar: post.profiles?.avatar_url || ''
-                  },
-                  musicUrl: post.music_url,
-                  musicTitle: post.music_title,
-                  musicArtist: post.music_artist,
-                  musicStartTime: post.music_start_time,
-                  musicVolume: post.music_volume,
-                  videoVolume: post.video_volume,
-                  videoTrimStart: post.video_trim_start,
-                  videoTrimEnd: post.video_trim_end
-                }}
+                post={post}
               />
           </div>
           ))}

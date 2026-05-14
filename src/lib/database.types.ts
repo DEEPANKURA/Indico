@@ -974,23 +974,52 @@ export type Database = {
       get_viral_feed: {
         Args: { limit_count?: number }
         Returns: {
+          id: string
+          author_id: string
+          content: string
+          media_urls: string[]
+          created_at: string
+          like_count: number
+          comment_count: number
+          music_url: string
+          music_title: string
+          music_artist: string
+          author_username: string
+          author_full_name: string
           author_avatar_url: string
           author_followers_count: number
-          author_full_name: string
-          author_id: string
           author_is_creator: boolean
-          author_username: string
-          comment_count: number
-          content: string
-          created_at: string
-          id: string
           is_exclusive: boolean
-          like_count: number
-          media_urls: string[]
-          music_artist: string
-          music_title: string
-          music_url: string
+          moderation_status: string
           viral_score: number
+          is_liked: boolean
+          is_following: boolean
+        }[]
+      }
+      get_trending_reels: {
+        Args: { limit_count?: number }
+        Returns: {
+          id: string
+          content: string
+          media_urls: string[]
+          like_count: number
+          comment_count: number
+          is_boosted: boolean
+          boost_coins: number
+          music_url: string
+          music_title: string
+          music_artist: string
+          music_start_time: number
+          music_volume: number
+          video_volume: number
+          video_trim_start: number
+          video_trim_end: number
+          author_id: string
+          author_username: string
+          author_full_name: string
+          author_avatar_url: string
+          is_liked: boolean
+          is_following: boolean
         }[]
       }
       increment_viewer_count: {

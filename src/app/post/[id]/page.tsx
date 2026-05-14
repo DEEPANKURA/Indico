@@ -37,6 +37,19 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Fetch interaction status
+  let initialIsLiked = false;
+  let initialIsFollowing = false;
+  
+  if (user) {
+    const [{ data: likeData }, { data: followData }] = await Promise.all([
+      supabase.from('likes').select('id').eq('post_id', id).eq('user_id', user.id).maybeSingle(),
+      supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', postData.author_id).maybeSingle()
+    ]);
+    initialIsLiked = !!likeData;
+    initialIsFollowing = !!followData;
+  }
+
   // If exclusive, check subscription or ownership
   if (postData.is_exclusive) {
     if (!user) {
@@ -87,7 +100,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     },
     content: post.content,
     mediaUrl: post.media_urls?.[0] || undefined,
-    mediaType: (typeof post.media_urls?.[0] === 'string' && post.media_urls[0].includes('mp4') ? 'video' : 'image') as "image" | "video",
+    mediaType: (typeof post.media_urls?.[0] === 'string' && (post.media_urls[0].toLowerCase().includes('mp4') || post.media_urls[0].toLowerCase().includes('video')) ? 'video' : 'image') as "image" | "video",
     likes: post.like_count?.toString() || "0",
     comments: post.comment_count?.toString() || "0",
     shares: "0",
@@ -103,7 +116,10 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     videoVolume: post.video_volume,
     videoTrimStart: post.video_trim_start,
     videoTrimEnd: post.video_trim_end,
-    moderationStatus: post.moderation_status
+    moderationStatus: post.moderation_status,
+    initialIsLiked,
+    initialIsFollowing,
+    currentUserId: user?.id || null
   };
 
   return (

@@ -94,7 +94,8 @@ export default async function Home() {
               videoTrimEnd: post.video_trim_end,
               moderationStatus: post.moderation_status,
               initialIsLiked: post.is_liked,
-              currentUserId: user?.id
+              initialIsFollowing: post.is_following,
+              currentUserId: user?.id || null
             }} 
           />
         ))}

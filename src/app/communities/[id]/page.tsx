@@ -199,11 +199,11 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         }
       }
 
-      // Fetch posts
       const { data: postData } = await supabase
         .from('posts')
         .select('*, author:profiles(username, avatar_url)')
         .eq('community_id', id)
+        .eq('moderation_status', 'approved')
         .order('created_at', { ascending: false });
 
       const mappedPosts = postData?.map((p: any) => ({

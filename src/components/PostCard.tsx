@@ -50,6 +50,7 @@ interface PostCardProps {
     videoTrimEnd?: number;
     moderationStatus?: 'pending' | 'approved' | 'flagged' | 'rejected';
     initialIsLiked?: boolean;
+    initialIsFollowing?: boolean;
     currentUserId?: string | null;
   }
 }
@@ -76,7 +77,9 @@ export default function PostCard({ post }: PostCardProps) {
   const cardRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    // Only fetch if explicitly undefined (not passed by parent)
     if (post.currentUserId !== undefined) return;
+    
     supabase.auth.getUser().then(({ data }) => {
       setCurrentUserId(data.user?.id || null);
     });
@@ -164,7 +167,7 @@ export default function PostCard({ post }: PostCardProps) {
     }
   };
 
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(post.initialIsFollowing || false);
   const handleFollow = async () => {
     if (!post.authorId) return;
     const wasFollowing = isFollowing;
@@ -203,19 +206,15 @@ export default function PostCard({ post }: PostCardProps) {
   };
 
   useEffect(() => {
-    // If we already know it's liked from the parent (RPC), don't check again
-    if (post.initialIsLiked !== undefined) return;
+    // If we already know it's liked from the parent (RPC) OR it's a guest, don't check again
+    if (post.initialIsLiked !== undefined || currentUserId === null) return;
 
     const checkLike = async () => {
-      // Use currentUserId if available, otherwise fetch
-      const userId = currentUserId || (await supabase.auth.getUser()).data.user?.id;
-      if (!userId) return;
-      
       const { data } = await supabase
         .from('likes')
         .select('id')
         .eq('post_id', post.id)
-        .eq('user_id', userId)
+        .eq('user_id', currentUserId)
         .single();
       
       if (data) setIsLiked(true);
