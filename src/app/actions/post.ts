@@ -20,54 +20,37 @@ export async function createPostAction(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    const mediaUrl = mediaUrls?.[0] || '';
-
-    // AI Safety Check
-    let isFlagged = false;
-    let safetyScore = 100;
-
-    // Skip AI moderation for exclusive community and exclusive profile uploads
-    if (!communityId && !isExclusive && mediaUrl) {
-      const result = await analyzeContentSafety(content, mediaUrl);
-      isFlagged = result.is_flagged ?? false;
-      safetyScore = result.safety_score ?? 100;
-      console.log('Post Moderation Result:', result);
-    }
-
-    try {
-      console.log('Inserting post with:', { author_id: user.id, community_id: communityId, is_flagged: isFlagged, is_exclusive: isExclusive });
+    console.log('Inserting post with:', { author_id: user.id, community_id: communityId, is_exclusive: isExclusive });
     
-      const { error: dbError } = await supabase.from('posts').insert({
-        author_id: user.id,
-        content,
-        media_urls: mediaUrls,
-        moderation_status: isFlagged ? 'flagged' : 'approved',
-        ai_confidence_score: 0.9,
-        ai_safety_score: isFlagged ? 0 : 100,
-        is_flagged: isFlagged,
-        community_id: communityId || null,
-        is_exclusive: isExclusive,
-        music_url: musicInfo?.url,
-        music_title: musicInfo?.title,
-        music_artist: musicInfo?.artist,
-        music_start_time: musicInfo?.startTime || 0,
-        music_volume: musicInfo?.volume ?? 0.5,
-        video_volume: videoEditing?.volume ?? 1.0,
-        video_trim_start: videoEditing?.trimStart ?? 0,
-        video_trim_end: videoEditing?.trimEnd ?? null,
-        tags: tags,
-        mentions: mentions,
-        overlays: overlays
-      } as any);
+    const { data: post, error: dbError } = await supabase.from('posts').insert({
+      author_id: user.id,
+      content,
+      media_urls: mediaUrls,
+      moderation_status: 'pending', // Always start as pending
+      ai_confidence_score: 0,
+      ai_safety_score: 100,
+      is_flagged: false,
+      community_id: communityId || null,
+      is_exclusive: isExclusive,
+      music_url: musicInfo?.url,
+      music_title: musicInfo?.title,
+      music_artist: musicInfo?.artist,
+      music_start_time: musicInfo?.startTime || 0,
+      music_volume: musicInfo?.volume ?? 0.5,
+      video_volume: videoEditing?.volume ?? 1.0,
+      video_trim_start: videoEditing?.trimStart ?? 0,
+      video_trim_end: videoEditing?.trimEnd ?? null,
+      tags: tags,
+      mentions: mentions,
+      overlays: overlays
+    } as any).select().single();
 
-      if (dbError) {
-        console.error('Database insertion error:', dbError);
-        return { success: false, error: `Database error: ${dbError.message}` };
-      }
-    } catch (dbErr: any) {
-      console.error('Database Error:', dbErr);
-      return { success: false, error: `Database Error: ${dbErr.message || 'Failed to save'}` };
+    if (dbError) {
+      console.error('Database insertion error:', dbError);
+      return { success: false, error: `Database error: ${dbError.message}` };
     }
+
+    return { success: true, isFlagged: false, postId: post.id };
 
     revalidatePath('/');
     revalidatePath('/studio');

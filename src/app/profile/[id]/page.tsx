@@ -59,7 +59,12 @@ export default function UserProfilePage() {
 
       const [{ data: profileData }, { data: postsData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
-        supabase.from('posts').select('id, content, like_count, comment_count, created_at, media_urls, music_url, music_title, music_artist, is_exclusive').eq('author_id', userId).is('community_id', null).order('created_at', { ascending: false }),
+        supabase.from('posts')
+          .select('id, content, like_count, comment_count, created_at, media_urls, music_url, music_title, music_artist, is_exclusive, moderation_status')
+          .eq('author_id', userId)
+          .eq('moderation_status', 'approved')
+          .is('community_id', null)
+          .order('created_at', { ascending: false }),
       ]);
 
       if (!profileData) {

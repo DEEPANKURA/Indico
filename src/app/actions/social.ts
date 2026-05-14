@@ -293,11 +293,7 @@ export async function reportPostAction(postId: string, reason: string, details?:
       if (aiResult.is_flagged) {
         await (supabase
           .from('posts') as any)
-          .update({ 
-            moderation_status: 'flagged', 
-            is_flagged: true,
-            ai_safety_score: 0 
-          } as any)
+          .delete()
           .eq('id', postId);
         
         revalidatePath('/');

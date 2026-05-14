@@ -49,12 +49,16 @@ export async function analyzeContentSafety(content: string, mediaUrl?: string) {
       }
     }
 
-    const prompt = `Analyze this content for safety. 
+    const prompt = `Analyze this social media content for safety.
       Text: "${content.substring(0, 500)}"
-      Rules:
-      - Flag (is_flagged: true) if there is ANY sexual explicitness, partial/full nudity, suggestive poses, graphic violence, hate speech, or harassment.
-      - If the image contains sexually suggestive content, you MUST flag it.
-      - Return ONLY JSON: { "is_flagged": boolean, "safety_score": number, "reason": string }`;
+      
+      CRITICAL RULES:
+      1. Flag (is_flagged: true) if there is ANY explicit sexual activity, genitals, pornographic nudity, or highly vulgar content.
+      2. DO NOT FLAG (is_flagged: false) normal beachwear like bikinis, swimming suits, or fitness wear like shorts/sports bras.
+      3. We allow "sexy" and "attractive" content, but NOT "pornographic" content.
+      4. If the content is too vulgar or explicit, it MUST be flagged for deletion.
+      
+      Return ONLY JSON: { "is_flagged": boolean, "safety_score": number, "reason": string }`;
 
     parts.unshift(prompt);
 

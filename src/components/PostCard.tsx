@@ -48,6 +48,7 @@ interface PostCardProps {
     videoVolume?: number;
     videoTrimStart?: number;
     videoTrimEnd?: number;
+    moderationStatus?: 'pending' | 'approved' | 'flagged' | 'rejected';
   }
 }
 
@@ -216,6 +217,19 @@ export default function PostCard({ post }: PostCardProps) {
   }, [post.id]);
 
   if (isDeleted) return null;
+
+  // Show a placeholder for pending moderation
+  if (post.moderationStatus === 'pending') {
+    return (
+      <div className="glass-card animate-pulse" style={{ padding: '24px', marginBottom: '24px', textAlign: 'center', border: '1px dashed var(--accent-primary)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+          <Loader2 className="animate-spin text-gradient" size={32} />
+          <div style={{ fontWeight: 'bold' }}>AI Moderation in progress...</div>
+          <p className="text-sm text-secondary">Your post will be visible to others in a few moments after safety verification.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <article ref={cardRef as any} className="glass-card animate-fade-in" style={{ marginBottom: '24px', overflow: 'hidden' }}>
