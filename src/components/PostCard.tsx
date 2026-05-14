@@ -3,7 +3,6 @@
 import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Play, DollarSign, Loader2, Trash2, Music, Volume2, VolumeX } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { tipCreatorAction } from '@/app/actions/tip';
 import { toggleLikeAction, toggleFollowAction, deletePostAction } from '@/app/actions/social';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -59,7 +58,6 @@ const parseMetric = (val: string | number) => {
 
 export default function PostCard({ post }: PostCardProps) {
   const supabase = createClient();
-  const [isTipping, setIsTipping] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -127,23 +125,6 @@ export default function PostCard({ post }: PostCardProps) {
     return () => observer.disconnect();
   }, [post.videoVolume, post.videoTrimStart, post.videoTrimEnd]);
   
-  const handleTip = async () => {
-    if (!post.authorId) return;
-    setIsTipping(true);
-    try {
-      const result = await tipCreatorAction(post.id, post.authorId, 5.00); // fixed tip amount for now
-      if (result.success) {
-        alert(`Successfully sent $5 to ${post.author.name}!`);
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (err: any) {
-      alert(err.message || 'Failed to send tip');
-    } finally {
-      setIsTipping(false);
-    }
-  };
-
   const handleShare = async () => {
     const shareData = {
       title: 'Check out this post on Indico',
@@ -410,17 +391,6 @@ export default function PostCard({ post }: PostCardProps) {
           </button>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          {post.authorId && (
-            <button 
-              onClick={handleTip} 
-              disabled={isTipping}
-              className="btn-primary" 
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '0.85rem' }}
-            >
-              {isTipping ? <Loader2 size={16} className="animate-spin" /> : <DollarSign size={16} />}
-              Tip $5
-            </button>
-          )}
           <button style={{ color: 'var(--text-secondary)' }}>
             <Bookmark size={22} />
           </button>
