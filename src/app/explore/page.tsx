@@ -46,6 +46,7 @@ export default function ExplorePage() {
         .from('posts')
         .select('*, author:profiles(username, avatar_url, full_name)')
         .is('community_id', null)
+        .or('is_exclusive.is.null,is_exclusive.eq.false')
         .order('engagement_score', { ascending: false })
         .limit(10);
       
@@ -106,6 +107,7 @@ export default function ExplorePage() {
           .from('posts')
           .select('*, author:profiles(id, username, avatar_url, full_name)')
           .is('community_id', null)
+          .or('is_exclusive.is.null,is_exclusive.eq.false')
           .ilike('content', `%${trimmedQuery}%`)
           .limit(10)
       ]);

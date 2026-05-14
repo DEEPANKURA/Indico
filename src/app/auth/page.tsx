@@ -15,6 +15,7 @@ export default function AuthPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [referralCode, setReferralCode] = useState('');
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -68,6 +69,14 @@ export default function AuthPage() {
 
         if (signUpError) throw signUpError;
         setMessage('✅ Check your email to confirm your account, then sign in.');
+      } else if (isForgotPassword) {
+        if (!email) throw new Error('Please enter your email address.');
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${location.origin}/auth/update-password`,
+        });
+        if (resetError) throw resetError;
+        setMessage('✅ Password reset link has been sent to your email.');
+        setIsForgotPassword(false);
       } else {
         const { data, error: signInError } = await supabase.auth.signInWithPassword({
           email,
@@ -105,7 +114,7 @@ export default function AuthPage() {
       <div className={styles.authCard}>
         <h1 className={styles.title}>Indico</h1>
         <p className={styles.subtitle}>
-          {isSignUp ? 'Join the future of social' : 'Welcome back, creator'}
+          {isForgotPassword ? 'Reset your password' : isSignUp ? 'Join the future of social' : 'Welcome back, creator'}
         </p>
 
         {error && <div className={styles.error}>{error}</div>}
@@ -160,37 +169,67 @@ export default function AuthPage() {
             />
           </div>
 
-          <div className={styles.inputGroup}>
-            <label className={styles.label} htmlFor="password">Password</label>
-            <input
-              className={styles.input}
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
+          {!isForgotPassword && (
+            <div className={styles.inputGroup}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label className={styles.label} htmlFor="password" style={{ marginBottom: 0 }}>Password</label>
+                {!isSignUp && (
+                  <button 
+                    type="button" 
+                    onClick={() => { setIsForgotPassword(true); setError(null); setMessage(null); }}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-neon)', fontSize: '0.8rem', cursor: 'pointer', padding: 0 }}
+                    className="hover-glass"
+                  >
+                    Forgot Password?
+                  </button>
+                )}
+              </div>
+              <input
+                className={styles.input}
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+          )}
 
           <button type="submit" className={styles.button} disabled={loading}>
-            {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
+            {loading ? 'Processing...' : isForgotPassword ? 'Send Reset Link' : isSignUp ? 'Create Account' : 'Sign In'}
           </button>
         </form>
 
         <p className={styles.toggleText}>
-          {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-          <button
-            type="button"
-            className={styles.toggleLink}
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setError(null);
-              setMessage(null);
-            }}
-          >
-            {isSignUp ? 'Sign In' : 'Sign Up'}
-          </button>
+          {isForgotPassword ? (
+            <button
+              type="button"
+              className={styles.toggleLink}
+              onClick={() => {
+                setIsForgotPassword(false);
+                setError(null);
+                setMessage(null);
+              }}
+            >
+              Back to Sign In
+            </button>
+          ) : (
+            <>
+              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+              <button
+                type="button"
+                className={styles.toggleLink}
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError(null);
+                  setMessage(null);
+                }}
+              >
+                {isSignUp ? 'Sign In' : 'Sign Up'}
+              </button>
+            </>
+          )}
         </p>
       </div>
     </div>

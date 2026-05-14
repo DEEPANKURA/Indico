@@ -5,6 +5,7 @@ import {
   getMonetizationDataAction, 
   applyFriendReferralAction, 
   updateCommunitySubscriptionPriceAction, 
+  updateProfileSubscriptionPriceAction,
   createRazorpayOrderAction, 
   verifyRazorpayPaymentAction, 
   boostReelWithCoinsAction,
@@ -15,7 +16,7 @@ import {
   Coins, Gift, Users, Sparkles, Share2, CheckCircle2, 
   ArrowRight, Lock, ShieldCheck, TrendingUp, Wallet, 
   CreditCard, AlertCircle, Check, Loader2, IndianRupee,
-  Layers, Flame
+  Layers, Flame, User
 } from 'lucide-react';
 
 export default function MonetizePage() {
@@ -30,6 +31,8 @@ export default function MonetizePage() {
   
   const [communityPrices, setCommunityPrices] = useState<Record<string, number>>({});
   const [updatingPriceId, setUpdatingPriceId] = useState<string | null>(null);
+  const [profilePrice, setProfilePrice] = useState<number | ''>('');
+  const [updatingProfilePrice, setUpdatingProfilePrice] = useState(false);
 
   // Razorpay Checkout Simulation modal state
   const [rzpModal, setRzpModal] = useState<{
@@ -72,6 +75,9 @@ export default function MonetizePage() {
       if (res.profile?.payout_account) {
         setPayoutAccountInput(res.profile.payout_account);
       }
+      if (res.profile?.profile_subscription_price !== undefined) {
+        setProfilePrice(res.profile.profile_subscription_price);
+      }
     }
     setLoading(false);
   };
@@ -104,7 +110,19 @@ export default function MonetizePage() {
     setUpdatingPriceId(null);
   };
 
-  const startRazorpayCheckout = async (amount: number, type: 'buy_coins' | 'subscribe_community' | 'boost_reel', targetId?: string) => {
+  const handleUpdateProfilePrice = async () => {
+    setUpdatingProfilePrice(true);
+    const res = await updateProfileSubscriptionPriceAction(Number(profilePrice) || 0);
+    if (res.success) {
+      alert(res.message);
+      await fetchData();
+    } else {
+      alert(res.error);
+    }
+    setUpdatingProfilePrice(false);
+  };
+
+  const startRazorpayCheckout = async (amount: number, type: 'buy_coins' | 'subscribe_community' | 'subscribe_profile' | 'boost_reel', targetId?: string) => {
     // Call server action to create secure order
     const orderRes = await createRazorpayOrderAction(amount, type, targetId);
     if (orderRes.success) {
@@ -390,15 +408,51 @@ export default function MonetizePage() {
       {activeTab === 'Communities' && (
         <div className="glass-card" style={{ padding: '32px', borderRadius: '20px' }}>
           <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Lock style={{ color: 'var(--accent-primary)' }} /> Configure Private Community Monthly Pricing
+            <Lock style={{ color: 'var(--accent-primary)' }} /> Configure Private Community & Profile Pricing
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '24px' }}>
-            Fans will pay this recurring amount monthly via Razorpay to access your private community feed and chats. Set to ₹0 to keep access free.
+            Fans will pay this recurring amount monthly via Razorpay to access your exclusive content. Set to ₹0 to keep access free.
           </p>
 
-          {communities.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {communities.map((comm: any) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Exclusive Profile Subscription */}
+            <div style={{ padding: '20px', borderRadius: '16px', background: 'var(--bg-glass)', border: '1px solid var(--accent-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <strong style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--accent-primary)' }}>My Exclusive Profile</strong>
+                  <span style={{ background: 'rgba(138,43,226,0.1)', color: 'var(--accent-primary)', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '10px', fontWeight: '700' }}>Exclusive Media</span>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px', maxWidth: '400px' }}>
+                  Subscription price for users to view your exclusive profile uploads.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontWeight: '700' }}>₹</span>
+                  <input 
+                    type="number" 
+                    value={profilePrice} 
+                    onChange={(e) => setProfilePrice(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="0"
+                    style={{ padding: '10px 12px 10px 28px', width: '120px', borderRadius: '10px', border: '1px solid var(--accent-primary)', fontSize: '1rem', fontWeight: '700', textAlign: 'right' }}
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textAlign: 'right', marginTop: '4px' }}>/ month</span>
+                </div>
+
+                <button 
+                  onClick={handleUpdateProfilePrice}
+                  disabled={updatingProfilePrice}
+                  className="btn-primary"
+                  style={{ padding: '10px 20px', height: '44px' }}
+                >
+                  {updatingProfilePrice ? <Loader2 size={18} className="animate-spin" /> : 'Save Price'}
+                </button>
+              </div>
+            </div>
+
+            {/* Communities */}
+            {communities.length > 0 && communities.map((comm: any) => (
                 <div key={comm.id} style={{ padding: '20px', borderRadius: '16px', background: 'var(--bg-glass)', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -435,12 +489,7 @@ export default function MonetizePage() {
                 </div>
               ))}
             </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '40px', background: 'var(--bg-glass)', borderRadius: '16px' }}>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>You haven't created any exclusive communities yet.</p>
-              <a href="/communities" className="btn-primary" style={{ display: 'inline-block' }}>Create Community</a>
-            </div>
-          )}
+          </div>
         </div>
       )}
 

@@ -30,6 +30,7 @@ export default function TrendingPage() {
         `)
         .not('media_urls', 'is', null)
         .is('community_id', null)
+        .or('is_exclusive.is.null,is_exclusive.eq.false')
         .order('like_count', { ascending: false })
         .limit(10);
 

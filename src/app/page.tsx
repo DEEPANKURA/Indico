@@ -64,9 +64,9 @@ export default async function Home() {
 
       {/* Feed */}
       <div className="feed-container">
-        {posts?.map((post: any) => (
+        {posts?.filter((p: any) => !p.is_exclusive).map((post: any) => (
           <PostCard 
-            key={post.id} 
+            key={post.id}
             post={{
               id: post.id,
               authorId: post.author_id,

@@ -65,6 +65,7 @@ export default function UploadClient() {
   const [mentions, setMentions] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [mentionInput, setMentionInput] = useState('');
+  const [isExclusive, setIsExclusive] = useState(false);
 
   // Upload State
   const [uploading, setUploading] = useState(false);
@@ -179,7 +180,8 @@ export default function UploadClient() {
         videoEditing,
         tags,
         mentions,
-        overlayData
+        overlayData,
+        isExclusive
       );
 
       setProgress(100);
@@ -586,6 +588,29 @@ export default function UploadClient() {
               placeholder="Mention users..."
               style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-light)', color: 'white', fontSize: '0.9rem' }}
             />
+          </div>
+
+          <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: 'rgba(139,92,246,0.1)', borderRadius: '12px', border: '1px solid rgba(139,92,246,0.2)' }}>
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', fontWeight: '800', color: 'var(--accent-secondary)', marginBottom: '4px' }}>
+                <Sparkles size={16} /> Exclusive Content
+              </label>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Only your profile subscribers will be able to see this post.</p>
+            </div>
+            <label style={{ position: 'relative', display: 'inline-block', width: '50px', height: '28px' }}>
+              <input type="checkbox" checked={isExclusive} onChange={(e) => setIsExclusive(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+              <span style={{
+                position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: isExclusive ? 'var(--accent-secondary)' : 'rgba(255,255,255,0.1)',
+                transition: '.4s', borderRadius: '34px'
+              }}>
+                <span style={{
+                  position: 'absolute', content: '""', height: '20px', width: '20px', left: '4px', bottom: '4px',
+                  backgroundColor: 'white', transition: '.4s', borderRadius: '50%',
+                  transform: isExclusive ? 'translateX(22px)' : 'translateX(0)'
+                }} />
+              </span>
+            </label>
           </div>
 
           <div style={{ display: 'flex', gap: '12px' }}>

@@ -14,7 +14,7 @@ export async function getMonetizationDataAction() {
     // Fetch user profile
     const { data: rawProfile, error: profError } = await db
       .from('profiles')
-      .select('id, username, full_name, avatar_url, coins, referral_code, referred_by, total_earnings, is_creator, wallet_balance, payout_account')
+      .select('id, username, full_name, avatar_url, coins, referral_code, referred_by, total_earnings, is_creator, wallet_balance, payout_account, profile_subscription_price')
       .eq('id', user.id)
       .single();
 
@@ -145,7 +145,29 @@ export async function updateCommunitySubscriptionPriceAction(communityId: string
   }
 }
 
-export async function createRazorpayOrderAction(amountINR: number, type: 'buy_coins' | 'subscribe_community' | 'boost_reel', targetId?: string) {
+export async function updateProfileSubscriptionPriceAction(priceINR: number) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    const db = supabase as any;
+
+    const { error } = await db
+      .from('profiles')
+      .update({ profile_subscription_price: priceINR })
+      .eq('id', user.id);
+
+    if (error) throw error;
+
+    revalidatePath('/monetize');
+    revalidatePath('/profile');
+    return { success: true, message: 'Exclusive profile price updated successfully.' };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function createRazorpayOrderAction(amountINR: number, type: 'buy_coins' | 'subscribe_community' | 'subscribe_profile' | 'boost_reel', targetId?: string) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -245,6 +267,38 @@ export async function verifyRazorpayPaymentAction(orderId: string, paymentId: st
           status: 'joined',
           role: 'member'
         });
+      }
+    }
+    else if (order.type === 'subscribe_profile') {
+      const creatorId = order.target_id;
+      // Get creator details
+      const { data: rawCreator } = await db.from('profiles').select('profile_subscription_price').eq('id', creatorId).single();
+      const creator = rawCreator as any;
+      if (creator) {
+        // Create active subscription for 30 days, no community_id means profile subscription
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+
+        await db.from('subscriptions').insert({
+          subscriber_id: user.id,
+          creator_id: creatorId,
+          community_id: null,
+          amount: order.amount,
+          status: 'active',
+          expires_at: expiresAt.toISOString()
+        });
+
+        // Revenue split: 80% creator, 20% indico for profile exclusives
+        const creatorShare = order.amount * 0.80;
+        // Update creator earnings
+        const { data: rawCreatorProf } = await db.from('profiles').select('total_earnings, wallet_balance').eq('id', creatorId).single();
+        const creatorProf = rawCreatorProf as any;
+        if (creatorProf) {
+          await db.from('profiles').update({
+            total_earnings: (creatorProf.total_earnings || 0) + creatorShare,
+            wallet_balance: (creatorProf.wallet_balance || 0) + creatorShare
+          }).eq('id', creatorId);
+        }
       }
     }
     else if (order.type === 'boost_reel') {

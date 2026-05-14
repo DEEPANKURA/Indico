@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import PostCard from '@/components/PostCard';
+import { Lock } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,45 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
   if (error || !postData) {
     notFound();
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // If exclusive, check subscription or ownership
+  if (postData.is_exclusive) {
+    if (!user) {
+      redirect('/auth');
+    }
+    
+    if (user.id !== postData.author_id) {
+      // Check active subscription
+      const { data: subData } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('subscriber_id', user.id)
+        .eq('creator_id', postData.author_id)
+        .is('community_id', null)
+        .eq('status', 'active')
+        .maybeSingle();
+        
+      if (!subData) {
+        // Render lock screen
+        return (
+          <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '60px', textAlign: 'center' }}>
+            <div className="glass-card" style={{ padding: '60px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(138,43,226,0.1), rgba(0,255,255,0.05))' }}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(138,43,226,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--accent-secondary)' }}>
+                <Lock size={40} />
+              </div>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '12px' }}>Exclusive Content</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>This post is exclusively available to {postData.profiles?.full_name}'s subscribers.</p>
+              <a href={`/profile/${postData.author_id}`} className="btn-primary" style={{ display: 'inline-block', padding: '12px 24px', borderRadius: '12px', background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                View Profile to Subscribe
+              </a>
+            </div>
+          </div>
+        );
+      }
+    }
   }
 
   // Transform to match PostCard expectations

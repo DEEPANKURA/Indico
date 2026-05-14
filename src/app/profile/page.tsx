@@ -7,7 +7,7 @@ import {
   Settings, Camera, DollarSign, BarChart2, Video, 
   Sparkles, Layout, Trash2, CheckCircle2, User, 
   Users, Heart, FileText, ChevronRight, Edit2, Share2, 
-  Calendar, Crown, MessageCircle, Grid3x3, Bookmark, Play
+  Calendar, Crown, MessageCircle, Grid3x3, Bookmark, Play, Lock
 } from 'lucide-react';
 import { deletePostAction } from '@/app/actions/social';
 import EditProfileModal from '@/components/EditProfileModal';
@@ -37,7 +37,7 @@ export default function ProfilePage() {
 
     const [{ data: profile }, { data: posts }, { data: earnings }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('posts').select('*').eq('author_id', user.id).is('community_id', null).order('created_at', { ascending: false }),
+      supabase.from('posts').select('*, is_exclusive').eq('author_id', user.id).is('community_id', null).order('created_at', { ascending: false }),
       supabase.from('transactions').select('amount').eq('recipient_id', user.id).eq('status', 'completed'),
     ]);
 
@@ -246,6 +246,11 @@ export default function ProfilePage() {
               ) : (
                 <div style={{ padding: '8px', fontSize: '0.7rem', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)' }}>
                   {post.content?.substring(0, 40)}...
+                </div>
+              )}
+              {post.is_exclusive && (
+                <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'var(--accent-secondary)', padding: '4px', borderRadius: '50%', color: 'white' }}>
+                  <Lock size={12} />
                 </div>
               )}
             </div>

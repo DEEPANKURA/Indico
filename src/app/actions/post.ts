@@ -22,7 +22,8 @@ export async function createPostAction(
   videoEditing?: { volume?: number; trimStart?: number; trimEnd?: number },
   tags: string[] = [],
   mentions: string[] = [],
-  overlays: any = null
+  overlays: any = null,
+  isExclusive: boolean = false
 ) {
   try {
     const supabase = await createClient();
@@ -37,13 +38,11 @@ export async function createPostAction(
     let confidenceScore = 1.0;
 
     const genAI = getGenAI();
-    if (genAI) {
-      // Run AI moderation in a non-blocking way if possible, or with a strict timeout
-      // For now, we'll keep it but optimize the prompt and use a faster model
+    // Skip AI moderation for exclusive community and exclusive profile uploads
+    if (genAI && !communityId && !isExclusive) {
       try {
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         
-        // We wrap it in a promise with a timeout to ensure it doesn't hang the upload
         const moderationPromise = model.generateContent([
           `Check post safety. Content: "${content.substring(0, 500)}". Media URL: ${mediaUrl}. ` +
           `Return JSON: { "is_flagged": boolean, "safety_score": number }`
@@ -64,12 +63,11 @@ export async function createPostAction(
         }
       } catch (err) {
         console.warn('AI Moderation skipped or timed out:', err);
-        // We continue anyway to ensure the post is created
       }
     }
 
     try {
-      console.log('Inserting post with:', { author_id: user.id, community_id: communityId, is_flagged: isFlagged });
+      console.log('Inserting post with:', { author_id: user.id, community_id: communityId, is_flagged: isFlagged, is_exclusive: isExclusive });
     
       const { error: dbError } = await supabase.from('posts').insert({
         author_id: user.id,
@@ -80,6 +78,7 @@ export async function createPostAction(
         ai_safety_score: isFlagged ? 0 : 100,
         is_flagged: isFlagged,
         community_id: communityId || null,
+        is_exclusive: isExclusive,
         music_url: musicInfo?.url,
         music_title: musicInfo?.title,
         music_artist: musicInfo?.artist,

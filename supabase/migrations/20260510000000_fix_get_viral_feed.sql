@@ -48,6 +48,7 @@ BEGIN
   JOIN profiles pr ON p.author_id = pr.id
   WHERE (p.is_flagged = false OR p.is_flagged IS NULL)
     AND p.community_id IS NULL  -- Filter out community posts from viral feed
+    AND (p.is_exclusive = false OR p.is_exclusive IS NULL) -- Filter out exclusive posts
   ORDER BY viral_score DESC
   LIMIT limit_count;
 END;
