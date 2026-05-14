@@ -26,7 +26,7 @@ export async function createPostAction(
       author_id: user.id,
       content,
       media_urls: mediaUrls,
-      moderation_status: 'pending', // Always start as pending
+      moderation_status: 'approved', // Start as approved for immediate visibility
       ai_confidence_score: 0,
       ai_safety_score: 100,
       is_flagged: false,
