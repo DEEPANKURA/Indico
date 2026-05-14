@@ -186,7 +186,7 @@ export default function PostCard({ post }: PostCardProps) {
   };
 
   const handleReport = async () => {
-    const reason = prompt('Reason for reporting (e.g. Sexual content, Hate speech, Harassment):');
+    const reason = prompt('Reason for reporting (Sexual content, Vulger, Harassment, Porn, Child abuses, Criminal act):');
     if (!reason) return;
     
     setIsReporting(true);

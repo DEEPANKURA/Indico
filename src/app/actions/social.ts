@@ -279,6 +279,10 @@ export async function reportPostAction(postId: string, reason: string, details?:
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
+    const keywords = ['sexual content', 'vulger', 'harassment', 'porn', 'child abuses', 'criminal act'];
+    const lowerReason = (reason + ' ' + (details || '')).toLowerCase();
+    const hasViolationKeyword = keywords.some(k => lowerReason.includes(k));
+
     // 1. Log the report
     const { error: reportError } = await (supabase
       .from('reports') as any)
@@ -292,52 +296,46 @@ export async function reportPostAction(postId: string, reason: string, details?:
 
     if (reportError) throw reportError;
 
-    // 2. Fetch post content for AI re-verification
+    // 2. Check total reports for this post
+    const { count } = await supabase
+      .from('reports')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', postId);
+
+    // 3. Fetch post for deletion if needed
     const { data: post } = await supabase
       .from('posts')
-      .select('content, media_urls')
+      .select('id, author_id, media_urls')
       .eq('id', postId)
       .single();
 
     if (post) {
-      const mediaUrl = post.media_urls?.[0];
-      // Run AI moderation again with a high priority/strictness context implicitly
-      const aiResult = await analyzeContentSafety(post.content || '', mediaUrl);
-      
-      // Update report with AI analysis
-      await (supabase
-        .from('reports') as any)
-        .update({ ai_analysis: aiResult } as any)
-        .eq('post_id', postId);
-
-      // 3. If AI flags it, take immediate action
-      if (aiResult.is_flagged) {
-        // Delete from Cloudinary
+      // Trigger deletion if threshold reached (5 reports) OR critical keyword found
+      if ((count || 0) >= 5 || hasViolationKeyword) {
+        console.log(`[Auto-Delete] Threshold reached or keyword found for post ${postId}. Reports: ${count}, Keyword: ${hasViolationKeyword}`);
+        
+        // Cleanup Cloudinary
         if (post.media_urls && post.media_urls.length > 0) {
           const { deleteCloudinaryMedia } = await import('@/utils/cloudinary-admin');
           for (const url of post.media_urls) {
             if (typeof url === 'string' && url.includes('cloudinary.com')) {
-              await deleteCloudinaryMedia(url);
+              await deleteCloudinaryMedia(url).catch(e => console.error('Cloudinary cleanup error:', e));
             }
           }
         }
 
-        await (supabase
-          .from('posts') as any)
-          .delete()
-          .eq('id', postId);
+        // Delete from DB
+        await supabase.from('posts').delete().eq('id', postId);
         
         revalidatePath('/');
         revalidatePath('/explore');
-        revalidatePath('/trending');
-        return { success: true, message: 'Thank you. The content has been removed after AI verification.' };
+        return { success: true, message: 'Content removed successfully due to safety violations.' };
       }
     }
 
-    return { success: true, message: 'Thank you for your report. Our moderators will review it shortly.' };
+    return { success: true, message: 'Thank you for your report. Our team will review it.' };
   } catch (error: any) {
     console.error('Report Action Error:', error);
     return { success: false, error: error.message };
   }
 }
-

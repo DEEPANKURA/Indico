@@ -9,103 +9,68 @@ export async function POST(req: Request) {
     const geminiKey = process.env.GEMINI_API_KEY;
 
     if (!supabaseUrl || !supabaseKey || !geminiKey) {
-      console.error('[Moderation] Missing configuration:', { 
-        hasUrl: !!supabaseUrl, 
-        hasKey: !!supabaseKey, 
-        hasGemini: !!geminiKey 
-      });
-      return NextResponse.json({ error: 'Moderation service misconfigured' }, { status: 500 });
+      console.error('[Moderation] Missing configuration');
+      return NextResponse.json({ error: 'Config missing' }, { status: 500 });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const genAI = new GoogleGenerativeAI(geminiKey);
+    const secret = req.headers.get('x-moderation-secret');
+    if (secret !== 'ai-indico-secure-moderator') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { record } = await req.json();
-    
-    if (!record || !record.id) {
-      return NextResponse.json({ error: 'No record' }, { status: 400 });
+    if (!record || !record.id) return NextResponse.json({ error: 'No record' });
+
+    // 1. Instant Bypass for Community/Exclusive
+    if (record.community_id || record.is_exclusive) {
+      return NextResponse.json({ success: true, bypassed: true });
     }
 
-    const postId = record.id;
-    const content = record.content || '';
     const mediaUrl = record.media_urls?.[0];
+    if (!mediaUrl) return NextResponse.json({ success: true, text_only: true });
 
-    console.log(`[Moderation] Processing post: ${postId}`);
-
-    if (!mediaUrl) {
-      // Auto-approve text-only for now, or you could add text moderation here
-      await supabase.from('posts').update({ moderation_status: 'approved' }).eq('id', postId);
-      return NextResponse.json({ success: true, action: 'approved-text' });
+    // 2. Prepare for analysis
+    let fetchUrl = mediaUrl;
+    if (mediaUrl.toLowerCase().match(/\.(mp4|webm|mov|m4v|ogg)/i)) {
+      fetchUrl = mediaUrl.replace('/upload/', '/upload/so_0,f_jpg,w_500/');
     }
 
-    // 1. Fetch the media
-    const mediaResp = await fetch(mediaUrl);
-    if (!mediaResp.ok) {
-      throw new Error(`Failed to fetch media: ${mediaResp.statusText}`);
-    }
-    const mediaBuffer = await mediaResp.arrayBuffer();
+    const mediaResp = await fetch(fetchUrl);
+    if (!mediaResp.ok) throw new Error('Failed to fetch media');
+    const buffer = await mediaResp.arrayBuffer();
 
-    // 2. Call Gemini
+    // 3. AI Safety Check
+    const genAI = new GoogleGenerativeAI(geminiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const prompt = `Analyze this social media post for safety.
-      Post Content: "${content}"
-      
-      CRITICAL SAFETY RULES:
-      - Flag (is_flagged: true) if you see: explicit sexual acts, genitals, exposed breasts (excluding breastfeeding), or highly vulgar/pornographic content.
-      - Flag if the pose is explicitly sexual, suggestive of pornographic acts, or contains excessive vulgarity.
-      - DO NOT FLAG: Normal beachwear (bikinis), fitness wear (shorts/sports bras), or artistic nudity that isn't pornographic.
-      - We allow "sexy" and "attractive" content, but NOT "pornographic" or "explicitly sexual" content.
-      - If it is too vulgar or explicit, it MUST be deleted.
-      
-      Return ONLY JSON format:
-      {
-        "is_flagged": boolean,
-        "reason": "string describing why if flagged"
-      }`;
+    const prompt = "Analyze this image. If it contains nudity, sexual acts, or extreme vulgarity, respond ONLY with 'REJECT'. Otherwise respond 'APPROVE'.";
 
     const result = await model.generateContent([
       prompt,
-      {
-        inlineData: {
-          data: Buffer.from(mediaBuffer).toString('base64'),
-          mimeType: mediaResp.headers.get('content-type') || 'image/jpeg'
-        }
-      }
+      { inlineData: { data: Buffer.from(buffer).toString('base64'), mimeType: 'image/jpeg' } }
     ]);
 
-    const response = await result.response;
-    const text = response.text();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const moderation = jsonMatch ? JSON.parse(jsonMatch[0]) : { is_flagged: false };
+    const text = result.response.text().trim().toUpperCase();
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log(`[Moderation] AI Result for ${postId}:`, moderation);
-
-    if (moderation.is_flagged) {
-      // User requested: "ai auto delete it" and also "deleate from cloudinary"
-      console.log(`[Moderation] Post ${postId} DELETED due to safety violation: ${moderation.reason}`);
+    if (text.includes('REJECT')) {
+      console.log(`[Moderation] DELETING offensive post ${record.id}`);
       
-      // Delete from Cloudinary
-      if (record.media_urls && record.media_urls.length > 0) {
-        const { deleteCloudinaryMedia } = await import('@/utils/cloudinary-admin');
-        for (const url of record.media_urls) {
-          if (typeof url === 'string' && url.includes('cloudinary.com')) {
-            await deleteCloudinaryMedia(url);
-          }
-        }
+      // Cleanup Cloudinary
+      const { deleteCloudinaryMedia } = await import('@/utils/cloudinary-admin');
+      for (const url of record.media_urls || []) {
+        await deleteCloudinaryMedia(url).catch(() => {});
       }
 
-      // Delete from DB
-      await supabase.from('posts').delete().eq('id', postId);
-      
-      return NextResponse.json({ success: true, action: 'deleted', reason: moderation.reason });
-    } else {
-      await supabase.from('posts').update({ moderation_status: 'approved' }).eq('id', postId);
-      console.log(`[Moderation] Post ${postId} APPROVED`);
-      return NextResponse.json({ success: true, action: 'approved' });
+      // Cleanup Database
+      await supabase.from('posts').delete().eq('id', record.id);
+      return NextResponse.json({ action: 'deleted' });
     }
 
+    // Post is safe, already approved by default
+    return NextResponse.json({ action: 'kept' });
+
   } catch (error: any) {
-    console.error('[Moderation] Error:', error);
+    console.error('[Moderation] Error:', error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
