@@ -54,9 +54,10 @@ export async function analyzeContentSafety(content: string, mediaUrl?: string) {
       
       CRITICAL RULES:
       1. Flag (is_flagged: true) if there is ANY explicit sexual activity, genitals, pornographic nudity, or highly vulgar content.
-      2. DO NOT FLAG (is_flagged: false) normal beachwear like bikinis, swimming suits, or fitness wear like shorts/sports bras.
-      3. We allow "sexy" and "attractive" content, but NOT "pornographic" content.
-      4. If the content is too vulgar or explicit, it MUST be flagged for deletion.
+      2. Flag if the pose is explicitly sexual, suggestive of pornographic acts, or contains excessive vulgarity.
+      3. DO NOT FLAG (is_flagged: false) normal beachwear like bikinis, swimming suits, or fitness wear like shorts/sports bras.
+      4. We allow "sexy" and "attractive" content, but NOT "pornographic" or "explicitly sexual" content.
+      5. If the content is too vulgar or explicit, it MUST be flagged for deletion.
       
       Return ONLY JSON: { "is_flagged": boolean, "safety_score": number, "reason": string }`;
 

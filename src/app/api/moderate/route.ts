@@ -52,6 +52,7 @@ export async function POST(req: Request) {
       
       CRITICAL SAFETY RULES:
       - Flag (is_flagged: true) if you see: explicit sexual acts, genitals, exposed breasts (excluding breastfeeding), or highly vulgar/pornographic content.
+      - Flag if the pose is explicitly sexual, suggestive of pornographic acts, or contains excessive vulgarity.
       - DO NOT FLAG: Normal beachwear (bikinis), fitness wear (shorts/sports bras), or artistic nudity that isn't pornographic.
       - We allow "sexy" and "attractive" content, but NOT "pornographic" or "explicitly sexual" content.
       - If it is too vulgar or explicit, it MUST be deleted.
@@ -80,9 +81,22 @@ export async function POST(req: Request) {
     console.log(`[Moderation] AI Result for ${postId}:`, moderation);
 
     if (moderation.is_flagged) {
-      // User requested: "ai auto delete it"
-      await supabase.from('posts').delete().eq('id', postId);
+      // User requested: "ai auto delete it" and also "deleate from cloudinary"
       console.log(`[Moderation] Post ${postId} DELETED due to safety violation: ${moderation.reason}`);
+      
+      // Delete from Cloudinary
+      if (record.media_urls && record.media_urls.length > 0) {
+        const { deleteCloudinaryMedia } = await import('@/utils/cloudinary-admin');
+        for (const url of record.media_urls) {
+          if (typeof url === 'string' && url.includes('cloudinary.com')) {
+            await deleteCloudinaryMedia(url);
+          }
+        }
+      }
+
+      // Delete from DB
+      await supabase.from('posts').delete().eq('id', postId);
+      
       return NextResponse.json({ success: true, action: 'deleted', reason: moderation.reason });
     } else {
       await supabase.from('posts').update({ moderation_status: 'approved' }).eq('id', postId);

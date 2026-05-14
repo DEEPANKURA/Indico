@@ -180,15 +180,25 @@ export async function deletePostAction(postId: string) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    // Check ownership
+    // Check ownership and get media URLs
     const { data: post } = await supabase
       .from('posts')
-      .select('author_id')
+      .select('author_id, media_urls')
       .eq('id', postId)
       .maybeSingle();
 
     if (!post) return { success: false, error: 'Post not found' };
     if (post.author_id !== user.id) return { success: false, error: 'Unauthorized' };
+
+    // Delete from Cloudinary first
+    if (post.media_urls && post.media_urls.length > 0) {
+      const { deleteCloudinaryMedia } = await import('@/utils/cloudinary-admin');
+      for (const url of post.media_urls) {
+        if (typeof url === 'string' && url.includes('cloudinary.com')) {
+          await deleteCloudinaryMedia(url);
+        }
+      }
+    }
 
     // Delete from DB
     const { error } = await supabase.from('posts').delete().eq('id', postId);
@@ -197,9 +207,11 @@ export async function deletePostAction(postId: string) {
     revalidatePath('/');
     revalidatePath('/profile');
     revalidatePath('/explore');
+    revalidatePath('/studio');
 
     return { success: true };
   } catch (error: any) {
+    console.error('Delete Post Error:', error);
     return { success: false, error: error.message };
   }
 }
@@ -291,6 +303,16 @@ export async function reportPostAction(postId: string, reason: string, details?:
 
       // 3. If AI flags it, take immediate action
       if (aiResult.is_flagged) {
+        // Delete from Cloudinary
+        if (post.media_urls && post.media_urls.length > 0) {
+          const { deleteCloudinaryMedia } = await import('@/utils/cloudinary-admin');
+          for (const url of post.media_urls) {
+            if (typeof url === 'string' && url.includes('cloudinary.com')) {
+              await deleteCloudinaryMedia(url);
+            }
+          }
+        }
+
         await (supabase
           .from('posts') as any)
           .delete()
