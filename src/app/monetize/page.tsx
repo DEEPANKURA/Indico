@@ -490,7 +490,6 @@ export default function MonetizePage() {
               ))}
             </div>
           </div>
-        </div>
       )}
 
       {activeTab === 'Coins' && (
