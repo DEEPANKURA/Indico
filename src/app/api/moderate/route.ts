@@ -27,27 +27,35 @@ export async function POST(req: Request) {
     }
 
     const mediaUrl = record.media_urls?.[0];
-    if (!mediaUrl) return NextResponse.json({ success: true, text_only: true });
+    const content = record.content || '';
 
-    // 2. Prepare for analysis
-    let fetchUrl = mediaUrl;
-    if (mediaUrl.toLowerCase().match(/\.(mp4|webm|mov|m4v|ogg)/i)) {
-      fetchUrl = mediaUrl.replace('/upload/', '/upload/so_0,f_jpg,w_500/');
-    }
-
-    const mediaResp = await fetch(fetchUrl);
-    if (!mediaResp.ok) throw new Error('Failed to fetch media');
-    const buffer = await mediaResp.arrayBuffer();
-
-    // 3. AI Safety Check
+    // 2. Prepare AI Analysis
     const genAI = new GoogleGenerativeAI(geminiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const prompt = "Analyze this image. If it contains nudity, sexual acts, or extreme vulgarity, respond ONLY with 'REJECT'. Otherwise respond 'APPROVE'.";
+    const prompt = `Analyze this post.
+Content: "${content}"
+Instructions: If the text OR the attached media contains nudity, sexual acts, extreme vulgarity, harassment, or prohibited content, respond ONLY with 'REJECT'. Otherwise respond 'APPROVE'.`;
 
-    const result = await model.generateContent([
-      prompt,
-      { inlineData: { data: Buffer.from(buffer).toString('base64'), mimeType: 'image/jpeg' } }
-    ]);
+    let result;
+    if (mediaUrl) {
+      // Analyze Text + Media
+      let fetchUrl = mediaUrl;
+      if (mediaUrl.toLowerCase().match(/\.(mp4|webm|mov|m4v|ogg)/i)) {
+        fetchUrl = mediaUrl.replace('/upload/', '/upload/so_0,f_jpg,w_500/');
+      }
+
+      const mediaResp = await fetch(fetchUrl);
+      if (!mediaResp.ok) throw new Error('Failed to fetch media');
+      const buffer = await mediaResp.arrayBuffer();
+
+      result = await model.generateContent([
+        prompt,
+        { inlineData: { data: Buffer.from(buffer).toString('base64'), mimeType: 'image/jpeg' } }
+      ]);
+    } else {
+      // Analyze Text Only
+      result = await model.generateContent(prompt);
+    }
 
     const text = result.response.text().trim().toUpperCase();
     const supabase = createClient(supabaseUrl, supabaseKey);
