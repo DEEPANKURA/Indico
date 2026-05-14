@@ -7,7 +7,9 @@ import {
   updateCommunitySubscriptionPriceAction, 
   createRazorpayOrderAction, 
   verifyRazorpayPaymentAction, 
-  boostReelWithCoinsAction 
+  boostReelWithCoinsAction,
+  updatePayoutAccountAction,
+  withdrawFundsAction
 } from '@/app/actions/monetize';
 import { 
   Coins, Gift, Users, Sparkles, Share2, CheckCircle2, 
@@ -50,6 +52,12 @@ export default function MonetizePage() {
   const [boostingPostId, setBoostingPostId] = useState<string | null>(null);
   const [boostCoinsAmount, setBoostCoinsAmount] = useState(100);
 
+  // Payout state
+  const [payoutAccountInput, setPayoutAccountInput] = useState('');
+  const [updatingPayout, setUpdatingPayout] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState<number | ''>('');
+  const [withdrawing, setWithdrawing] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     const res = await getMonetizationDataAction();
@@ -61,6 +69,9 @@ export default function MonetizePage() {
         prices[c.id] = c.subscription_price || 0;
       });
       setCommunityPrices(prices);
+      if (res.profile?.payout_account) {
+        setPayoutAccountInput(res.profile.payout_account);
+      }
     }
     setLoading(false);
   };
@@ -141,6 +152,35 @@ export default function MonetizePage() {
       alert(res.error);
     }
     setBoostingPostId(null);
+  };
+
+  const handleUpdatePayoutAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payoutAccountInput.trim()) return;
+    setUpdatingPayout(true);
+    const res = await updatePayoutAccountAction(payoutAccountInput);
+    if (res.success) {
+      alert(res.message);
+      await fetchData();
+    } else {
+      alert(res.error);
+    }
+    setUpdatingPayout(false);
+  };
+
+  const handleWithdrawFunds = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!withdrawAmount || Number(withdrawAmount) <= 0) return;
+    setWithdrawing(true);
+    const res = await withdrawFundsAction(Number(withdrawAmount));
+    if (res.success) {
+      alert(res.message);
+      setWithdrawAmount('');
+      await fetchData();
+    } else {
+      alert(res.error);
+    }
+    setWithdrawing(false);
   };
 
   if (loading) {
@@ -259,6 +299,7 @@ export default function MonetizePage() {
           { id: 'Coins', label: 'Buy Coins', icon: Coins },
           { id: 'Referrals', label: 'Referral Rewards', icon: Gift },
           { id: 'Boost', label: 'Boost Reels', icon: Flame },
+          { id: 'Payout', label: 'Withdraw', icon: Wallet },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -583,6 +624,89 @@ export default function MonetizePage() {
           ) : (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>You haven't uploaded any reels or posts yet to boost.</p>
           )}
+        </div>
+      )}
+
+      {activeTab === 'Payout' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+          <div className="glass-card" style={{ padding: '32px', borderRadius: '20px' }}>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <CreditCard style={{ color: 'var(--accent-primary)' }} /> Setup Payout Account
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '24px' }}>
+              Enter your UPI ID or Bank Account Details where you want to receive your earnings.
+            </p>
+
+            <form onSubmit={handleUpdatePayoutAccount} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '8px', color: 'var(--text-secondary)' }}>ACCOUNT DETAILS (UPI ID / Bank Acc)</label>
+                <input 
+                  required
+                  type="text" 
+                  placeholder="e.g. yourname@upi or Acc: 1234..."
+                  value={payoutAccountInput}
+                  onChange={(e) => setPayoutAccountInput(e.target.value)}
+                  className="glass-card"
+                  style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-light)', color: 'white', background: 'rgba(255,255,255,0.05)' }}
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={updatingPayout || !payoutAccountInput.trim()}
+                className="btn-secondary" 
+                style={{ padding: '12px', borderRadius: '12px', fontWeight: '800' }}
+              >
+                {updatingPayout ? <Loader2 className="animate-spin" size={20} style={{ margin: '0 auto' }} /> : 'Save Payout Details'}
+              </button>
+            </form>
+          </div>
+
+          <div className="glass-card" style={{ padding: '32px', borderRadius: '20px' }}>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Wallet style={{ color: '#10b981' }} /> Withdraw Funds
+            </h2>
+            <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', padding: '16px', borderRadius: '16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Available Balance</span>
+              <strong style={{ fontSize: '1.4rem', color: '#10b981' }}>₹{(profile.wallet_balance || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong>
+            </div>
+
+            <form onSubmit={handleWithdrawFunds} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '8px', color: 'var(--text-secondary)' }}>WITHDRAW AMOUNT (INR)</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontWeight: '700', fontSize: '1.1rem' }}>₹</span>
+                  <input 
+                    required
+                    type="number" 
+                    min="100"
+                    max={profile.wallet_balance || 0}
+                    placeholder="Min. 100"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="glass-card"
+                    style={{ width: '100%', padding: '14px 16px 14px 36px', borderRadius: '12px', border: '1px solid var(--border-light)', color: 'white', background: 'rgba(255,255,255,0.05)', fontSize: '1.1rem', fontWeight: '700' }}
+                  />
+                </div>
+              </div>
+
+              {!profile.payout_account && (
+                <div style={{ fontSize: '0.85rem', color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '10px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertCircle size={16} />
+                  <span>Please setup your payout account first to withdraw.</span>
+                </div>
+              )}
+
+              <button 
+                type="submit" 
+                disabled={withdrawing || !withdrawAmount || Number(withdrawAmount) <= 0 || !profile.payout_account}
+                className="btn-primary" 
+                style={{ padding: '14px', borderRadius: '12px', fontWeight: '800', background: 'linear-gradient(135deg, #10b981, #059669)' }}
+              >
+                {withdrawing ? <Loader2 className="animate-spin" size={20} style={{ margin: '0 auto' }} /> : 'Initiate Withdrawal'}
+              </button>
+            </form>
+          </div>
         </div>
       )}
 

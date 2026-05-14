@@ -14,7 +14,7 @@ export async function getMonetizationDataAction() {
     // Fetch user profile
     const { data: rawProfile, error: profError } = await db
       .from('profiles')
-      .select('id, username, full_name, avatar_url, coins, referral_code, referred_by, total_earnings, is_creator')
+      .select('id, username, full_name, avatar_url, coins, referral_code, referred_by, total_earnings, is_creator, wallet_balance, payout_account')
       .eq('id', user.id)
       .single();
 
@@ -299,6 +299,53 @@ export async function boostReelWithCoinsAction(postId: string, coinsCost: number
     revalidatePath('/monetize');
     revalidatePath('/trending');
     return { success: true, message: 'Reel boosted successfully! Indico platform earned from boost 🚀' };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updatePayoutAccountAction(payoutAccount: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    const db = supabase as any;
+
+    const { error } = await db.from('profiles').update({ payout_account: payoutAccount }).eq('id', user.id);
+    if (error) throw error;
+
+    revalidatePath('/monetize');
+    return { success: true, message: 'Payout account updated successfully!' };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function withdrawFundsAction(amount: number) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    const db = supabase as any;
+
+    const { data: rawProfile } = await db.from('profiles').select('wallet_balance, payout_account').eq('id', user.id).single();
+    const profile = rawProfile as any;
+
+    if (!profile.payout_account) {
+      return { success: false, error: 'Please set up a payout account first' };
+    }
+
+    if (!profile.wallet_balance || profile.wallet_balance < amount) {
+      return { success: false, error: 'Insufficient funds for withdrawal' };
+    }
+
+    // Process withdrawal
+    await db.from('profiles').update({
+      wallet_balance: profile.wallet_balance - amount
+    }).eq('id', user.id);
+
+    revalidatePath('/monetize');
+    return { success: true, message: `Withdrawal of ₹${amount} initiated successfully to ${profile.payout_account}` };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
