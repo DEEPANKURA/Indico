@@ -39,17 +39,43 @@ export async function createPostAction(
 
     const genAI = getGenAI();
     // Skip AI moderation for exclusive community and exclusive profile uploads
-    if (genAI && !communityId && !isExclusive) {
+    if (genAI && !communityId && !isExclusive && mediaUrl) {
       try {
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         
-        const moderationPromise = model.generateContent([
-          `Check post safety. Content: "${content.substring(0, 500)}". Media URL: ${mediaUrl}. ` +
-          `Return JSON: { "is_flagged": boolean, "safety_score": number }`
-        ]);
+        // Fetch image data to send to Gemini for actual visual analysis
+        const fetchImageData = async (url: string) => {
+          try {
+            const resp = await fetch(url);
+            if (!resp.ok) return null;
+            const buffer = await resp.arrayBuffer();
+            return {
+              inlineData: {
+                data: Buffer.from(buffer).toString('base64'),
+                mimeType: resp.headers.get('content-type') || 'image/jpeg'
+              }
+            };
+          } catch (e) {
+            console.warn('Failed to fetch image for moderation:', e);
+            return null;
+          }
+        };
+
+        const imagePart = await fetchImageData(mediaUrl);
+        const prompt = `Analyze this post for safety. 
+          Content text: "${content.substring(0, 500)}"
+          Rules:
+          - Flag (is_flagged: true) if there is ANY sexual explicitness, partial or full nudity, graphic violence, or hate speech.
+          - Be VERY strict about suggestive content. If the image is sexually suggestive, set safety_score to 0 and is_flagged to true.
+          Return ONLY JSON: { "is_flagged": boolean, "safety_score": number, "reason": string }`;
+
+        const parts: any[] = [prompt];
+        if (imagePart) parts.push(imagePart);
+
+        const moderationPromise = model.generateContent(parts);
 
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('AI Timeout')), 3000)
+          setTimeout(() => reject(new Error('AI Timeout')), 6000)
         );
 
         const result: any = await Promise.race([moderationPromise, timeoutPromise]);
@@ -60,9 +86,10 @@ export async function createPostAction(
           const parsed = JSON.parse(jsonMatch[0]);
           isFlagged = parsed.is_flagged ?? false;
           safetyScore = parsed.safety_score ?? 100;
+          console.log('AI Moderation Result for', mediaUrl, ':', parsed);
         }
       } catch (err) {
-        console.warn('AI Moderation skipped or timed out:', err);
+        console.error('AI Moderation error:', err);
       }
     }
 
