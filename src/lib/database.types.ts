@@ -65,39 +65,66 @@ export type Database = {
       }
       communities: {
         Row: {
+          avatar_url: string | null
+          banner_url: string | null
           category: string | null
           color: string | null
           created_at: string | null
           creator_id: string
           description: string | null
           id: string
+          is_announcement_only: boolean | null
+          is_exclusive: boolean | null
           is_public: boolean | null
+          join_price: number | null
           member_count: number | null
           name: string
+          pinned_text: string | null
+          rules: string | null
+          slow_mode_seconds: number | null
+          subscription_price: number | null
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
+          banner_url?: string | null
           category?: string | null
           color?: string | null
           created_at?: string | null
           creator_id: string
           description?: string | null
           id?: string
+          is_announcement_only?: boolean | null
+          is_exclusive?: boolean | null
           is_public?: boolean | null
+          join_price?: number | null
           member_count?: number | null
           name: string
+          pinned_text?: string | null
+          rules?: string | null
+          slow_mode_seconds?: number | null
+          subscription_price?: number | null
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
+          banner_url?: string | null
           category?: string | null
           color?: string | null
           created_at?: string | null
           creator_id?: string
           description?: string | null
           id?: string
+          is_announcement_only?: boolean | null
+          is_exclusive?: boolean | null
           is_public?: boolean | null
+          join_price?: number | null
           member_count?: number | null
           name?: string
+          pinned_text?: string | null
+          rules?: string | null
+          slow_mode_seconds?: number | null
+          subscription_price?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -114,23 +141,23 @@ export type Database = {
         Row: {
           community_id: string
           created_at: string | null
+          role: Database["public"]["Enums"]["community_role"] | null
+          status: Database["public"]["Enums"]["membership_status"] | null
           user_id: string
-          status: 'pending' | 'joined' | 'invited' | 'rejected' | null
-          role: 'owner' | 'moderator' | 'member' | null
         }
         Insert: {
           community_id: string
           created_at?: string | null
+          role?: Database["public"]["Enums"]["community_role"] | null
+          status?: Database["public"]["Enums"]["membership_status"] | null
           user_id: string
-          status?: 'pending' | 'joined' | 'invited' | 'rejected' | null
-          role?: 'owner' | 'moderator' | 'member' | null
         }
         Update: {
           community_id?: string
           created_at?: string | null
+          role?: Database["public"]["Enums"]["community_role"] | null
+          status?: Database["public"]["Enums"]["membership_status"] | null
           user_id?: string
-          status?: 'pending' | 'joined' | 'invited' | 'rejected' | null
-          role?: 'owner' | 'moderator' | 'member' | null
         }
         Relationships: [
           {
@@ -364,7 +391,6 @@ export type Database = {
           community_id?: string | null
           content?: string
           created_at?: string | null
-          group_id?: string | null
           id?: string
           is_read?: boolean | null
           message_type?: string | null
@@ -461,79 +487,97 @@ export type Database = {
           ai_confidence_score: number | null
           ai_safety_score: number | null
           author_id: string
+          boost_coins: number | null
           comment_count: number | null
           community_id: string | null
           content: string | null
           created_at: string
           engagement_score: number | null
           id: string
+          is_boosted: boolean | null
+          is_exclusive: boolean | null
           is_flagged: boolean | null
           like_count: number | null
           media_urls: string[] | null
+          mentions: string[] | null
           moderation_status:
             | Database["public"]["Enums"]["moderation_status"]
             | null
           music_artist: string | null
+          music_start_time: number | null
           music_title: string | null
           music_url: string | null
-          music_start_time: number | null
           music_volume: number | null
-          video_volume: number | null
-          video_trim_start: number | null
-          video_trim_end: number | null
+          overlays: Json | null
+          tags: string[] | null
           updated_at: string
+          video_trim_end: number | null
+          video_trim_start: number | null
+          video_volume: number | null
         }
         Insert: {
           ai_confidence_score?: number | null
           ai_safety_score?: number | null
           author_id: string
+          boost_coins?: number | null
           comment_count?: number | null
           community_id?: string | null
           content?: string | null
           created_at?: string
           engagement_score?: number | null
           id?: string
-          is_flagged: boolean | null
+          is_boosted?: boolean | null
+          is_exclusive?: boolean | null
+          is_flagged?: boolean | null
           like_count?: number | null
-          media_urls: string[] | null
+          media_urls?: string[] | null
+          mentions?: string[] | null
           moderation_status?:
             | Database["public"]["Enums"]["moderation_status"]
             | null
           music_artist?: string | null
+          music_start_time?: number | null
           music_title?: string | null
           music_url?: string | null
-          music_start_time?: number | null
           music_volume?: number | null
-          video_volume?: number | null
-          video_trim_start?: number | null
-          video_trim_end?: number | null
+          overlays?: Json | null
+          tags?: string[] | null
           updated_at?: string
+          video_trim_end?: number | null
+          video_trim_start?: number | null
+          video_volume?: number | null
         }
         Update: {
           ai_confidence_score?: number | null
           ai_safety_score?: number | null
           author_id?: string
+          boost_coins?: number | null
           comment_count?: number | null
           community_id?: string | null
           content?: string | null
           created_at?: string
           engagement_score?: number | null
           id?: string
+          is_boosted?: boolean | null
+          is_exclusive?: boolean | null
           is_flagged?: boolean | null
           like_count?: number | null
           media_urls?: string[] | null
+          mentions?: string[] | null
           moderation_status?:
             | Database["public"]["Enums"]["moderation_status"]
             | null
           music_artist?: string | null
+          music_start_time?: number | null
           music_title?: string | null
           music_url?: string | null
-          music_start_time?: number | null
           music_volume?: number | null
-          video_volume?: number | null
-          video_trim_start?: number | null
-          video_trim_end?: number | null
+          overlays?: Json | null
+          tags?: string[] | null
           updated_at?: string
+          video_trim_end?: number | null
+          video_trim_start?: number | null
+          video_volume?: number | null
         }
         Relationships: [
           {
@@ -556,12 +600,18 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bio: string | null
+          coins: number | null
           created_at: string
           followers_count: number | null
           following_count: number | null
           full_name: string | null
           id: string
           is_creator: boolean | null
+          payout_account: string | null
+          profile_subscription_price: number | null
+          referral_code: string | null
+          referred_by: string | null
+          total_earnings: number | null
           updated_at: string
           username: string
           wallet_balance: number | null
@@ -571,12 +621,18 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bio?: string | null
+          coins?: number | null
           created_at?: string
           followers_count?: number | null
           following_count?: number | null
           full_name?: string | null
           id: string
           is_creator?: boolean | null
+          payout_account?: string | null
+          profile_subscription_price?: number | null
+          referral_code?: string | null
+          referred_by?: string | null
+          total_earnings?: number | null
           updated_at?: string
           username: string
           wallet_balance?: number | null
@@ -586,19 +642,33 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bio?: string | null
+          coins?: number | null
           created_at?: string
           followers_count?: number | null
           following_count?: number | null
           full_name?: string | null
           id?: string
           is_creator?: boolean | null
+          payout_account?: string | null
+          profile_subscription_price?: number | null
+          referral_code?: string | null
+          referred_by?: string | null
+          total_earnings?: number | null
           updated_at?: string
           username?: string
           wallet_balance?: number | null
           website?: string | null
           website_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
@@ -625,6 +695,94 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      razorpay_orders: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string | null
+          id: string
+          order_id: string
+          status: string | null
+          target_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string | null
+          id?: string
+          order_id: string
+          status?: string | null
+          target_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string | null
+          id?: string
+          order_id?: string
+          status?: string | null
+          target_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "razorpay_orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          ai_analysis: Json | null
+          created_at: string | null
+          details: string | null
+          id: string
+          post_id: string | null
+          reason: string | null
+          reporter_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          post_id?: string | null
+          reason?: string | null
+          reporter_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_analysis?: Json | null
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          post_id?: string | null
+          reason?: string | null
+          reporter_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
             referencedColumns: ["id"]
           },
         ]
@@ -682,6 +840,61 @@ export type Database = {
           {
             foreignKeyName: "stories_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          amount: number
+          community_id: string | null
+          created_at: string
+          creator_id: string
+          expires_at: string
+          id: string
+          status: string | null
+          subscriber_id: string
+        }
+        Insert: {
+          amount: number
+          community_id?: string | null
+          created_at?: string
+          creator_id: string
+          expires_at: string
+          id?: string
+          status?: string | null
+          subscriber_id: string
+        }
+        Update: {
+          amount?: number
+          community_id?: string | null
+          created_at?: string
+          creator_id?: string
+          expires_at?: string
+          id?: string
+          status?: string | null
+          subscriber_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_subscriber_id_fkey"
+            columns: ["subscriber_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -771,12 +984,12 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_exclusive: boolean
           like_count: number
           media_urls: string[]
-          music_url: string
-          music_title: string
           music_artist: string
-          music_start_time: number
+          music_title: string
+          music_url: string
           viral_score: number
         }[]
       }
@@ -791,6 +1004,8 @@ export type Database = {
       }
     }
     Enums: {
+      community_role: "owner" | "moderator" | "member"
+      membership_status: "pending" | "joined" | "invited" | "rejected"
       moderation_status: "pending" | "approved" | "flagged" | "rejected"
     }
     CompositeTypes: {
@@ -798,3 +1013,130 @@ export type Database = {
     }
   }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      community_role: ["owner", "moderator", "member"],
+      membership_status: ["pending", "joined", "invited", "rejected"],
+      moderation_status: ["pending", "approved", "flagged", "rejected"],
+    },
+  },
+} as const
