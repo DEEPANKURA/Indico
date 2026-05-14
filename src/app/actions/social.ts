@@ -250,3 +250,68 @@ export async function sendCommunityMessageAction(communityId: string, content: s
     return { success: false, error: error.message };
   }
 }
+
+import { analyzeContentSafety } from '@/utils/moderation';
+
+export async function reportPostAction(postId: string, reason: string, details?: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    // 1. Log the report
+    const { error: reportError } = await supabase
+      .from('reports')
+      .insert({
+        post_id: postId,
+        reporter_id: user.id,
+        reason,
+        details,
+        status: 'pending'
+      } as any);
+
+    if (reportError) throw reportError;
+
+    // 2. Fetch post content for AI re-verification
+    const { data: post } = await supabase
+      .from('posts')
+      .select('content, media_urls')
+      .eq('id', postId)
+      .single();
+
+    if (post) {
+      const mediaUrl = post.media_urls?.[0];
+      // Run AI moderation again with a high priority/strictness context implicitly
+      const aiResult = await analyzeContentSafety(post.content || '', mediaUrl);
+      
+      // Update report with AI analysis
+      await supabase
+        .from('reports')
+        .update({ ai_analysis: aiResult } as any)
+        .eq('post_id', postId);
+
+      // 3. If AI flags it, take immediate action
+      if (aiResult.is_flagged) {
+        await supabase
+          .from('posts')
+          .update({ 
+            moderation_status: 'flagged', 
+            is_flagged: true,
+            ai_safety_score: 0 
+          } as any)
+          .eq('id', postId);
+        
+        revalidatePath('/');
+        revalidatePath('/explore');
+        revalidatePath('/trending');
+        return { success: true, message: 'Thank you. The content has been removed after AI verification.' };
+      }
+    }
+
+    return { success: true, message: 'Thank you for your report. Our moderators will review it shortly.' };
+  } catch (error: any) {
+    console.error('Report Action Error:', error);
+    return { success: false, error: error.message };
+  }
+}
+

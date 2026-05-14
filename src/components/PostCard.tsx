@@ -1,9 +1,10 @@
 'use client';
 
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Play, DollarSign, Loader2, Trash2, Music, Volume2, VolumeX } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Play, DollarSign, Loader2, Trash2, Music, Volume2, VolumeX, Flag } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { toggleLikeAction, toggleFollowAction, deletePostAction } from '@/app/actions/social';
+import { toggleLikeAction, toggleFollowAction, deletePostAction, reportPostAction } from '@/app/actions/social';
+import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import Image from 'next/image';
 import CommentModal from './CommentModal';
@@ -62,6 +63,7 @@ export default function PostCard({ post }: PostCardProps) {
   const [showShare, setShowShare] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -173,15 +175,27 @@ export default function PostCard({ post }: PostCardProps) {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this post?')) return;
-    setIsDeleting(true);
-    const res = await deletePostAction(post.id);
-    if (res.success) {
-      setIsDeleted(true);
-    } else {
-      alert('Delete failed: ' + res.error);
+    if (confirm('Delete this post?')) {
+      setIsDeleting(true);
+      const res = await deletePostAction(post.id);
+      if (res.success) toast.success('Post deleted');
+      else toast.error(res.error || 'Failed to delete');
       setIsDeleting(false);
     }
+  };
+
+  const handleReport = async () => {
+    const reason = prompt('Reason for reporting (e.g. Sexual content, Hate speech, Harassment):');
+    if (!reason) return;
+    
+    setIsReporting(true);
+    const res = await reportPostAction(post.id, reason);
+    if (res.success) {
+      toast.success(res.message || 'Reported successfully');
+    } else {
+      toast.error(res.error || 'Failed to report');
+    }
+    setIsReporting(false);
   };
 
   useEffect(() => {
@@ -257,7 +271,14 @@ export default function PostCard({ post }: PostCardProps) {
                {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
              </button>
           )}
-          <button style={{ color: 'var(--text-secondary)' }}><MoreHorizontal size={20} /></button>
+           <button 
+              onClick={handleReport} 
+              disabled={isReporting}
+              style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+              title="Report Content"
+           >
+             {isReporting ? <Loader2 size={18} className="animate-spin" /> : <Flag size={18} />}
+           </button>
         </div>
       </div>
 

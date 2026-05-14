@@ -2,17 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-// Initialize only when needed to avoid build-time issues with missing env vars
-let genAIInstance: any = null;
-function getGenAI() {
-  if (!genAIInstance && process.env.GEMINI_API_KEY) {
-    genAIInstance = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  }
-  return genAIInstance;
-}
-
+import { analyzeContentSafety } from '@/utils/moderation';
 
 export async function createPostAction(
   content: string, 
@@ -35,79 +25,13 @@ export async function createPostAction(
     // AI Safety Check
     let isFlagged = false;
     let safetyScore = 100;
-    let confidenceScore = 1.0;
 
-    const genAI = getGenAI();
     // Skip AI moderation for exclusive community and exclusive profile uploads
-    if (genAI && !communityId && !isExclusive && mediaUrl) {
-      try {
-        console.log('AI Moderation: Starting analysis for', mediaUrl);
-        const model = genAI.getGenerativeModel({ 
-          model: 'gemini-1.5-flash',
-          // Relax internal filters so Gemini reports bad content to us instead of just failing
-          safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-          ]
-        });
-        
-        // Fetch image data to send to Gemini for actual visual analysis
-        const fetchImageData = async (url: string) => {
-          try {
-            const resp = await fetch(url);
-            if (!resp.ok) {
-              console.error('Failed to fetch image. Status:', resp.status);
-              return null;
-            }
-            const buffer = await resp.arrayBuffer();
-            console.log('Image fetched successfully, size:', buffer.byteLength);
-            return {
-              inlineData: {
-                data: Buffer.from(buffer).toString('base64'),
-                mimeType: resp.headers.get('content-type') || 'image/jpeg'
-              }
-            };
-          } catch (e) {
-            console.error('Error fetching image for moderation:', e);
-            return null;
-          }
-        };
-
-        const imagePart = await fetchImageData(mediaUrl);
-        const prompt = `Analyze this post for safety. 
-          Content text: "${content.substring(0, 500)}"
-          Rules:
-          - Flag (is_flagged: true) if there is ANY sexual explicitness, partial/full nudity, suggestive poses, graphic violence, or hate speech.
-          - If the content is "sexy", suggestive, or contains nudity, you MUST flag it.
-          Return ONLY JSON: { "is_flagged": boolean, "safety_score": number, "reason": string }`;
-
-        const parts: any[] = [prompt];
-        if (imagePart) parts.push(imagePart);
-
-        const moderationPromise = model.generateContent(parts);
-
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('AI Timeout')), 8000)
-        );
-
-        const result: any = await Promise.race([moderationPromise, timeoutPromise]);
-        const responseText = result.response.text();
-        console.log('AI Response Text:', responseText);
-        
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          isFlagged = parsed.is_flagged ?? false;
-          safetyScore = parsed.safety_score ?? 100;
-          console.log('AI Moderation Result for', mediaUrl, ':', parsed);
-        } else {
-          console.warn('AI did not return JSON. Response:', responseText);
-        }
-      } catch (err) {
-        console.error('AI Moderation error:', err);
-      }
+    if (!communityId && !isExclusive && mediaUrl) {
+      const result = await analyzeContentSafety(content, mediaUrl);
+      isFlagged = result.is_flagged ?? false;
+      safetyScore = result.safety_score ?? 100;
+      console.log('Post Moderation Result:', result);
     }
 
     try {
