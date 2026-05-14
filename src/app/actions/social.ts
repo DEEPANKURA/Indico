@@ -259,8 +259,8 @@ export async function reportPostAction(postId: string, reason: string, details?:
     if (!user) return { success: false, error: 'Unauthorized' };
 
     // 1. Log the report
-    const { error: reportError } = await supabase
-      .from('reports')
+    const { error: reportError } = await (supabase
+      .from('reports') as any)
       .insert({
         post_id: postId,
         reporter_id: user.id,
@@ -284,15 +284,15 @@ export async function reportPostAction(postId: string, reason: string, details?:
       const aiResult = await analyzeContentSafety(post.content || '', mediaUrl);
       
       // Update report with AI analysis
-      await supabase
-        .from('reports')
+      await (supabase
+        .from('reports') as any)
         .update({ ai_analysis: aiResult } as any)
         .eq('post_id', postId);
 
       // 3. If AI flags it, take immediate action
       if (aiResult.is_flagged) {
-        await supabase
-          .from('posts')
+        await (supabase
+          .from('posts') as any)
           .update({ 
             moderation_status: 'flagged', 
             is_flagged: true,
