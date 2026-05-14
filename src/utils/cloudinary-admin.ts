@@ -12,19 +12,26 @@ export async function deleteCloudinaryMedia(mediaUrl: string) {
     }
 
     // Extract public_id from URL
-    // https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/public_id.jpg
+    // https://res.cloudinary.com/cloud_name/image/upload/f_auto,q_auto/v1234567890/folder/public_id.jpg
     const urlParts = mediaUrl.split('/');
     const uploadIndex = urlParts.indexOf('upload');
     if (uploadIndex === -1) return { success: false, error: 'Invalid Cloudinary URL' };
 
-    // The public_id starts after the version (v123...) or directly after 'upload'
-    let publicIdWithExt = '';
-    if (urlParts[uploadIndex + 1].startsWith('v')) {
-      publicIdWithExt = urlParts.slice(uploadIndex + 2).join('/');
-    } else {
-      publicIdWithExt = urlParts.slice(uploadIndex + 1).join('/');
+    // The public_id starts after the version (v123...) or after transformations
+    // Transformations often contain commas. Version is v followed by digits.
+    let relevantParts = urlParts.slice(uploadIndex + 1);
+    
+    // Skip transformations (e.g., f_auto,q_auto)
+    if (relevantParts[0].includes(',') || (relevantParts[0].includes('_') && !relevantParts[0].includes('/'))) {
+      relevantParts = relevantParts.slice(1);
+    }
+    
+    // Skip version (e.g., v1778744640)
+    if (relevantParts[0].match(/^v\d+$/)) {
+      relevantParts = relevantParts.slice(1);
     }
 
+    const publicIdWithExt = relevantParts.join('/');
     const publicId = publicIdWithExt.split('.')[0];
     const timestamp = Math.round(new Date().getTime() / 1000);
     const paramsToSign = `public_id=${publicId}&timestamp=${timestamp}`;

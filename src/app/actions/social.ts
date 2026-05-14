@@ -191,18 +191,27 @@ export async function deletePostAction(postId: string) {
     if (post.author_id !== user.id) return { success: false, error: 'Unauthorized' };
 
     // Delete from Cloudinary first
+    console.log('[DeleteAction] Starting Cloudinary cleanup for post:', postId);
     if (post.media_urls && post.media_urls.length > 0) {
       const { deleteCloudinaryMedia } = await import('@/utils/cloudinary-admin');
       for (const url of post.media_urls) {
         if (typeof url === 'string' && url.includes('cloudinary.com')) {
-          await deleteCloudinaryMedia(url);
+          console.log('[DeleteAction] Deleting media from Cloudinary:', url);
+          const cloudRes = await deleteCloudinaryMedia(url);
+          console.log('[DeleteAction] Cloudinary result:', cloudRes);
         }
       }
     }
 
     // Delete from DB
+    console.log('[DeleteAction] Deleting from database:', postId);
     const { error } = await supabase.from('posts').delete().eq('id', postId);
-    if (error) throw error;
+    if (error) {
+      console.error('[DeleteAction] Database delete error:', error);
+      throw error;
+    }
+
+    console.log('[DeleteAction] Success');
 
     revalidatePath('/');
     revalidatePath('/profile');
