@@ -44,7 +44,7 @@ export default function CreateCommunityModal({ onClose, onSuccess }: CreateCommu
     }} onClick={onClose}>
       <div 
         style={{
-          width: '100%', maxWidth: '500px',
+          width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto',
           background: 'var(--bg-primary)', borderRadius: '24px',
           padding: '24px', position: 'relative',
           border: '1px solid var(--border-light)',
@@ -142,7 +142,7 @@ export default function CreateCommunityModal({ onClose, onSuccess }: CreateCommu
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-light)' }}>
              <div>
                <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>Exclusive Community</div>
-               <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Require a coin payment to join</div>
+               <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Require a direct INR payment to join</div>
              </div>
              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                <input 
@@ -156,7 +156,7 @@ export default function CreateCommunityModal({ onClose, onSuccess }: CreateCommu
 
           {formData.isExclusive && (
             <div className="animate-fade-in">
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '8px', color: 'var(--accent-neon)' }}>JOINING PRICE (COINS)</label>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '8px', color: 'var(--accent-neon)' }}>JOINING PRICE (INR)</label>
               <input 
                 required={formData.isExclusive}
                 type="number" 
@@ -174,7 +174,7 @@ export default function CreateCommunityModal({ onClose, onSuccess }: CreateCommu
             type="submit" 
             disabled={loading}
             className="btn-primary" 
-            style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '10px', fontSize: '1rem' }}
+            style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '10px', fontSize: '1rem', flexShrink: 0 }}
           >
             {loading ? <Loader2 className="animate-spin" /> : 'Create Community'}
           </button>

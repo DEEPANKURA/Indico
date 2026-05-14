@@ -46,6 +46,7 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
 
@@ -67,6 +68,7 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
     const checkLike = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setCurrentUserId(user.id);
       
       const { data } = await supabase
         .from('likes')
@@ -286,32 +288,34 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
         </button>
 
         {/* Boost Reel Option */}
-        <button 
-          onClick={handleBoost} 
-          disabled={boosting}
-          style={{ 
-            background: 'none', border: 'none', 
-            color: isBoosted ? '#f59e0b' : 'white', 
-            cursor: boosting ? 'wait' : 'pointer', 
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-            transition: 'all 0.2s'
-          }}
-          title="Boost this Reel with 100 Coins"
-          className="hover-scale"
-        >
-          <div style={{ 
-            padding: '10px', borderRadius: '50%', 
-            background: isBoosted ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.1)', 
-            border: isBoosted ? '2px solid #f59e0b' : 'none',
-            backdropFilter: 'blur(10px)',
-            boxShadow: isBoosted ? '0 0 15px rgba(245,158,11,0.5)' : 'none'
-          }}>
-            <Flame size={24} style={{ fill: isBoosted ? '#f59e0b' : 'none' }} className={boosting ? "animate-bounce" : ""} />
-          </div>
-          <span style={{ fontSize: '0.65rem', fontWeight: '900', color: isBoosted ? '#f59e0b' : 'rgba(255,255,255,0.8)', textTransform: 'uppercase' }}>
-            {isBoosted ? `${boostCoins}c` : 'Boost'}
-          </span>
-        </button>
+        {currentUserId === post.author.id && (
+          <button 
+            onClick={handleBoost} 
+            disabled={boosting}
+            style={{ 
+              background: 'none', border: 'none', 
+              color: isBoosted ? '#f59e0b' : 'white', 
+              cursor: boosting ? 'wait' : 'pointer', 
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+              transition: 'all 0.2s'
+            }}
+            title="Boost this Reel with 100 Coins"
+            className="hover-scale"
+          >
+            <div style={{ 
+              padding: '10px', borderRadius: '50%', 
+              background: isBoosted ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.1)', 
+              border: isBoosted ? '2px solid #f59e0b' : 'none',
+              backdropFilter: 'blur(10px)',
+              boxShadow: isBoosted ? '0 0 15px rgba(245,158,11,0.5)' : 'none'
+            }}>
+              <Flame size={24} style={{ fill: isBoosted ? '#f59e0b' : 'none' }} className={boosting ? "animate-bounce" : ""} />
+            </div>
+            <span style={{ fontSize: '0.65rem', fontWeight: '900', color: isBoosted ? '#f59e0b' : 'rgba(255,255,255,0.8)', textTransform: 'uppercase' }}>
+              {isBoosted ? `${boostCoins}c` : 'Boost'}
+            </span>
+          </button>
+        )}
       </div>
 
       {showComments && (

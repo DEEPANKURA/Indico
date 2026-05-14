@@ -243,12 +243,12 @@ export default function CommunitiesPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {comm.is_exclusive && !isJoined && (
                       <div style={{ 
-                        background: 'rgba(250,204,21,0.1)', border: '1px solid rgba(250,204,21,0.3)',
+                        background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)',
                         padding: '6px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px',
-                        boxShadow: '0 0 15px rgba(250,204,21,0.2)'
+                        boxShadow: '0 0 15px rgba(16,185,129,0.2)'
                       }}>
-                        <span style={{ fontSize: '1rem' }}>🪙</span>
-                        <span style={{ fontSize: '0.9rem', fontWeight: '900', color: '#fbbf24', fontFamily: 'monospace' }}>{comm.join_price || 0}</span>
+                        <span style={{ fontSize: '1rem' }}>₹</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: '900', color: '#10b981', fontFamily: 'monospace' }}>{comm.join_price || 0}</span>
                       </div>
                     )}
                     <button 

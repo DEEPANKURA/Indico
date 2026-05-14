@@ -403,9 +403,9 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                   <strong style={{ color: '#10b981', fontSize: '0.95rem' }}>₹{community.subscription_price}/mo</strong>
                 </div>
               ) : (community.join_price && community.join_price > 0) ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', padding: '6px 12px', borderRadius: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', padding: '6px 12px', borderRadius: '12px' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '700' }}>PRICE TO JOIN:</span>
-                  <strong style={{ color: '#f59e0b', fontSize: '0.95rem' }}>🪙{community.join_price}</strong>
+                  <strong style={{ color: '#10b981', fontSize: '0.95rem' }}>₹{community.join_price}</strong>
                 </div>
               ) : null}
 
@@ -436,7 +436,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                   className="btn-primary" 
                   style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: '800', background: 'linear-gradient(135deg, #10b981, #059669)' }}
                 >
-                  {community.subscription_price ? `Subscribe & Join` : `Pay 🪙${community.join_price} & Join`}
+                  {community.subscription_price ? `Subscribe & Join` : `Pay ₹${community.join_price} & Join`}
                 </button>
               ) : (
                 <button 
@@ -548,7 +548,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                         <button onClick={startSubscribeCheckout} className="btn-primary hover-scale" style={{ padding: '16px 40px', fontSize: '1.1rem', fontWeight: '900', borderRadius: '16px', background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 10px 25px rgba(16,185,129,0.4)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <span>{community.subscription_price ? 'Subscribe via Razorpay' : 'Pay Once to Join'}</span>
                           <span style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '8px', fontSize: '1rem' }}>
-                            {community.subscription_price ? `₹${community.subscription_price}/mo` : `🪙${community.join_price}`}
+                            {community.subscription_price ? `₹${community.subscription_price}/mo` : `₹${community.join_price}`}
                           </span>
                         </button>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>🔒 Secure Gateway Checkout • Cancel Anytime</span>
