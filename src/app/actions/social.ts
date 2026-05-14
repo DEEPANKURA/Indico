@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { analyzeContentSafety } from '@/utils/moderation';
 
 export async function toggleLikeAction(postId: string) {
   try {
@@ -248,10 +249,7 @@ export async function sendCommunityMessageAction(communityId: string, content: s
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
-  }
 }
-
-import { analyzeContentSafety } from '@/utils/moderation';
 
 export async function reportPostAction(postId: string, reason: string, details?: string) {
   try {
