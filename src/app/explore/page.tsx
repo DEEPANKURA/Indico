@@ -77,7 +77,8 @@ export default function ExplorePage() {
         musicVolume: p.music_volume,
         videoVolume: p.video_volume,
         videoTrimStart: p.video_trim_start,
-        videoTrimEnd: p.video_trim_end
+        videoTrimEnd: p.video_trim_end,
+        moderationStatus: p.moderation_status
       }));
       setTrendingPosts(mappedPosts);
     };
@@ -142,7 +143,8 @@ export default function ExplorePage() {
         musicVolume: p.music_volume,
         videoVolume: p.video_volume,
         videoTrimStart: p.video_trim_start,
-        videoTrimEnd: p.video_trim_end
+        videoTrimEnd: p.video_trim_end,
+        moderationStatus: p.moderation_status
       }));
       setPostResults(mapped);
       

@@ -268,6 +268,16 @@ export default function ProfilePage() {
                   <Lock size={12} />
                 </div>
               )}
+              {post.moderation_status === 'pending' && (
+                <div style={{ 
+                  position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', 
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.6rem', color: 'white', fontWeight: 'bold', gap: '4px', zIndex: 5
+                }}>
+                  <div className="animate-spin" style={{ width: '16px', height: '16px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
+                  MODERATING
+                </div>
+              )}
             </div>
           ))
         ) : (

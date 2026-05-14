@@ -102,7 +102,8 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     musicVolume: post.music_volume,
     videoVolume: post.video_volume,
     videoTrimStart: post.video_trim_start,
-    videoTrimEnd: post.video_trim_end
+    videoTrimEnd: post.video_trim_end,
+    moderationStatus: post.moderation_status
   };
 
   return (
