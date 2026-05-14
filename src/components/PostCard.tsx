@@ -49,6 +49,8 @@ interface PostCardProps {
     videoTrimStart?: number;
     videoTrimEnd?: number;
     moderationStatus?: 'pending' | 'approved' | 'flagged' | 'rejected';
+    initialIsLiked?: boolean;
+    currentUserId?: string | null;
   }
 }
 
@@ -62,7 +64,7 @@ export default function PostCard({ post }: PostCardProps) {
   const supabase = createClient();
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(post.currentUserId || null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
@@ -74,10 +76,11 @@ export default function PostCard({ post }: PostCardProps) {
   const cardRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    if (post.currentUserId !== undefined) return;
     supabase.auth.getUser().then(({ data }) => {
       setCurrentUserId(data.user?.id || null);
     });
-  }, []);
+  }, [post.currentUserId]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -146,7 +149,7 @@ export default function PostCard({ post }: PostCardProps) {
   };
 
   const [localLikes, setLocalLikes] = useState(parseMetric(post.likes));
-  const [isLiked, setIsLiked] = useState(false); // We don't have initial state from parent yet
+  const [isLiked, setIsLiked] = useState(post.initialIsLiked || false);
   const handleLike = async () => {
     const wasLiked = isLiked;
     setIsLiked(!wasLiked);
@@ -200,21 +203,25 @@ export default function PostCard({ post }: PostCardProps) {
   };
 
   useEffect(() => {
+    // If we already know it's liked from the parent (RPC), don't check again
+    if (post.initialIsLiked !== undefined) return;
+
     const checkLike = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // Use currentUserId if available, otherwise fetch
+      const userId = currentUserId || (await supabase.auth.getUser()).data.user?.id;
+      if (!userId) return;
       
       const { data } = await supabase
         .from('likes')
         .select('id')
         .eq('post_id', post.id)
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single();
       
       if (data) setIsLiked(true);
     };
     checkLike();
-  }, [post.id]);
+  }, [post.id, post.initialIsLiked, currentUserId]);
 
   if (isDeleted) return null;
 

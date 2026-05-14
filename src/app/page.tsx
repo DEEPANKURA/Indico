@@ -8,6 +8,7 @@ import NotificationBell from "@/components/NotificationBell";
 
 export default async function Home() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   
   const { data: posts, error } = await supabase.rpc('get_viral_feed', { limit_count: 50 });
 
@@ -91,7 +92,9 @@ export default async function Home() {
               videoVolume: post.video_volume,
               videoTrimStart: post.video_trim_start,
               videoTrimEnd: post.video_trim_end,
-              moderationStatus: post.moderation_status
+              moderationStatus: post.moderation_status,
+              initialIsLiked: post.is_liked,
+              currentUserId: user?.id
             }} 
           />
         ))}
