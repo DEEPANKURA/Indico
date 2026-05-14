@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { Toaster } from 'react-hot-toast';
 import Sidebar from "@/components/Sidebar";
 import RightSidebar from "@/components/RightSidebar";
 import BottomNav from "@/components/BottomNav";
@@ -56,6 +57,15 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon.png" />
       </head>
       <body suppressHydrationWarning>
+        <Toaster position="top-center" toastOptions={{
+          style: {
+            background: 'var(--bg-glass)',
+            color: 'white',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid var(--border-light)',
+            borderRadius: '12px',
+          },
+        }} />
         <RealtimeRefresh />
         <ChunkErrorHandler />
         <ConfigInitializer 
