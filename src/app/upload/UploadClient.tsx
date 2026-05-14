@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Upload, Image as ImageIcon, Video as VideoIcon, Film, X, Loader2, 
   CheckCircle, Music, Volume2, Scissors, Settings2, Sparkles, 
@@ -38,6 +38,7 @@ const FILTERS = [
 
 export default function UploadClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -66,6 +67,12 @@ export default function UploadClient() {
   const [tagInput, setTagInput] = useState('');
   const [mentionInput, setMentionInput] = useState('');
   const [isExclusive, setIsExclusive] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('exclusive') === 'true') {
+      setIsExclusive(true);
+    }
+  }, [searchParams]);
 
   // Upload State
   const [uploading, setUploading] = useState(false);

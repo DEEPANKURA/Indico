@@ -23,7 +23,7 @@ export default function ProfilePage() {
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
-  const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'reels'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'reels' | 'exclusive'>('posts');
   const [showFollows, setShowFollows] = useState<{ type: 'followers' | 'following', userId: string } | null>(null);
 
   useEffect(() => {
@@ -157,8 +157,8 @@ export default function ProfilePage() {
           <button onClick={() => setShowEdit(true)} style={{ flex: 1, height: '32px', background: 'var(--bg-glass)', border: '1px solid var(--border-light)', borderRadius: '8px', fontWeight: '600', fontSize: '0.9rem' }}>
             Edit Profile
           </button>
-          <button onClick={() => navigator.clipboard.writeText(window.location.href)} style={{ flex: 1, height: '32px', background: 'var(--bg-glass)', border: '1px solid var(--border-light)', borderRadius: '8px', fontWeight: '600', fontSize: '0.9rem' }}>
-            Share Profile
+          <button onClick={() => router.push('/upload?exclusive=true')} style={{ flex: 1, height: '32px', background: 'rgba(138,43,226,0.1)', border: '1px solid var(--accent-primary)', borderRadius: '8px', fontWeight: '700', fontSize: '0.9rem', color: 'var(--accent-primary)' }}>
+            Upload Exclusive
           </button>
         </div>
 
@@ -206,6 +206,7 @@ export default function ProfilePage() {
         {[
           { id: 'posts', icon: Grid3x3 },
           { id: 'reels', icon: Play },
+          { id: 'exclusive', icon: Lock },
           { id: 'saved', icon: Bookmark },
         ].map(tab => (
           <button 
@@ -224,8 +225,22 @@ export default function ProfilePage() {
 
       {/* Posts Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px' }}>
-        {posts.length > 0 ? (
-          posts.map((post) => (
+        {(activeTab === 'posts' 
+            ? posts.filter(p => !p.is_exclusive) 
+            : activeTab === 'exclusive' 
+              ? posts.filter(p => p.is_exclusive)
+              : activeTab === 'reels'
+                ? posts.filter(p => typeof p.media_urls?.[0] === 'string' && p.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/))
+                : [] // saved tab not implemented yet
+          ).length > 0 ? (
+          (activeTab === 'posts' 
+            ? posts.filter(p => !p.is_exclusive) 
+            : activeTab === 'exclusive' 
+              ? posts.filter(p => p.is_exclusive)
+              : activeTab === 'reels'
+                ? posts.filter(p => typeof p.media_urls?.[0] === 'string' && p.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/))
+                : []
+          ).map((post) => (
             <div 
               key={post.id}
               onClick={() => router.push(`/post/${post.id}`)}
@@ -258,10 +273,14 @@ export default function ProfilePage() {
         ) : (
           <div style={{ gridColumn: 'span 3', padding: '60px 20px', textAlign: 'center' }}>
             <div style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-              <Camera size={40} />
+              {activeTab === 'exclusive' ? <Lock size={40} /> : <Camera size={40} />}
             </div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800' }}>No Posts Yet</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>When you share photos or videos, they'll appear on your profile.</p>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: '800' }}>
+              {activeTab === 'exclusive' ? 'No Exclusive Content' : activeTab === 'reels' ? 'No Reels Yet' : 'No Posts Yet'}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              {activeTab === 'exclusive' ? 'Unlock monetization by uploading exclusive content for your subscribers.' : 'When you share photos or videos, they\'ll appear on your profile.'}
+            </p>
           </div>
         )}
       </div>
