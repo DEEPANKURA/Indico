@@ -41,14 +41,28 @@ export async function createPostAction(
     // Skip AI moderation for exclusive community and exclusive profile uploads
     if (genAI && !communityId && !isExclusive && mediaUrl) {
       try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        console.log('AI Moderation: Starting analysis for', mediaUrl);
+        const model = genAI.getGenerativeModel({ 
+          model: 'gemini-1.5-flash',
+          // Relax internal filters so Gemini reports bad content to us instead of just failing
+          safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+          ]
+        });
         
         // Fetch image data to send to Gemini for actual visual analysis
         const fetchImageData = async (url: string) => {
           try {
             const resp = await fetch(url);
-            if (!resp.ok) return null;
+            if (!resp.ok) {
+              console.error('Failed to fetch image. Status:', resp.status);
+              return null;
+            }
             const buffer = await resp.arrayBuffer();
+            console.log('Image fetched successfully, size:', buffer.byteLength);
             return {
               inlineData: {
                 data: Buffer.from(buffer).toString('base64'),
@@ -56,7 +70,7 @@ export async function createPostAction(
               }
             };
           } catch (e) {
-            console.warn('Failed to fetch image for moderation:', e);
+            console.error('Error fetching image for moderation:', e);
             return null;
           }
         };
@@ -65,8 +79,8 @@ export async function createPostAction(
         const prompt = `Analyze this post for safety. 
           Content text: "${content.substring(0, 500)}"
           Rules:
-          - Flag (is_flagged: true) if there is ANY sexual explicitness, partial or full nudity, graphic violence, or hate speech.
-          - Be VERY strict about suggestive content. If the image is sexually suggestive, set safety_score to 0 and is_flagged to true.
+          - Flag (is_flagged: true) if there is ANY sexual explicitness, partial/full nudity, suggestive poses, graphic violence, or hate speech.
+          - If the content is "sexy", suggestive, or contains nudity, you MUST flag it.
           Return ONLY JSON: { "is_flagged": boolean, "safety_score": number, "reason": string }`;
 
         const parts: any[] = [prompt];
@@ -75,11 +89,12 @@ export async function createPostAction(
         const moderationPromise = model.generateContent(parts);
 
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('AI Timeout')), 6000)
+          setTimeout(() => reject(new Error('AI Timeout')), 8000)
         );
 
         const result: any = await Promise.race([moderationPromise, timeoutPromise]);
         const responseText = result.response.text();
+        console.log('AI Response Text:', responseText);
         
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
@@ -87,6 +102,8 @@ export async function createPostAction(
           isFlagged = parsed.is_flagged ?? false;
           safetyScore = parsed.safety_score ?? 100;
           console.log('AI Moderation Result for', mediaUrl, ':', parsed);
+        } else {
+          console.warn('AI did not return JSON. Response:', responseText);
         }
       } catch (err) {
         console.error('AI Moderation error:', err);
