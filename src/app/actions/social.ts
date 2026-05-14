@@ -249,6 +249,7 @@ export async function sendCommunityMessageAction(communityId: string, content: s
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
+  }
 }
 
 export async function reportPostAction(postId: string, reason: string, details?: string) {
