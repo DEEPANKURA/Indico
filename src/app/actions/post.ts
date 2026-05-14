@@ -50,14 +50,13 @@ export async function createPostAction(
       return { success: false, error: `Database error: ${dbError.message}` };
     }
 
-    return { success: true, isFlagged: false, postId: post.id };
-
     revalidatePath('/');
     revalidatePath('/studio');
     revalidatePath('/profile');
     revalidatePath('/trending');
     revalidatePath('/explore');
-    return { success: true, isFlagged };
+
+    return { success: true, isFlagged: false, postId: post.id };
   } catch (error: any) {
     console.error('Create post error:', error);
     return { success: false, error: error.message };
