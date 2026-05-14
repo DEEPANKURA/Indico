@@ -9,6 +9,9 @@ export default function RealtimeRefresh() {
   const supabase = createClient();
 
   useEffect(() => {
+    // Initial refresh to clear any stale cache on mount (back navigation)
+    router.refresh();
+
     const channel = supabase
       .channel('global_posts_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {

@@ -5,6 +5,7 @@ import RightSidebar from "@/components/RightSidebar";
 import BottomNav from "@/components/BottomNav";
 import PWARegister from "@/components/PWARegister";
 import ConfigInitializer from "@/components/ConfigInitializer";
+import RealtimeRefresh from "@/components/RealtimeRefresh";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -54,6 +55,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon.png" />
       </head>
       <body suppressHydrationWarning>
+        <RealtimeRefresh />
         <ConfigInitializer 
           url={process.env.SUPABASE_URL || ''} 
           anonKey={process.env.SUPABASE_ANON_KEY || ''} 
