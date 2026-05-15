@@ -3,8 +3,55 @@ import { redirect } from 'next/navigation';
 import PostCard from '@/components/PostCard';
 import { Lock, AlertTriangle, Home } from 'lucide-react';
 import Link from 'next/link';
+import { Metadata, ResolvingMetadata } from 'next';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ id: string }> },
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data: post } = await supabase
+    .from('posts')
+    .select(`
+      content,
+      media_urls,
+      author:profiles!posts_author_id_fkey(username, full_name, avatar_url)
+    `)
+    .eq('id', id)
+    .single();
+
+  if (!post) {
+    return {
+      title: 'Post Not Found | Indico',
+    };
+  }
+
+  const authorName = post.author?.full_name || post.author?.username || 'Creator';
+  const description = post.content ? post.content.substring(0, 160) : `Check out this post by ${authorName} on Indico.`;
+  const firstMedia = post.media_urls?.[0];
+  const isVideo = typeof firstMedia === 'string' && firstMedia.toLowerCase().match(/\.(mp4|webm|ogg)/);
+
+  return {
+    title: `${authorName} on Indico: "${post.content?.substring(0, 50) || 'Post'}"`,
+    description,
+    openGraph: {
+      title: `${authorName} on Indico`,
+      description,
+      images: firstMedia && !isVideo ? [firstMedia] : post.author?.avatar_url ? [post.author.avatar_url] : [],
+      type: 'article',
+    },
+    twitter: {
+      card: firstMedia && !isVideo ? 'summary_large_image' : 'summary',
+      title: `${authorName} on Indico`,
+      description,
+      images: firstMedia && !isVideo ? [firstMedia] : post.author?.avatar_url ? [post.author.avatar_url] : [],
+    },
+  };
+}
 
 export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
   try {

@@ -15,14 +15,54 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Indico | The Creator-First Social Media Platform",
+  title: {
+    default: "Indico | The Creator-First Social Media Platform",
+    template: "%s | Indico",
+  },
   description: "A next-generation creator-first social media app where new creators can go viral easily based on content quality, watch time, and shares instead of follower count.",
   manifest: "/manifest.json",
+  keywords: ["social media", "creators", "viral", "content quality", "Indico", "creator economy"],
+  authors: [{ name: "Indico Team" }],
+  creator: "Indico",
+  publisher: "Indico",
+  formatDetection: {
+    telephone: false,
+  },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://indicosocial.in'),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://indicosocial.in',
+    siteName: 'Indico',
+    title: 'Indico | The Creator-First Social Media Platform',
+    description: 'A next-generation creator-first social media app where new creators can go viral easily.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Indico Social Media',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Indico | The Creator-First Social Media Platform',
+    description: 'A next-generation creator-first social media app where new creators can go viral easily.',
+    images: ['/og-image.png'],
+    creator: '@indico_live',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Indico",
     startupImage: "/icon.png",
+  },
+  verification: {
+    google: "7cyOiAkcJXv0Zbrp08yj7NZa2T2nnMiY3SUjsF-Rtyc",
   },
   other: {
     "mobile-web-app-capable": "yes",
@@ -35,12 +75,6 @@ export const metadata: Metadata = {
     "msapplication-starturl": "/",
     "msapplication-TileColor": "#0a0a0f",
     "msapplication-TileImage": "/icon-512x512.png",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-  verification: {
-    google: "7cyOiAkcJXv0Zbrp08yj7NZa2T2nnMiY3SUjsF-Rtyc",
   },
 };
 

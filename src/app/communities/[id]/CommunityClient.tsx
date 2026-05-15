@@ -1,0 +1,816 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { useRouter } from 'next/navigation';
+import {
+  joinCommunityAction,
+  leaveCommunityAction,
+  getPendingRequestsAction,
+  handleJoinRequestAction,
+  getFollowingListForInviteAction,
+  inviteToCommunityAction,
+  deleteCommunityAction,
+  kickMemberAction,
+  setMemberRoleAction,
+  updateCommunitySettingsAction
+} from '@/app/actions/communities';
+import {
+  createRazorpayOrderAction,
+  verifyRazorpayPaymentAction
+} from '@/app/actions/monetize';
+import {
+  Users, Globe, Lock, ArrowLeft, Loader2, MessageSquare,
+  Shield, Settings, Info, Check, X, UserPlus,
+  LogOut, ShieldCheck, Mail, UserMinus, Upload, Megaphone, Pin, FileText, Image as ImageIcon
+} from 'lucide-react';
+import PostCard from '@/components/PostCard';
+import CreatePost from '@/components/CreatePost';
+import CommunityChat from '@/components/CommunityChat';
+import { decryptText } from '@/utils/e2ee';
+import { uploadToCloudinary } from '@/utils/cloudinary';
+
+interface Profile {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  full_name: string | null;
+}
+
+interface Community {
+  id: string;
+  name: string;
+  description: string | null;
+  is_public: boolean | null;
+  color: string | null;
+  subscription_price?: number | null;
+  join_price?: number | null;
+  is_exclusive?: boolean | null;
+  banner_url?: string | null;
+  avatar_url?: string | null;
+  is_announcement_only?: boolean | null;
+  slow_mode_seconds?: number | null;
+  rules?: string | null;
+  pinned_text?: string | null;
+  member_count: number | null;
+  creator_id: string;
+  created_at: string | null;
+  creator?: {
+    username: string;
+    avatar_url: string | null;
+  };
+}
+
+interface Member {
+  user_id: string;
+  status: 'pending' | 'joined' | 'invited' | 'rejected' | 'none' | null;
+  role: 'owner' | 'moderator' | 'member' | null;
+  profiles: Profile | null;
+}
+
+export default function CommunityClient({ params }: { params: { id: string } }) {
+  const { id } = params;
+  const [community, setCommunity] = useState<Community | null>(null);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isMember, setIsMember] = useState(false);
+  const [membershipStatus, setMembershipStatus] = useState<'joined' | 'pending' | 'invited' | 'rejected' | 'none'>('none');
+  const [userRole, setUserRole] = useState<'owner' | 'moderator' | 'member' | null>(null);
+  const [activeTab, setActiveTab] = useState('Feed');
+  const [user, setUser] = useState<any>(null);
+  const [pendingRequests, setPendingRequests] = useState<Member[]>([]);
+  const [inviteList, setInviteList] = useState<Profile[]>([]);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showRzpModal, setShowRzpModal] = useState(false);
+  const [rzpProcessing, setRzpProcessing] = useState(false);
+  const [rzpSuccess, setRzpSuccess] = useState(false);
+  const [rzpOrderId, setRzpOrderId] = useState<string | null>(null);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+
+  const [pinnedTextEdit, setPinnedTextEdit] = useState('');
+  const [rulesEdit, setRulesEdit] = useState('');
+  const [isAnnouncementEdit, setIsAnnouncementEdit] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [selectedMediaForModal, setSelectedMediaForModal] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
+
+  const supabase = createClient();
+  const router = useRouter();
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingBanner(true);
+      const url = await uploadToCloudinary(file, 'banners');
+      const res = await updateCommunitySettingsAction(id, { banner_url: url });
+      if (res.success) {
+        setCommunity(prev => prev ? { ...prev, banner_url: url } : null);
+      } else {
+        alert('Failed to save banner: ' + res.error);
+      }
+    } catch (err: any) {
+      alert('Upload failed: ' + err.message);
+    } finally {
+      setIsUploadingBanner(false);
+    }
+  };
+
+  const handleSaveAdvancedSettings = async () => {
+    setIsSavingSettings(true);
+    const res = await updateCommunitySettingsAction(id, {
+      pinned_text: pinnedTextEdit,
+      rules: rulesEdit,
+      is_announcement_only: isAnnouncementEdit
+    });
+    setIsSavingSettings(false);
+    if (res.success) {
+      setCommunity(prev => prev ? {
+        ...prev,
+        pinned_text: pinnedTextEdit,
+        rules: rulesEdit,
+        is_announcement_only: isAnnouncementEdit
+      } : null);
+      alert('Community advanced settings saved successfully! 🎉');
+    } else {
+      alert('Failed to save settings: ' + res.error);
+    }
+  };
+
+  const fetchCommunityData = async () => {
+    try {
+      setLoading(true);
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
+
+      // Fetch community details
+      const { data: commData } = await supabase
+        .from('communities')
+        .select('*, creator:profiles!communities_creator_id_fkey(username, avatar_url)')
+        .eq('id', id)
+        .single();
+
+      if (!commData) {
+        router.push('/communities');
+        return;
+      }
+
+      setCommunity(commData);
+      const customData = commData as any;
+      setPinnedTextEdit(customData.pinned_text || '');
+      setRulesEdit(customData.rules || '');
+      setIsAnnouncementEdit(customData.is_announcement_only || false);
+
+      // Fetch members
+      const { data: memData } = await supabase
+        .from('community_members')
+        .select('user_id, status, role, profiles(username, avatar_url, full_name)')
+        .eq('community_id', id);
+
+      const castMembers = (memData as unknown as Member[]) || [];
+      setMembers(castMembers);
+
+      const currentMember = castMembers.find(m => m.user_id === currentUser?.id);
+      if (currentMember) {
+        setIsMember(currentMember.status === 'joined');
+        setMembershipStatus(currentMember.status as any);
+        setUserRole(currentMember.role);
+      } else {
+        setIsMember(false);
+        setMembershipStatus('none');
+        setUserRole(null);
+      }
+
+      // If owner/moderator, fetch pending requests
+      const role = currentMember?.role;
+      if (role === 'owner' || role === 'moderator' || commData.creator_id === currentUser?.id) {
+        const { data: reqData } = await supabase
+          .from('community_members')
+          .select('*, profiles(username, avatar_url, full_name)')
+          .eq('community_id', id)
+          .eq('status', 'pending');
+        setPendingRequests((reqData as unknown as Member[]) || []);
+
+        // Also fetch inviteable users
+        const inviteRes = await getFollowingListForInviteAction(id);
+        if (inviteRes.success) {
+          setInviteList(inviteRes.users as Profile[]);
+        }
+      }
+
+      const { data: postData } = await supabase
+        .from('posts')
+        .select('*, author:profiles(username, avatar_url)')
+        .eq('community_id', id)
+        .eq('moderation_status', 'approved')
+        .order('created_at', { ascending: false });
+
+      const mappedPosts = postData?.map((p: any) => ({
+        ...p,
+        content: p.content ? decryptText(p.content, id) : p.content,
+        author: {
+          name: p.author?.username || 'Anonymous',
+          handle: `@${p.author?.username || 'anon'}`,
+          avatar: p.author?.avatar_url || '',
+          isNew: false
+        },
+        authorId: p.author_id,
+        likes: (p.like_count || 0).toLocaleString(),
+        comments: (p.comment_count || 0).toLocaleString(),
+        shares: '0',
+        tags: p.tags || [],
+        mentions: p.mentions || [],
+        overlays: p.overlays || undefined,
+        timeAgo: new Date(p.created_at).toLocaleDateString(),
+        mediaUrl: p.media_urls?.[0],
+        mediaType: typeof p.media_urls?.[0] === 'string' && p.media_urls[0].match(/\.(mp4|webm|ogg|mov)/i) ? 'video' : 'image',
+        musicUrl: p.music_url,
+        musicTitle: p.music_title,
+        musicArtist: p.music_artist,
+        musicStartTime: p.music_start_time,
+        musicVolume: p.music_volume,
+        videoVolume: p.video_volume,
+        videoTrimStart: p.video_trim_start,
+        videoTrimEnd: p.video_trim_end,
+      })) || [];
+
+      setPosts(mappedPosts);
+    } catch (err) {
+      console.error('Error fetching community data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCommunityData();
+
+    // Add Realtime listener for community updates
+    const channel = supabase
+      .channel(`community-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+        },
+        () => {
+          console.log('[Realtime] Community data changed, refreshing...');
+          fetchCommunityData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
+  const handleJoinLeave = async () => {
+    if (!user) {
+      router.push('/auth');
+      return;
+    }
+
+    if (isMember) {
+      const res = await leaveCommunityAction(id);
+      if (res.success) fetchCommunityData();
+    } else {
+      const res = await joinCommunityAction(id);
+      if (res.success) fetchCommunityData();
+    }
+  };
+
+  const handleAcceptDecline = async (userId: string, accept: boolean) => {
+    const res = await handleJoinRequestAction(id, userId, accept);
+    if (res.success) fetchCommunityData();
+  };
+
+  const handleInvite = async (userId: string) => {
+    const res = await inviteToCommunityAction(id as string, userId);
+    if (res.success) {
+      fetchCommunityData();
+      setInviteList(prev => prev.filter(u => u.id !== userId));
+    }
+  };
+
+  const handleKick = async (userId: string) => {
+    if (!confirm('Are you sure you want to kick this member?')) return;
+    const res = await kickMemberAction(id, userId);
+    if (res.success) fetchCommunityData();
+  };
+
+  const handleToggleRole = async (userId: string, currentRole: string) => {
+    const nextRole = currentRole === 'moderator' ? 'member' : 'moderator';
+    const res = await setMemberRoleAction(id, userId, nextRole);
+    if (res.success) fetchCommunityData();
+  };
+
+  const startSubscribeCheckout = async () => {
+    if (!user) {
+      router.push('/auth');
+      return;
+    }
+    const price = community?.join_price || community?.subscription_price || 0;
+    const res = await createRazorpayOrderAction(price, 'subscribe_community', id);
+    if (res.success) {
+      setRzpOrderId(res.orderId || null);
+      setRzpSuccess(false);
+      setShowRzpModal(true);
+    } else {
+      alert('Error initiating checkout: ' + res.error);
+    }
+  };
+
+  const processSubscribePayment = async () => {
+    if (!rzpOrderId) return;
+    setRzpProcessing(true);
+    await new Promise(r => setTimeout(r, 1500));
+    const res = await verifyRazorpayPaymentAction(rzpOrderId, 'pay_comm_' + Date.now());
+    if (res.success) {
+      setRzpSuccess(true);
+      fetchCommunityData();
+    } else {
+      alert('Payment authorization failed: ' + res.error);
+    }
+    setRzpProcessing(false);
+  };
+
+  const handleDelete = async () => {
+    if (confirm('Are you sure you want to delete this community? This cannot be undone.')) {
+      const res = await deleteCommunityAction(id);
+      if (res.success) router.push('/communities');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '100px' }}>
+        <Loader2 className="animate-spin" size={40} style={{ color: 'var(--accent-primary)' }} />
+      </div>
+    );
+  }
+
+  if (!community) return null;
+
+  const isOwner = userRole === 'owner' || community.creator_id === user?.id;
+  const isMod = userRole === 'moderator' || isOwner;
+
+  return (
+    <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '100px' }}>
+      {/* Community Header */}
+      <div className="glass-card" style={{ borderRadius: '24px', overflow: 'hidden', marginBottom: '24px' }}>
+        <div style={{ 
+          height: '240px', 
+          background: community.banner_url ? `url(${community.banner_url}) center/cover no-repeat` : (community.color || 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))'),
+          position: 'relative',
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          {!community.banner_url && <Users size={80} color="white" style={{ opacity: 0.3 }} />}
+          
+          {isOwner && (
+            <label style={{
+              position: 'absolute', bottom: '16px', right: '16px',
+              background: 'rgba(0,0,0,0.6)', color: 'white', padding: '8px 16px',
+              borderRadius: '12px', fontSize: '0.85rem', fontWeight: '700',
+              backdropFilter: 'blur(8px)', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.2)',
+              display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s'
+            }} className="hover-scale">
+              {isUploadingBanner ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+              <span>{community.banner_url ? 'Change Banner' : 'Add Banner Photo'}</span>
+              <input type="file" accept="image/*" onChange={handleBannerUpload} style={{ display: 'none' }} disabled={isUploadingBanner} />
+            </label>
+          )}
+        </div>
+        
+        <div style={{ padding: '24px', position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '900' }}>{community.name}</h1>
+                {community.is_public ? <Globe size={18} style={{ color: 'var(--text-muted)' }} /> : <Lock size={18} style={{ color: 'var(--text-muted)' }} />}
+              </div>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem' }}>{community.description}</p>
+              
+              {community.pinned_text && (
+                <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(139,92,246,0.08)', padding: '8px 12px', borderRadius: '12px', borderLeft: '3px solid var(--accent-primary)', fontSize: '0.85rem', color: 'var(--accent-primary)', fontWeight: '600' }}>
+                  <Pin size={14} style={{ flexShrink: 0 }} />
+                  <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    <strong>Pinned:</strong> {community.pinned_text}
+                  </span>
+                </div>
+              )}
+
+              {community.is_announcement_only && (
+                <div style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800' }}>
+                  <Megaphone size={12} /> Broadcast Only Channel
+                </div>
+              )}
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.9rem', fontWeight: '700' }}>
+                  <Users size={16} />
+                  <span>{community.member_count} members</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {(community.subscription_price && community.subscription_price > 0) ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', padding: '6px 12px', borderRadius: '12px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '700' }}>PRICE TO JOIN:</span>
+                  <strong style={{ color: '#10b981', fontSize: '0.95rem' }}>₹{community.subscription_price}/mo</strong>
+                </div>
+              ) : (community.join_price && community.join_price > 0) ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', padding: '6px 12px', borderRadius: '12px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '700' }}>PRICE TO JOIN:</span>
+                  <strong style={{ color: '#10b981', fontSize: '0.95rem' }}>₹{community.join_price}</strong>
+                </div>
+              ) : null}
+
+              {isMod && (
+                <button 
+                  onClick={() => setShowInviteModal(true)}
+                  className="hover-glass"
+                  style={{ background: 'var(--bg-secondary)', border: 'none', color: 'var(--text-primary)', padding: '10px 20px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <UserPlus size={18} /> Invite
+                </button>
+              )}
+              {membershipStatus === 'joined' ? (
+                <button 
+                  onClick={handleJoinLeave}
+                  className="btn-secondary" 
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', borderRadius: '12px', fontWeight: '800' }}
+                >
+                  <LogOut size={18} /> Leave
+                </button>
+              ) : membershipStatus === 'pending' ? (
+                <button disabled className="btn-secondary" style={{ opacity: 0.6, padding: '10px 24px', borderRadius: '12px', fontWeight: '800' }}>
+                  Pending
+                </button>
+              ) : (community.is_exclusive || (community.subscription_price && community.subscription_price > 0) || (community.join_price && community.join_price > 0)) ? (
+                <button 
+                  onClick={startSubscribeCheckout}
+                  className="btn-primary" 
+                  style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: '800', background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                >
+                  {community.subscription_price ? `Subscribe & Join` : `Pay ₹${community.join_price} & Join`}
+                </button>
+              ) : (
+                <button 
+                  onClick={handleJoinLeave}
+                  className="btn-primary" 
+                  style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: '800' }}
+                >
+                  {community.is_public ? 'Join' : 'Request Access'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Community Tabs - Restricted for Private Communities */}
+        {(!community.is_public && !isMember) ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-light)' }}>
+            <Lock size={20} style={{ margin: '0 auto 8px', display: 'block' }} />
+            <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>This community is private. Join to see posts and members.</span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', borderTop: '1px solid var(--border-light)', padding: '0 24px', overflowX: 'auto' }} className="no-scrollbar">
+            {['Feed', 'Media', 'Chat', 'Members', 'Settings'].map((tab) => {
+              if (tab === 'Settings' && !isMod) return null;
+              const hasPending = tab === 'Settings' && pendingRequests.length > 0;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    padding: '16px 24px',
+                    border: 'none',
+                    background: 'none',
+                    color: activeTab === tab ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    fontWeight: '700',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    borderBottom: `2px solid ${activeTab === tab ? 'var(--accent-primary)' : 'transparent'}`,
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {tab}
+                  {hasPending && (
+                    <span style={{ 
+                      background: '#ef4444', color: 'white', fontSize: '0.7rem', 
+                      padding: '2px 8px', borderRadius: '10px', fontWeight: '900',
+                      animation: 'pulse 2s infinite'
+                    }}>
+                      {pendingRequests.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="community-content-grid" style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+        gap: '24px' 
+      }}>
+        {/* Main Content Area */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {activeTab === 'Feed' && (
+            <>
+              {(!community.is_public && !isMember) ? (
+                <div className="glass-card animate-fade-in" style={{ padding: '48px 32px', textAlign: 'center', borderRadius: '24px', background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(138,43,226,0.05))', border: '2px solid rgba(16,185,129,0.3)', position: 'relative', overflow: 'hidden' }}>
+                  {/* Glowing decorative indicator banner */}
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, background: 'linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6)', height: '5px' }} />
+                  <span style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(16,185,129,0.15)', color: '#10b981', fontSize: '0.7rem', fontWeight: '900', padding: '4px 10px', borderRadius: '20px', border: '1px solid rgba(16,185,129,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Razorpay Gateway Secured
+                  </span>
+
+                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(138,43,226,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 0 30px rgba(16,185,129,0.2)' }}>
+                    <Lock size={36} style={{ color: '#10b981' }} />
+                  </div>
+                  
+                  <h3 style={{ fontSize: '1.6rem', fontWeight: '900', color: '#fff', marginBottom: '8px' }}>Exclusive Premium Channel</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '420px', margin: '0 auto 16px', lineHeight: '1.5' }}>
+                    Unlock full VIP access to view hidden updates, exclusive exclusive reels drops, and interact directly in active creator group chats.
+                  </p>
+
+                  <div style={{ background: 'var(--bg-glass)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-around', alignItems: 'center', maxWidth: '460px', margin: '0 auto 24px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: '700' }}>Creator Payout Split</span>
+                      <strong style={{ fontSize: '1.05rem', color: '#10b981', fontWeight: '900' }}>70% Direct INR</strong>
+                    </div>
+                    <div style={{ width: '1px', height: '28px', background: 'var(--border-light)' }} />
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: '700' }}>Platform Split</span>
+                      <strong style={{ fontSize: '1.05rem', color: 'var(--accent-secondary)', fontWeight: '900' }}>30% Indico Share</strong>
+                    </div>
+                    <div style={{ width: '1px', height: '28px', background: 'var(--border-light)' }} />
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: '700' }}>Referral Rewards</span>
+                      <strong style={{ fontSize: '1.05rem', color: '#f59e0b', fontWeight: '900' }}>100c Welcome Bonus</strong>
+                    </div>
+                  </div>
+
+                  {membershipStatus === 'none' && (
+                    (community.is_exclusive || (community.subscription_price && community.subscription_price > 0) || (community.join_price && community.join_price > 0)) ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                        <button onClick={startSubscribeCheckout} className="btn-primary hover-scale" style={{ padding: '16px 40px', fontSize: '1.1rem', fontWeight: '900', borderRadius: '16px', background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 10px 25px rgba(16,185,129,0.4)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span>{community.subscription_price ? 'Subscribe via Razorpay' : 'Pay Once to Join'}</span>
+                          <span style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '8px', fontSize: '1rem' }}>
+                            {community.subscription_price ? `₹${community.subscription_price}/mo` : `₹${community.join_price}`}
+                          </span>
+                        </button>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>🔒 Secure Gateway Checkout • Cancel Anytime</span>
+                      </div>
+                    ) : (
+                      <button onClick={handleJoinLeave} className="btn-primary hover-scale" style={{ padding: '14px 36px', borderRadius: '16px', fontSize: '1rem', fontWeight: '800' }}>Request Direct Access</button>
+                    )
+                  )}
+                </div>
+              ) : (
+                <>
+                  {isMember && (
+                    community.is_announcement_only ? (
+                      isMod ? (
+                        <CreatePost communityId={id} onPostCreated={fetchCommunityData} />
+                      ) : (
+                        <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.1)', padding: '16px', borderRadius: '16px', marginBottom: '24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                          📢 <strong>Broadcast Channel:</strong> Only community owners and moderators can post updates here.
+                        </div>
+                      )
+                    ) : (
+                      <CreatePost communityId={id} onPostCreated={fetchCommunityData} />
+                    )
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    {posts.map((post) => (
+                      <PostCard key={post.id} post={post} />
+                    ))}
+                    {posts.length === 0 && (
+                      <div className="glass-card" style={{ padding: '60px', textAlign: 'center', borderRadius: '24px' }}>
+                        <p style={{ color: 'var(--text-muted)' }}>No posts in this community yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {activeTab === 'Media' && (
+            <div className="glass-card animate-fade-in" style={{ padding: '32px', borderRadius: '24px' }}>
+              <h3 style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ImageIcon size={20} style={{ color: 'var(--accent-primary)' }} /> Shared Media Grid
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
+                Tap on any shared image or video to view the full picture.
+              </p>
+
+              {posts.filter(p => p.mediaUrl).length > 0 ? (
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', 
+                  gap: '16px' 
+                }}>
+                  {posts.filter(p => p.mediaUrl).map((post) => (
+                    <div 
+                      key={post.id} 
+                      onClick={() => setSelectedMediaForModal({ url: post.mediaUrl, type: post.mediaType })}
+                      className="hover-scale"
+                      style={{ 
+                        aspectRatio: '1', 
+                        borderRadius: '16px', 
+                        overflow: 'hidden', 
+                        background: '#000',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        border: '1px solid var(--border-light)'
+                      }}
+                    >
+                      {post.mediaType === 'video' ? (
+                        <>
+                          <video src={post.mediaUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                          <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', padding: '4px', borderRadius: '50%', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            ▶️
+                          </div>
+                        </>
+                      ) : (
+                        <img src={post.mediaUrl} alt="media" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <p>No media files shared in this community yet.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'Chat' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '8px', borderRadius: '12px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981', fontSize: '0.8rem', fontWeight: '700' }}>
+                <ShieldCheck size={16} /> End-to-End Encrypted (E2EE) Chat Channel
+              </div>
+              <div className="glass-card" style={{ height: '600px', borderRadius: '24px', overflow: 'hidden' }}>
+                <CommunityChat 
+                  communityId={id} 
+                  isAnnouncementOnly={community.is_announcement_only || false} 
+                  isMod={isMod} 
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'Members' && (
+            <div className="glass-card" style={{ padding: '24px', borderRadius: '24px' }}>
+              <h3 style={{ marginBottom: '20px' }}>Members</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px' }}>
+                {members.filter(m => m.status === 'joined').map((member) => (
+                  <div key={member.user_id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '16px', background: 'var(--bg-secondary)' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--bg-primary)', overflow: 'hidden' }}>
+                      {member.profiles?.avatar_url && <img src={member.profiles.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{member.profiles?.full_name || member.profiles?.username}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        @{member.profiles?.username}
+                        {member.role === 'owner' && <ShieldCheck size={14} style={{ color: 'var(--accent-secondary)' }} />}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'Settings' && isMod && (
+            <div className="glass-card animate-fade-in" style={{ padding: '32px', borderRadius: '24px' }}>
+              <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Settings size={20} style={{ color: 'var(--accent-primary)' }} /> Advanced Community Settings
+              </h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {/* Pending Requests Section */}
+                {pendingRequests.length > 0 && (
+                  <div style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.2)', padding: '20px', borderRadius: '16px' }}>
+                    <h4 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#3b82f6' }}>
+                      <UserPlus size={18} /> Pending Join Requests ({pendingRequests.length})
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {pendingRequests.map((req) => (
+                        <div key={req.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-primary)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
+                              {req.profiles?.avatar_url && <img src={req.profiles.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '0.85rem', fontWeight: '700' }}>{req.profiles?.username}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{req.profiles?.full_name}</div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={() => handleAcceptDecline(req.user_id, true)} className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#10b981' }}>Accept</button>
+                            <button onClick={() => handleAcceptDecline(req.user_id, false)} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem' }}>Decline</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Broadcast Mode */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+                  <div>
+                    <div style={{ fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Megaphone size={18} /> Announcement Only Mode
+                    </div>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Only owners and moderators can post to the feed.</p>
+                  </div>
+                  <button 
+                    onClick={() => setIsAnnouncementEdit(!isAnnouncementEdit)}
+                    style={{ 
+                      width: '44px', height: '24px', borderRadius: '12px', 
+                      background: isAnnouncementEdit ? 'var(--accent-primary)' : 'var(--border-light)',
+                      position: 'relative', border: 'none', cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ 
+                      width: '18px', height: '18px', borderRadius: '50%', background: 'white',
+                      position: 'absolute', top: '3px', left: isAnnouncementEdit ? '23px' : '3px',
+                      transition: 'all 0.2s'
+                    }} />
+                  </button>
+                </div>
+
+                {/* Pinned Text */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: '700', fontSize: '0.9rem', marginBottom: '8px' }}>Pinned Announcement (Top of Feed)</label>
+                  <input 
+                    type="text" 
+                    value={pinnedTextEdit} 
+                    onChange={(e) => setPinnedTextEdit(e.target.value)}
+                    placeholder="e.g. Welcome to the official community!"
+                    className="glass-card"
+                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+
+                {/* Rules */}
+                <div>
+                  <label style={{ display: 'block', fontWeight: '700', fontSize: '0.9rem', marginBottom: '8px' }}>Community Rules</label>
+                  <textarea 
+                    value={rulesEdit} 
+                    onChange={(e) => setRulesEdit(e.target.value)}
+                    placeholder="Describe the rules for your community members..."
+                    rows={4}
+                    className="glass-card"
+                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-light)', background: 'var(--bg-primary)', color: 'var(--text-primary)', resize: 'vertical' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                  <button 
+                    onClick={handleSaveAdvancedSettings}
+                    disabled={isSavingSettings}
+                    className="btn-primary"
+                    style={{ flex: 1, padding: '14px', borderRadius: '12px', fontWeight: '800' }}
+                  >
+                    {isSavingSettings ? <Loader2 size={18} className="animate-spin" /> : 'Save Advanced Settings'}
+                  </button>
+                </div>
+
+                {/* Danger Zone */}
+                {isOwner && (
+                  <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid rgba(239,68,68,0.2)' }}>
+                    <h4 style={{ color: '#ef4444', margin: '0 0 12px', fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Danger Zone</h4>
+                    <button 
+                      onClick={handleDelete}
+                      className="btn-secondary"
+                      style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)', width: '100%', padding: '12px', borderRadius: '12px', fontWeight: '700' }}
+                    >
+                      Delete Community Permanently
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
