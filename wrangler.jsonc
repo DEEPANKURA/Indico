@@ -33,5 +33,11 @@
     // Enable Cloudflare Image Optimization
     // see https://opennext.js.org/cloudflare/howtos/image
     "binding": "IMAGES"
+  },
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
   }
 }
