@@ -1,6 +1,6 @@
 'use server';
 
-import crypto from 'crypto';
+export const runtime = 'edge';
 
 export async function getCloudinarySignatureAction(folder: string = 'indico') {
   try {
@@ -11,20 +11,18 @@ export async function getCloudinarySignatureAction(folder: string = 'indico') {
     if (!cloudName || !apiKey || !apiSecret) {
       return {
         success: false,
-        error: 'Cloudinary environment variables are missing. Please configure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env.local file.',
+        error: 'Cloudinary configuration is missing.',
       };
     }
 
     const timestamp = Math.round(new Date().getTime() / 1000);
-
-    // Parameters to sign must be sorted alphabetically
-    // folder=indico&timestamp=1234567890
     const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
     
-    const signature = crypto
-      .createHash('sha1')
-      .update(paramsToSign + apiSecret)
-      .digest('hex');
+    // Use Web Crypto API (SubtleCrypto) for Cloudflare Edge compatibility
+    const data = new TextEncoder().encode(paramsToSign + apiSecret);
+    const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
     return {
       success: true,
