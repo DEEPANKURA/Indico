@@ -42,3 +42,9 @@ next-env.d.ts
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# OpenNext / Cloudflare Workers build output
+.open-next
+
+# Cloudflare Workers local dev secrets (contains real keys)
+.dev.vars

@@ -1,12 +1,12 @@
 import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from "next";
 
+// Enable Cloudflare bindings during local `next dev`
+// (no-op when running inside the actual Workers runtime)
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+initOpenNextCloudflareForDev();
+
 const nextConfig: NextConfig = {
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '50mb',
-    },
-  },
   images: {
     remotePatterns: [
       {
