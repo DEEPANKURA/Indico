@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { TrendingUp, Play } from 'lucide-react';
+import { TrendingUp, Play, AlertTriangle } from 'lucide-react';
 import ReelCard from '@/components/ReelCard';
 
 export default function TrendingPage() {
   const [reels, setReels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
@@ -21,6 +22,7 @@ export default function TrendingPage() {
 
       if (rpcError) {
         console.error('Error fetching trending reels:', rpcError);
+        setError(rpcError.message);
         setLoading(false);
         return;
       }
@@ -112,7 +114,14 @@ export default function TrendingPage() {
         <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>Trending Reels</h1>
       </div>
 
-      {reels.length > 0 ? (
+      {error ? (
+        <div className="glass-card" style={{ padding: '60px', textAlign: 'center', borderRadius: '20px', border: '1px solid #ef4444' }}>
+          <AlertTriangle size={48} style={{ color: '#ef4444', marginBottom: '16px' }} />
+          <h2 style={{ fontWeight: '700', marginBottom: '8px' }}>Feed Error</h2>
+          <p style={{ color: 'var(--text-secondary)' }}>{error}</p>
+          <button onClick={() => window.location.reload()} className="btn-secondary" style={{ marginTop: '20px' }}>Try Again</button>
+        </div>
+      ) : reels.length > 0 ? (
         <div 
           ref={containerRef}
           style={{ 
