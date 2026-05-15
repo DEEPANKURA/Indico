@@ -1,7 +1,5 @@
 'use server';
 
-export const runtime = 'edge';
-
 export async function getCloudinarySignatureAction(folder: string = 'indico') {
   try {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dm6nsathe';
