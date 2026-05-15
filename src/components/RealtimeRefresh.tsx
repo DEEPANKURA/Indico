@@ -9,20 +9,26 @@ export default function RealtimeRefresh() {
   const supabase = createClient();
 
   useEffect(() => {
-    // Initial refresh to clear any stale cache on mount (back navigation)
-    router.refresh();
-
+    // Listen for any changes on posts, likes, or follows
     const channel = supabase
-      .channel('global_posts_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
-        router.refresh();
-      })
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+        },
+        () => {
+          console.log('[Realtime] Data changed, refreshing...');
+          router.refresh();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [router, supabase]);
+  }, [supabase, router]);
 
   return null;
 }

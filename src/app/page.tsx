@@ -6,6 +6,8 @@ import Link from "next/link";
 import Stories from "@/components/Stories";
 import NotificationBell from "@/components/NotificationBell";
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

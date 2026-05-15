@@ -78,7 +78,7 @@ export default function UserProfilePage() {
 
       if (user) {
         const [{ data: followData }, { data: subData }] = await Promise.all([
-          supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', userId).single(),
+          supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', userId).maybeSingle(),
           supabase.from('subscriptions').select('id').eq('subscriber_id', user.id).eq('creator_id', userId).is('community_id', null).eq('status', 'active').maybeSingle()
         ]);
         
@@ -88,7 +88,20 @@ export default function UserProfilePage() {
 
       setLoading(false);
     };
+
     fetchData();
+
+    // Live sync for profile updates (followers, new posts)
+    const channel = supabase
+      .channel(`profile_${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [userId, router]);
 
   if (loading) return (
