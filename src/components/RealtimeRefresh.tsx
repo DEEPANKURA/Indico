@@ -1,17 +1,23 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
 export default function RealtimeRefresh() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabaseRef = useRef<any>(null);
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
+
+  if (!supabaseRef.current) {
+    supabaseRef.current = createClient();
+  }
 
   useEffect(() => {
-    // Listen for any changes on posts, likes, or follows
+    const supabase = supabaseRef.current;
+    
     const channel = supabase
-      .channel('schema-db-changes')
+      .channel('global-refresh')
       .on(
         'postgres_changes',
         {
@@ -19,16 +25,22 @@ export default function RealtimeRefresh() {
           schema: 'public',
         },
         () => {
-          console.log('[Realtime] Data changed, refreshing...');
-          router.refresh();
+          // Debounce refresh to avoid Cloudflare CPU limits (Error 1101)
+          if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+          
+          timeoutIdRef.current = setTimeout(() => {
+            console.log('[Realtime] Data changed, refreshing feed...');
+            router.refresh();
+          }, 800); // 800ms debounce
         }
       )
       .subscribe();
 
     return () => {
+      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
       supabase.removeChannel(channel);
     };
-  }, [supabase, router]);
+  }, [router]);
 
   return null;
 }
