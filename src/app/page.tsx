@@ -12,7 +12,7 @@ export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
-  const { data: posts, error } = await supabase.rpc('get_viral_feed', { limit_count: 50 });
+  const { data: posts, error } = await supabase.rpc('get_viral_feed', { limit_count: 20 });
 
   if (error) {
     console.error('Error fetching viral feed:', error);

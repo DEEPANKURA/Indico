@@ -37,9 +37,16 @@ export async function analyzeContentSafety(content: string, mediaUrl?: string) {
         const resp = await fetch(mediaUrl);
         if (resp.ok) {
           const buffer = await resp.arrayBuffer();
+          const uint8 = new Uint8Array(buffer);
+          let binary = '';
+          for (let i = 0; i < uint8.byteLength; i++) {
+            binary += String.fromCharCode(uint8[i]);
+          }
+          const base64 = btoa(binary);
+
           parts.push({
             inlineData: {
-              data: Buffer.from(buffer).toString('base64'),
+              data: base64,
               mimeType: resp.headers.get('content-type') || 'image/jpeg'
             }
           });

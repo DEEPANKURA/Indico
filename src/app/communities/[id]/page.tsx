@@ -245,6 +245,26 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
 
   useEffect(() => {
     fetchCommunityData();
+
+    // Add Realtime listener for community updates
+    const channel = supabase
+      .channel(`community-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+        },
+        () => {
+          console.log('[Realtime] Community data changed, refreshing...');
+          fetchCommunityData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [id]);
 
   const handleJoinLeave = async () => {

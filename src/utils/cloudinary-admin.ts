@@ -1,5 +1,3 @@
-import crypto from 'crypto';
-
 export async function deleteCloudinaryMedia(mediaUrl: string) {
   try {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dm6nsathe';
@@ -11,14 +9,10 @@ export async function deleteCloudinaryMedia(mediaUrl: string) {
       return { success: false, error: 'Credentials missing' };
     }
 
-    // Extract public_id from URL
-    // https://res.cloudinary.com/cloud_name/image/upload/f_auto,q_auto/v1234567890/folder/public_id.jpg
     const urlParts = mediaUrl.split('/');
     const uploadIndex = urlParts.indexOf('upload');
     if (uploadIndex === -1) return { success: false, error: 'Invalid Cloudinary URL' };
 
-    // The public_id starts after the version (v123...) or after transformations
-    // Transformations often contain commas. Version is v followed by digits.
     let relevantParts = urlParts.slice(uploadIndex + 1);
     
     // Skip transformations (e.g., f_auto,q_auto)
@@ -36,10 +30,11 @@ export async function deleteCloudinaryMedia(mediaUrl: string) {
     const timestamp = Math.round(new Date().getTime() / 1000);
     const paramsToSign = `public_id=${publicId}&timestamp=${timestamp}`;
     
-    const signature = crypto
-      .createHash('sha1')
-      .update(paramsToSign + apiSecret)
-      .digest('hex');
+    // Use Web Crypto API for Edge compatibility
+    const data = new TextEncoder().encode(paramsToSign + apiSecret);
+    const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
     const formData = new FormData();
     formData.append('public_id', publicId);
@@ -47,7 +42,10 @@ export async function deleteCloudinaryMedia(mediaUrl: string) {
     formData.append('api_key', apiKey);
     formData.append('signature', signature);
 
-    const resp = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`, {
+    const isVideo = mediaUrl.toLowerCase().match(/\.(mp4|webm|mov|m4v|ogg)$/i);
+    const resourceType = isVideo ? 'video' : 'image';
+
+    const resp = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/destroy`, {
       method: 'POST',
       body: formData,
     });
