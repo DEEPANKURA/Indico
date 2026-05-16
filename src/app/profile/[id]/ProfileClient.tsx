@@ -485,6 +485,8 @@ export default function ProfileClient({
                 videoTrimStart: selectedPost.video_trim_start,
                 videoTrimEnd: selectedPost.video_trim_end,
                 isEncrypted: selectedPost.is_encrypted,
+                isExclusive: selectedPost.is_exclusive,
+                isSubscribed: isSubscribed,
                 currentUserId: undefined // Allow PostCard to fetch/handle
               }} 
             />

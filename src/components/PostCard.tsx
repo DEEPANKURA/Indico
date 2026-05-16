@@ -56,6 +56,8 @@ interface PostCardProps {
     initialIsFollowing?: boolean;
     currentUserId?: string | null;
     isEncrypted?: boolean;
+    isExclusive?: boolean;
+    isSubscribed?: boolean;
   }
 }
 
@@ -79,7 +81,17 @@ export default function PostCard({ post }: PostCardProps) {
   const [decryptedContent, setDecryptedContent] = useState(post.content);
   const [decryptedMediaUrl, setDecryptedMediaUrl] = useState(post.mediaUrl);
   const [isDecrypting, setIsDecrypting] = useState(post.isEncrypted || false);
-  const [hasAccess, setHasAccess] = useState(!post.isEncrypted);
+  
+  // A user has access if:
+  // 1. It's not encrypted AND it's not exclusive
+  // 2. It's not encrypted AND user is the author
+  // 3. User is subscribed
+  // 4. (If encrypted, decryption logic will set this)
+  const initialAccess = (!post.isEncrypted && !post.isExclusive) || 
+                        (currentUserId === post.authorId) || 
+                        (post.isSubscribed);
+
+  const [hasAccess, setHasAccess] = useState(initialAccess);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLElement>(null);
