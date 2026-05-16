@@ -5,6 +5,8 @@ import { createClient } from '@/utils/supabase/client';
 import { MessageSquare, Send, Search, User, Loader2, ArrowLeft, Smile, X, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { searchUsersAction } from '@/app/actions/social';
+import { getMyE2EEKeys, deriveSharedKey, encryptE2EE, decryptE2EE } from '@/utils/e2ee';
+import { Shield, ShieldCheck, Lock } from 'lucide-react';
 
 const STICKERS = [
   'https://fonts.gstatic.com/s/e/notoemoji/latest/1f600/512.gif',
@@ -39,6 +41,7 @@ export default function MessagesPage() {
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
+  const [sharedKeys, setSharedKeys] = useState<Record<string, CryptoKey>>({});
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640);
@@ -78,31 +81,44 @@ export default function MessagesPage() {
       const channel = supabase
         .channel('realtime_messages_' + selectedUser.id)
         .on('postgres_changes', { 
-          event: 'INSERT', 
+          event: '*', 
           schema: 'public', 
           table: 'messages'
         }, async (payload) => {
-          const newMsg = payload.new;
-          if ((newMsg.sender_id === selectedUser.id && newMsg.recipient_id === currentUser.id) ||
-              (newMsg.sender_id === currentUser.id && newMsg.recipient_id === selectedUser.id)) {
-            
-            // Fetch post if shared
-            let postData = null;
-            if (newMsg.post_id) {
-              const { data: post } = await supabase.from('posts').select('*, author:profiles(username, avatar_url)').eq('id', newMsg.post_id).single();
-              postData = post;
-            }
-            
-            setMessages(prev => {
-              const isDuplicate = prev.some(m => m.id === newMsg.id || (m.content === newMsg.content && m.sender_id === newMsg.sender_id && m.isOptimistic));
-              if (isDuplicate && !prev.some(m => m.id === newMsg.id)) {
-                return prev.map(m => (m.content === newMsg.content && m.sender_id === newMsg.sender_id && m.isOptimistic) ? { ...newMsg, posts: postData } : m);
+          if (payload.eventType === 'INSERT') {
+            const newMsg = payload.new;
+            if ((newMsg.sender_id === selectedUser.id && newMsg.recipient_id === currentUser.id) ||
+                (newMsg.sender_id === currentUser.id && newMsg.recipient_id === selectedUser.id)) {
+              
+              // Decrypt if needed
+              if (newMsg.is_encrypted) {
+                const key = await getOrDeriveKey(selectedUser.id, selectedUser.public_key);
+                if (key) {
+                  newMsg.content = await decryptE2EE(newMsg.content, key);
+                }
               }
-              if (prev.some(m => m.id === newMsg.id)) return prev;
-              return [...prev, { ...newMsg, posts: postData }];
-            });
 
-            if (newMsg.sender_id === selectedUser.id) markAsRead(newMsg.id);
+              // Fetch post if shared
+              let postData = null;
+              if (newMsg.post_id) {
+                const { data: post } = await supabase.from('posts').select('*, author:profiles(username, avatar_url)').eq('id', newMsg.post_id).single();
+                postData = post;
+              }
+              
+              setMessages(prev => {
+                const isDuplicate = prev.some(m => m.id === newMsg.id || (m.content === newMsg.content && m.sender_id === newMsg.sender_id && m.isOptimistic));
+                if (isDuplicate && !prev.some(m => m.id === newMsg.id)) {
+                  return prev.map(m => (m.content === newMsg.content && m.sender_id === newMsg.sender_id && m.isOptimistic) ? { ...newMsg, posts: postData } : m);
+                }
+                if (prev.some(m => m.id === newMsg.id)) return prev;
+                return [...prev, { ...newMsg, posts: postData }];
+              });
+
+              if (newMsg.sender_id === selectedUser.id) markAsRead(newMsg.id);
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedMsg = payload.new;
+            setMessages(prev => prev.map(m => m.id === updatedMsg.id ? { ...m, is_read: updatedMsg.is_read } : m));
           }
           fetchConversations(currentUser.id);
         })
@@ -119,6 +135,17 @@ export default function MessagesPage() {
     window.dispatchEvent(new Event('messages_read'));
   };
 
+  const getOrDeriveKey = async (otherUserId: string, otherPubJWK: string) => {
+    if (sharedKeys[otherUserId]) return sharedKeys[otherUserId];
+    const myKeys = getMyE2EEKeys();
+    if (!myKeys || !otherPubJWK) return null;
+    const key = await deriveSharedKey(myKeys.privateKey, otherPubJWK);
+    if (key) {
+      setSharedKeys(prev => ({ ...prev, [otherUserId]: key }));
+    }
+    return key;
+  };
+
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages]);
@@ -132,29 +159,52 @@ export default function MessagesPage() {
         content,
         message_type,
         created_at,
-        sender:profiles!sender_id(id, username, full_name, avatar_url),
-        recipient:profiles!recipient_id(id, username, full_name, avatar_url)
+        is_read,
+        is_encrypted,
+        sender:profiles!sender_id(id, username, full_name, avatar_url, public_key),
+        recipient:profiles!recipient_id(id, username, full_name, avatar_url, public_key)
       `)
       .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
       .is('group_id', null)
       .order('created_at', { ascending: false });
 
+    // Fetch unread status for all conversations at once
+    const { data: unreadCounts } = await supabase
+      .from('messages')
+      .select('sender_id')
+      .eq('recipient_id', userId)
+      .eq('is_read', false);
+
+    const unreadSenderIds = new Set(unreadCounts?.map(m => m.sender_id) || []);
+
     const convs: any[] = [];
     const seen = new Set();
 
     if (dmData) {
-      (dmData as any[]).forEach(msg => {
+      for (const msg of dmData as any[]) {
         const otherUser = msg.sender_id === userId ? normalizeJoin(msg.recipient) : normalizeJoin(msg.sender);
         if (otherUser && !seen.has(otherUser.id)) {
+          let lastMsg = msg.message_type === 'sticker' ? 'Sent a sticker' : (msg.content || '');
+          
+          if (msg.is_encrypted && otherUser.public_key) {
+            const key = await getOrDeriveKey(otherUser.id, otherUser.public_key);
+            if (key) {
+              lastMsg = await decryptE2EE(msg.content, key);
+            } else {
+              lastMsg = '🔐 Encrypted message';
+            }
+          }
+
           convs.push({
             user: otherUser,
-            lastMsg: msg.message_type === 'sticker' ? 'Sent a sticker' : (msg.content || ''),
+            lastMsg,
             time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-            timestamp: msg.created_at ? new Date(msg.created_at).getTime() : 0
+            timestamp: msg.created_at ? new Date(msg.created_at).getTime() : 0,
+            isUnread: unreadSenderIds.has(otherUser.id)
           });
           seen.add(otherUser.id);
         }
-      });
+      }
     }
 
     setConversations(convs.sort((a, b) => b.timestamp - a.timestamp));
@@ -168,7 +218,23 @@ export default function MessagesPage() {
       .or(`and(sender_id.eq.${currentUser.id},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${currentUser.id})`)
       .order('created_at', { ascending: true });
 
-    if (data) setMessages(data);
+    if (data) {
+      const decryptedMessages = await Promise.all((data as any[]).map(async (msg) => {
+        if (msg.is_encrypted) {
+          const key = await getOrDeriveKey(otherUserId, selectedUser?.public_key);
+          if (key) {
+            try {
+              return { ...msg, content: await decryptE2EE(msg.content, key) };
+            } catch (e) {
+              return { ...msg, content: '🔐 [Encryption Key Mismatch]' };
+            }
+          }
+          return { ...msg, content: '🔐 [Encrypted]' };
+        }
+        return msg;
+      }));
+      setMessages(decryptedMessages);
+    }
 
     try {
       const { data: unread } = await supabase
@@ -204,8 +270,18 @@ export default function MessagesPage() {
       recipient_id: selectedUser.id,
       content: stickerUrl ? '' : input,
       message_type: stickerUrl ? 'sticker' : 'text',
-      sticker_url: stickerUrl || null
+      sticker_url: stickerUrl || null,
+      is_encrypted: false
     };
+
+    // Apply E2EE if recipient has a public key
+    if (selectedUser.public_key && !stickerUrl) {
+      const key = await getOrDeriveKey(selectedUser.id, selectedUser.public_key);
+      if (key) {
+        newMsg.content = await encryptE2EE(input, key);
+        newMsg.is_encrypted = true;
+      }
+    }
 
     const optimisticMsg = { 
       ...newMsg, 
@@ -326,11 +402,22 @@ export default function MessagesPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: '700', fontSize: '0.95rem' }}>{conv.user.full_name}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{conv.time}</span>
+                      <span style={{ fontWeight: conv.isUnread ? '800' : '700', fontSize: '0.95rem', color: conv.isUnread ? 'var(--text-primary)' : 'inherit' }}>{conv.user.full_name}</span>
+                      <span style={{ fontSize: '0.75rem', color: conv.isUnread ? 'var(--accent-neon)' : 'var(--text-secondary)', fontWeight: conv.isUnread ? 'bold' : 'normal' }}>{conv.time}</span>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {conv.lastMsg}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ 
+                        fontSize: '0.85rem', 
+                        color: conv.isUnread ? 'var(--text-primary)' : 'var(--text-secondary)', 
+                        fontWeight: conv.isUnread ? '600' : 'normal',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        flex: 1
+                      }}>
+                        {conv.lastMsg}
+                      </div>
+                      {conv.isUnread && (
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-neon)', flexShrink: 0, boxShadow: '0 0 10px var(--accent-neon)' }} />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -367,7 +454,10 @@ export default function MessagesPage() {
                   {selectedUser.avatar_url ? <img src={selectedUser.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : selectedUser.full_name?.[0]}
                 </div>
                 <div>
-                  <div style={{ fontWeight: '700' }}>{selectedUser.full_name}</div>
+                  <div style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {selectedUser.full_name}
+                    {selectedUser.public_key && <ShieldCheck size={14} style={{ color: 'var(--accent-neon)' }} title="End-to-end encrypted" />}
+                  </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--accent-neon)' }}>Online</div>
                 </div>
               </div>
@@ -406,9 +496,25 @@ export default function MessagesPage() {
                         </div>
                       )}
                       {msg.message_type === 'sticker' ? (
-                        <img src={msg.sticker_url} style={{ width: '120px', height: '120px' }} alt="sticker" />
+                        <div style={{ position: 'relative' }}>
+                          <img src={msg.sticker_url} style={{ width: '120px', height: '120px' }} alt="sticker" />
+                          {msg.sender_id === currentUser.id && (
+                            <div style={{ position: 'absolute', bottom: '4px', right: '4px', display: 'flex' }}>
+                              <Check size={14} style={{ color: msg.is_read ? 'var(--accent-neon)' : '#999' }} />
+                              {msg.is_read && <Check size={14} style={{ color: 'var(--accent-neon)', marginLeft: '-8px' }} />}
+                            </div>
+                          )}
+                        </div>
                       ) : (
-                        <div>{msg.content}</div>
+                        <>
+                          <div>{msg.content}</div>
+                          {msg.sender_id === currentUser.id && (
+                            <div style={{ alignSelf: 'flex-end', display: 'flex', marginTop: '2px', opacity: 0.8 }}>
+                              <Check size={14} style={{ color: msg.is_read ? '#fff' : 'rgba(255,255,255,0.6)' }} />
+                              {msg.is_read && <Check size={14} style={{ color: '#fff', marginLeft: '-8px' }} />}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

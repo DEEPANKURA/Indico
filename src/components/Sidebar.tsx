@@ -1,20 +1,80 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Home, Compass, TrendingUp, MessageSquare, Users,
   Radio, Video, BarChart2, DollarSign, Settings, User, Sparkles,
 } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { count } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('recipient_id', user.id)
+        .eq('is_read', false);
+      
+      setUnreadCount(count || 0);
+    };
+
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const channel = supabase
+        .channel('sidebar_notifications')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'messages',
+          filter: `recipient_id=eq.${user.id}`
+        }, () => {
+          fetchUnread();
+        })
+        .subscribe();
+
+      return channel;
+    };
+
+    let channelInstance: any;
+    
+    const init = async () => {
+      await fetchUnread();
+      channelInstance = await setupSubscription();
+    };
+
+    init();
+
+    const handleManualRefresh = () => {
+      fetchUnread();
+    };
+
+    window.addEventListener('messages_read', handleManualRefresh);
+
+    return () => {
+      if (channelInstance) {
+        supabase.removeChannel(channelInstance);
+      }
+      window.removeEventListener('messages_read', handleManualRefresh);
+    };
+  }, []);
 
   const navItems = [
     { icon: Home,          label: 'Home',        href: '/' },
     { icon: Compass,       label: 'Explore',     href: '/explore' },
     { icon: TrendingUp,    label: 'Trending',    href: '/trending' },
-    { icon: MessageSquare, label: 'Messages',    href: '/messages', badge: 2 },
+    { icon: MessageSquare, label: 'Messages',    href: '/messages', badge: unreadCount },
     { icon: Users,         label: 'Communities', href: '/communities' },
     { icon: Radio,         label: 'Live',        href: '/live' },
     { icon: User,          label: 'Profile',     href: '/profile' },

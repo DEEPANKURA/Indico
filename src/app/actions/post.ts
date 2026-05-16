@@ -13,7 +13,8 @@ export async function createPostAction(
   tags: string[] = [],
   mentions: string[] = [],
   overlays: any = null,
-  isExclusive: boolean = false
+  isExclusive: boolean = false,
+  isEncrypted: boolean = false
 ) {
   try {
     const supabase = await createClient();
@@ -42,7 +43,8 @@ export async function createPostAction(
       video_trim_end: videoEditing?.trimEnd ?? null,
       tags: tags,
       mentions: mentions,
-      overlays: overlays
+      overlays: overlays,
+      is_encrypted: isEncrypted
     } as any).select().single();
 
     if (dbError) {
@@ -105,5 +107,24 @@ export async function deletePostAction(postId: string) {
   } catch (error: any) {
     console.error('Delete post error:', error);
     return { success: false, error: error.message };
+  }
+}
+
+export async function saveContentKeyAction(postId: string, userId: string, encryptedKey: string) {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from('content_keys')
+      .upsert({
+        content_id: postId,
+        user_id: userId,
+        encrypted_key: encryptedKey
+      });
+
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Save Content Key Error:', err);
+    return { success: false, error: err.message };
   }
 }

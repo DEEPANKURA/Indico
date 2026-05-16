@@ -3,12 +3,15 @@
 import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Play, DollarSign, Loader2, Trash2, Music, Volume2, VolumeX, Flag } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { toggleLikeAction, toggleFollowAction, deletePostAction, reportPostAction } from '@/app/actions/social';
+import { toggleLikeAction, toggleFollowAction, reportPostAction } from '@/app/actions/social';
+import { deletePostAction } from '@/app/actions/post';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
-import Image from 'next/image';
 import CommentModal from './CommentModal';
 import ShareModal from './ShareModal';
+import { getMyE2EEKeys, deriveSharedKey, decryptE2EE } from '@/utils/e2ee';
+import CryptoJS from 'crypto-js';
+import { ShieldCheck, Lock } from 'lucide-react';
 
 interface PostCardProps {
   post: {
@@ -52,6 +55,7 @@ interface PostCardProps {
     initialIsLiked?: boolean;
     initialIsFollowing?: boolean;
     currentUserId?: string | null;
+    isEncrypted?: boolean;
   }
 }
 
@@ -72,6 +76,10 @@ export default function PostCard({ post }: PostCardProps) {
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isVideoMuted, setIsVideoMuted] = useState(true);
+  const [decryptedContent, setDecryptedContent] = useState(post.content);
+  const [decryptedMediaUrl, setDecryptedMediaUrl] = useState(post.mediaUrl);
+  const [isDecrypting, setIsDecrypting] = useState(post.isEncrypted || false);
+  const [hasAccess, setHasAccess] = useState(!post.isEncrypted);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLElement>(null);
@@ -79,7 +87,7 @@ export default function PostCard({ post }: PostCardProps) {
   useEffect(() => {
     // Only fetch if explicitly undefined (not passed by parent)
     if (post.currentUserId !== undefined) return;
-    
+
     supabase.auth.getUser().then(({ data }) => {
       setCurrentUserId(data.user?.id || null);
     });
@@ -130,10 +138,10 @@ export default function PostCard({ post }: PostCardProps) {
         }
       };
     }
-    
+
     return () => observer.disconnect();
   }, [post.videoVolume, post.videoTrimStart, post.videoTrimEnd]);
-  
+
   const handleShare = async () => {
     const shareData = {
       title: 'Check out this post on Indico',
@@ -148,7 +156,7 @@ export default function PostCard({ post }: PostCardProps) {
         await navigator.clipboard.writeText(shareData.url);
         alert('Link copied to clipboard!');
       }
-    } catch (err) {}
+    } catch (err) { }
   };
 
   const [localLikes, setLocalLikes] = useState(parseMetric(post.likes));
@@ -157,7 +165,7 @@ export default function PostCard({ post }: PostCardProps) {
     const wasLiked = isLiked;
     setIsLiked(!wasLiked);
     setLocalLikes(prev => wasLiked ? Math.max(0, prev - 1) : prev + 1);
-    
+
     const res = await toggleLikeAction(post.id);
     if (!res.success) {
       setIsLiked(wasLiked);
@@ -172,7 +180,7 @@ export default function PostCard({ post }: PostCardProps) {
     if (!post.authorId) return;
     const wasFollowing = isFollowing;
     setIsFollowing(!wasFollowing);
-    
+
     const res = await toggleFollowAction(post.authorId);
     if (!res.success) {
       setIsFollowing(wasFollowing);
@@ -194,7 +202,7 @@ export default function PostCard({ post }: PostCardProps) {
   const handleReport = async () => {
     const reason = prompt('Reason for reporting (Sexual content, Vulger, Harassment, Porn, Child abuses, Criminal act):');
     if (!reason) return;
-    
+
     setIsReporting(true);
     const res = await reportPostAction(post.id, reason);
     if (res.success) {
@@ -215,12 +223,86 @@ export default function PostCard({ post }: PostCardProps) {
         .select('id')
         .eq('post_id', post.id)
         .eq('user_id', currentUserId)
-        .single();
-      
+        .maybeSingle();
+
       if (data) setIsLiked(true);
     };
     checkLike();
   }, [post.id, post.initialIsLiked, currentUserId]);
+
+  useEffect(() => {
+    if (!post.isEncrypted || !currentUserId) return;
+
+    const attemptDecryption = async () => {
+      try {
+        if (!post.authorId || !currentUserId) {
+          setIsDecrypting(false);
+          setHasAccess(false);
+          return;
+        }
+
+        // 1. Fetch the encrypted content key for this user
+        const { data: keyData, error: keyError } = await (supabase as any)
+          .from('content_keys')
+          .select('encrypted_key')
+          .eq('content_id', post.id)
+          .eq('user_id', currentUserId)
+          .maybeSingle();
+
+        if (keyError || !keyData?.encrypted_key) {
+          setIsDecrypting(false);
+          setHasAccess(false);
+          return;
+        }
+
+        // 2. Fetch the author's public key (to derive shared secret)
+        const { data: authorProfile, error: profileError } = await (supabase as any)
+          .from('profiles')
+          .select('public_key')
+          .eq('id', post.authorId)
+          .maybeSingle();
+
+        if (profileError || !authorProfile?.public_key) {
+          console.warn('Author public key not found or error:', profileError);
+          setIsDecrypting(false);
+          setHasAccess(false);
+          return;
+        }
+
+        const myKeys = getMyE2EEKeys();
+        if (!myKeys) throw new Error('My keys not found');
+
+        // 3. Derive shared secret and decrypt the content key
+        const sharedKey = await deriveSharedKey(myKeys.privateKey, authorProfile.public_key);
+        if (!sharedKey) throw new Error('Shared key derivation failed');
+
+        const contentKey = await decryptE2EE(keyData.encrypted_key, sharedKey);
+        if (!contentKey || contentKey.includes('Error')) throw new Error('Content key decryption failed');
+
+        // 4. Decrypt the actual content and media
+        const decContent = CryptoJS.AES.decrypt(post.content, contentKey).toString(CryptoJS.enc.Utf8);
+        setDecryptedContent(decContent || '[Decryption Error]');
+
+        if (post.mediaUrl) {
+          try {
+            const decMediaUrl = CryptoJS.AES.decrypt(post.mediaUrl, contentKey).toString(CryptoJS.enc.Utf8);
+            if (decMediaUrl) setDecryptedMediaUrl(decMediaUrl);
+          } catch (e) {
+            console.error('Media URL decryption failed:', e);
+          }
+        }
+
+        setHasAccess(true);
+      } catch (err) {
+        console.error('Decryption failed:', err);
+        setHasAccess(false);
+      } finally {
+        setIsDecrypting(false);
+      }
+    };
+
+    attemptDecryption();
+  }, [post.id, post.isEncrypted, currentUserId, post.authorId]);
 
   if (isDeleted) return null;
 
@@ -242,8 +324,8 @@ export default function PostCard({ post }: PostCardProps) {
       <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Link href={`/profile/${post.authorId}`} style={{ textDecoration: 'none' }}>
-            <div style={{ 
-              width: '48px', height: '48px', 
+            <div style={{
+              width: '48px', height: '48px',
               borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 'bold', fontSize: '1.2rem', color: 'white',
@@ -265,13 +347,18 @@ export default function PostCard({ post }: PostCardProps) {
           </Link>
           <div>
             <Link href={`/profile/${post.authorId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {post.author.name}
+              <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '1rem' }}>
+                {post.author.handle}
                 {post.author.isNew && <span className="badge badge-neon">NEW</span>}
               </div>
             </Link>
             <div className="text-sm text-secondary">
-              {post.timeAgo} • {post.author.handle}
+              {post.timeAgo}
+              {post.isEncrypted && (
+                <span style={{ marginLeft: '8px', color: 'var(--accent-neon)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <ShieldCheck size={12} /> E2EE
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -282,31 +369,49 @@ export default function PostCard({ post }: PostCardProps) {
             </button>
           )}
           {currentUserId === post.authorId && (
-             <button 
-                onClick={handleDelete} 
-                disabled={isDeleting}
-                style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
-                title="Delete Post"
-             >
-               {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
-             </button>
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+              title="Delete Post"
+            >
+              {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+            </button>
           )}
-           <button 
-              onClick={handleReport} 
-              disabled={isReporting}
-              style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
-              title="Report Content"
-           >
-             {isReporting ? <Loader2 size={18} className="animate-spin" /> : <Flag size={18} />}
-           </button>
+          <button
+            onClick={handleReport}
+            disabled={isReporting}
+            style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+            title="Report Content"
+          >
+            {isReporting ? <Loader2 size={18} className="animate-spin" /> : <Flag size={18} />}
+          </button>
         </div>
       </div>
 
       <div style={{ padding: '0 16px 12px 16px' }}>
-        <p style={{ marginBottom: '12px', fontSize: '0.95rem', lineHeight: '1.6' }}>{post.content}</p>
-        
+        {isDecrypting ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-neon)', margin: '12px 0' }}>
+            <Loader2 size={16} className="animate-spin" />
+            <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>Decrypting secure content...</span>
+          </div>
+        ) : hasAccess ? (
+          <p style={{ marginBottom: '12px', fontSize: '0.95rem', lineHeight: '1.6' }}>{decryptedContent}</p>
+        ) : (
+          <div style={{
+            background: 'rgba(255,255,255,0.03)', border: '1px dashed var(--border-light)',
+            padding: '24px', borderRadius: '16px', textAlign: 'center', marginBottom: '16px'
+          }}>
+            <Lock size={32} style={{ color: 'var(--accent-primary)', marginBottom: '12px', opacity: 0.5 }} />
+            <div style={{ fontWeight: '800', marginBottom: '4px' }}>Exclusive Content</div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+              This post is end-to-end encrypted. Only subscribers can access it.
+            </p>
+          </div>
+        )}
+
         {post.musicUrl && (
-          <div style={{ 
+          <div style={{
             display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px',
             background: 'rgba(var(--accent-primary-rgb), 0.05)', borderRadius: '12px',
             border: '1px solid rgba(var(--accent-primary-rgb), 0.1)',
@@ -326,7 +431,7 @@ export default function PostCard({ post }: PostCardProps) {
                 }
               }
             }} />
-            <div style={{ 
+            <div style={{
               width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
             }}>
@@ -339,8 +444,8 @@ export default function PostCard({ post }: PostCardProps) {
             {isPlayingMusic && (
               <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end', height: '12px' }}>
                 {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="music-bar" style={{ 
-                    width: '3px', background: 'var(--accent-neon)', 
+                  <div key={i} className="music-bar" style={{
+                    width: '3px', background: 'var(--accent-neon)',
                     height: '100%', borderRadius: '10px',
                     animation: `musicBar 0.8s ease-in-out infinite alternate ${i * 0.2}s`
                   }} />
@@ -360,39 +465,39 @@ export default function PostCard({ post }: PostCardProps) {
         </div>
       </div>
 
-      {post.mediaUrl && (
+      {decryptedMediaUrl && hasAccess && (
         <div style={{ position: 'relative', width: '100%', background: '#000', overflow: 'hidden' }}>
           <div style={{ filter: post.overlays?.filter || 'none' }}>
             {post.mediaType === 'video' ? (
-              <video 
+              <video
                 ref={videoRef}
-                src={post.mediaUrl} 
-                autoPlay 
-                muted={isVideoMuted} 
-                loop 
-                playsInline 
+                src={decryptedMediaUrl}
+                autoPlay
+                muted={isVideoMuted}
+                loop
+                playsInline
                 controls
-                style={{ width: '100%', height: 'auto', display: 'block' }} 
+                style={{ width: '100%', height: 'auto', display: 'block' }}
                 onVolumeChange={(e) => {
                   if (videoRef.current) setIsVideoMuted(videoRef.current.muted);
                 }}
               />
             ) : (
-              <img 
-                src={post.mediaUrl} 
-                alt="Post content" 
-                style={{ 
-                  width: '100%', 
-                  height: 'auto', 
-                  maxHeight: '80vh', 
+              <img
+                src={decryptedMediaUrl}
+                alt="Post content"
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  maxHeight: '80vh',
                   objectFit: 'contain',
                   display: 'block',
                   background: '#000'
-                }} 
+                }}
               />
             )}
           </div>
-          
+
           {/* Text Overlays */}
           {post.overlays?.textItems?.map((item: any) => (
             <div

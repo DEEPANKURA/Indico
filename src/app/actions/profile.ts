@@ -172,3 +172,22 @@ export async function createStoryAction(formData: FormData) {
     return { success: false, error: err.message };
   }
 }
+
+export async function updatePublicKeyAction(publicKey: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ public_key: publicKey } as any)
+      .eq('id', user.id);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Update Public Key Error:', err);
+    return { success: false, error: err.message };
+  }
+}

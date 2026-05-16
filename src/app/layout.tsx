@@ -7,6 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import PWARegister from "@/components/PWARegister";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
 import ChunkErrorHandler from "@/components/ChunkErrorHandler";
+import E2EEInitializer from "@/components/E2EEInitializer";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -104,6 +105,7 @@ export default function RootLayout({
         }} />
         <RealtimeRefresh />
         <ChunkErrorHandler />
+        <E2EEInitializer />
         <div className="app-layout">
           <Sidebar />
           <main className="main-feed-area">

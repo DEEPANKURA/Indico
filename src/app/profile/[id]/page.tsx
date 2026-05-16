@@ -44,6 +44,7 @@ export async function generateMetadata(
   };
 }
 
-export default async function Page() {
-  return <ProfileClient />;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  return <ProfileClient params={resolvedParams} />;
 }

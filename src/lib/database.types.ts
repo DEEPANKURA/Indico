@@ -137,6 +137,45 @@ export type Database = {
           },
         ]
       }
+      content_keys: {
+        Row: {
+          id: string
+          content_id: string
+          user_id: string
+          encrypted_key: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          content_id: string
+          user_id: string
+          encrypted_key: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          content_id?: string
+          user_id?: string
+          encrypted_key?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_keys_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_keys_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       community_members: {
         Row: {
           community_id: string
@@ -514,6 +553,7 @@ export type Database = {
           video_trim_end: number | null
           video_trim_start: number | null
           video_volume: number | null
+          is_encrypted: boolean | null
         }
         Insert: {
           ai_confidence_score?: number | null
@@ -617,6 +657,7 @@ export type Database = {
           wallet_balance: number | null
           website: string | null
           website_url: string | null
+          public_key: string | null
         }
         Insert: {
           avatar_url?: string | null

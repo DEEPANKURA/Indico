@@ -7,7 +7,9 @@ import { useRouter } from 'next/navigation';
 import { createPostAction } from '@/app/actions/post';
 import MusicSelector from './MusicSelector';
 import { uploadToCloudinary } from '@/utils/cloudinary';
-import { encryptText } from '@/utils/e2ee';
+import { getMyE2EEKeys, deriveSharedKey, encryptE2EE, decryptE2EE, encryptTextLegacy } from '@/utils/e2ee';
+import { saveContentKeyAction } from '@/app/actions/post';
+import CryptoJS from 'crypto-js';
 
 export default function CreatePost({ 
   communityId, 
@@ -23,6 +25,7 @@ export default function CreatePost({
   const [selectedMusic, setSelectedMusic] = useState<any>(null);
   const [musicStartTime, setMusicStartTime] = useState(0);
   const [showMusicSelector, setShowMusicSelector] = useState(false);
+  const [isExclusive, setIsExclusive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
@@ -87,12 +90,49 @@ export default function CreatePost({
         startTime: musicStartTime
       } : undefined;
 
-      const finalContent = communityId ? encryptText(content, communityId) : content;
+      let finalContent = content;
+      let finalMediaUrls = [...mediaUrls];
+      let isEncrypted = false;
 
-      const result = await createPostAction(finalContent, mediaUrls, communityId, musicInfo);
+      // Handle E2EE for Exclusive Content
+      if (isExclusive) {
+        const myKeys = getMyE2EEKeys();
+        if (myKeys) {
+          // Generate a random symmetric key for this content
+          const contentKey = CryptoJS.lib.WordArray.random(32).toString();
+          
+          // Encrypt content and media URLs with the content key
+          finalContent = CryptoJS.AES.encrypt(content, contentKey).toString();
+          const encryptedUrls = mediaUrls.map(url => CryptoJS.AES.encrypt(url, contentKey).toString());
+          finalMediaUrls = encryptedUrls;
+          isEncrypted = true;
+
+          // Now encrypt the contentKey for the owner (so they can decrypt it later)
+          // We'll use the owner's own public key for the E2EE key derivation (shared secret with self)
+          const sharedKey = await deriveSharedKey(myKeys.privateKey, myKeys.publicKey);
+          if (sharedKey) {
+            const encryptedContentKey = await encryptE2EE(contentKey, sharedKey);
+            // We'll save this after we get the post ID
+            (window as any)._pendingContentKey = encryptedContentKey;
+          }
+        }
+      } else if (communityId) {
+        finalContent = encryptTextLegacy(content, communityId);
+      }
+
+      const result = await createPostAction(finalContent, finalMediaUrls, communityId, musicInfo, undefined, [], [], null, isExclusive, isEncrypted);
       
       if (!result.success) {
         throw new Error(result.error);
+      }
+
+      // Save the content key for the owner
+      if (isExclusive && (window as any)._pendingContentKey) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await saveContentKeyAction(result.postId, user.id, (window as any)._pendingContentKey);
+        }
+        delete (window as any)._pendingContentKey;
       }
       
       setContent('');
@@ -265,6 +305,22 @@ export default function CreatePost({
           >
             <MusicIcon size={18} />
             <span>Music</span>
+          </button>
+
+          <button 
+            onClick={() => setIsExclusive(!isExclusive)}
+            style={{ 
+              background: isExclusive ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.05)', 
+              border: isExclusive ? '1px solid rgba(139,92,246,0.3)' : '1px solid var(--border-light)', 
+              color: isExclusive ? 'var(--accent-primary)' : 'var(--text-secondary)', 
+              cursor: 'pointer', display: 'flex', gap: '8px', alignItems: 'center', 
+              padding: '10px 16px', borderRadius: '14px', fontWeight: '700', fontSize: '0.9rem',
+              transition: 'all 0.2s'
+            }}
+            className="hover-scale"
+          >
+            <ShieldCheck size={18} />
+            <span>{isExclusive ? 'Exclusive' : 'Public'}</span>
           </button>
         </div>
 

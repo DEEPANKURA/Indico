@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Grid3x3, Heart, MessageCircle, DollarSign, Camera, ArrowLeft, Music, Lock, Loader2 } from 'lucide-react';
+import { Grid3x3, Heart, MessageCircle, DollarSign, Camera, ArrowLeft, Music, Lock, Loader2, ShieldCheck } from 'lucide-react';
 import { toggleFollowAction } from '@/app/actions/social';
 import { createRazorpayOrderAction, verifyRazorpayPaymentAction } from '@/app/actions/monetize';
 import FollowsModal from '@/components/FollowsModal';
+import PostCard from '@/components/PostCard';
 
 export default function ProfileClient({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -59,7 +60,7 @@ export default function ProfileClient({ params }: { params: { id: string } }) {
       const [{ data: profileData }, { data: postsData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('posts')
-          .select('id, content, like_count, comment_count, created_at, media_urls, music_url, music_title, music_artist, is_exclusive, moderation_status')
+          .select('id, content, like_count, comment_count, created_at, media_urls, music_url, music_title, music_artist, music_start_time, music_volume, video_volume, video_trim_start, video_trim_end, is_exclusive, is_encrypted, moderation_status')
           .eq('author_id', userId)
           .eq('moderation_status', 'approved')
           .is('community_id', null)
@@ -351,6 +352,12 @@ export default function ProfileClient({ params }: { params: { id: string } }) {
                       <Music size={14} color="white" />
                     </div>
                   )}
+
+                  {post.is_encrypted && (
+                    <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(var(--accent-primary-rgb), 0.8)', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, boxShadow: '0 0 10px var(--accent-primary)' }}>
+                      <ShieldCheck size={14} color="white" />
+                    </div>
+                  )}
                   
                   {/* Hover Overlay */}
                   <div style={{ 
@@ -383,62 +390,37 @@ export default function ProfileClient({ params }: { params: { id: string } }) {
             display: 'flex', flexDirection: isMobile ? 'column' : 'row',
             overflow: 'hidden', borderRadius: '12px'
           }} onClick={e => e.stopPropagation()}>
-            
-            {/* Media Area */}
-            <div style={{ 
-              flex: 1.5, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              maxHeight: isMobile ? '40vh' : 'none', position: 'relative'
-            }}>
-              {selectedPost.media_urls?.[0] ? (
-                typeof selectedPost.media_urls[0] === 'string' && selectedPost.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? (
-                  <video src={selectedPost.media_urls[0]} controls autoPlay style={{ width: '100%', maxHeight: '100%', display: 'block' }} />
-                ) : (
-                  <img src={selectedPost.media_urls[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                )
-              ) : (
-                <div style={{ padding: '40px', color: 'white', textAlign: 'center' }}>
-                  {selectedPost.content}
-                </div>
-              )}
-            </div>
-
-            {/* Info Area */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-light)' }}>
-              <div style={{ padding: '16px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.8rem', overflow: 'hidden' }}>
-                  {profile.avatar_url ? <img src={profile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (profile.username?.[0] || 'U').toUpperCase()}
-                </div>
-                <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{profile.username || 'Creator'}</div>
-              </div>
-              
-              <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
-                <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5' }}>{selectedPost.content}</p>
-                <div style={{ marginTop: '12px' }}>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '16px' }}>{new Date(selectedPost.created_at).toLocaleDateString()}</div>
-                  
-                  {selectedPost.music_url && (
-                    <div style={{ 
-                      display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px',
-                      background: 'rgba(var(--accent-primary-rgb), 0.05)', borderRadius: '12px',
-                      marginBottom: '16px'
-                    }}>
-                      <Music size={16} color="var(--accent-primary)" />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.8rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedPost.music_title}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{selectedPost.music_artist}</div>
-                      </div>
-                      <audio autoPlay src={selectedPost.music_url} loop />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ padding: '16px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '16px' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Heart size={20} /> {selectedPost.like_count || 0}</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MessageCircle size={20} /> {selectedPost.comment_count || 0}</span>
-                <button onClick={() => router.push(`/post/${selectedPost.id}`)} className="btn-secondary" style={{ marginLeft: 'auto', padding: '6px 12px', fontSize: '0.8rem' }}>View Full Post</button>
-              </div>
-            </div>
+            <PostCard 
+              post={{
+                id: selectedPost.id,
+                authorId: userId,
+                author: {
+                  name: displayName,
+                  handle: `@${username}`,
+                  avatar: profile.avatar_url || '',
+                  isNew: false
+                },
+                content: selectedPost.content,
+                mediaUrl: selectedPost.media_urls?.[0],
+                mediaType: typeof selectedPost.media_urls?.[0] === 'string' && selectedPost.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/) ? 'video' : 'image',
+                likes: selectedPost.like_count || 0,
+                comments: selectedPost.comment_count || 0,
+                shares: 0,
+                tags: [],
+                mentions: [],
+                timeAgo: new Date(selectedPost.created_at).toLocaleDateString(),
+                musicUrl: selectedPost.music_url,
+                musicTitle: selectedPost.music_title,
+                musicArtist: selectedPost.music_artist,
+                musicStartTime: selectedPost.music_start_time,
+                musicVolume: selectedPost.music_volume,
+                videoVolume: selectedPost.video_volume,
+                videoTrimStart: selectedPost.video_trim_start,
+                videoTrimEnd: selectedPost.video_trim_end,
+                isEncrypted: selectedPost.is_encrypted,
+                currentUserId: undefined // Allow PostCard to fetch/handle
+              }} 
+            />
           </div>
         </div>
       )}

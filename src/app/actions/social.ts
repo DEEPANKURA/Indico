@@ -107,7 +107,7 @@ export async function searchUsersAction(query: string) {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, username, full_name, avatar_url')
+      .select('id, username, full_name, avatar_url, public_key')
       .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
       .limit(10);
 
@@ -174,56 +174,6 @@ export async function sendDirectMessageAction(recipientId: string, content: stri
   }
 }
 
-export async function deletePostAction(postId: string) {
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: 'Unauthorized' };
-
-    // Check ownership and get media URLs
-    const { data: post } = await supabase
-      .from('posts')
-      .select('author_id, media_urls')
-      .eq('id', postId)
-      .maybeSingle();
-
-    if (!post) return { success: false, error: 'Post not found' };
-    if (post.author_id !== user.id) return { success: false, error: 'Unauthorized' };
-
-    // Delete from Cloudinary first
-    console.log('[DeleteAction] Starting Cloudinary cleanup for post:', postId);
-    if (post.media_urls && post.media_urls.length > 0) {
-      const { deleteCloudinaryMedia } = await import('@/utils/cloudinary-admin');
-      for (const url of post.media_urls) {
-        if (typeof url === 'string' && url.includes('cloudinary.com')) {
-          console.log('[DeleteAction] Deleting media from Cloudinary:', url);
-          const cloudRes = await deleteCloudinaryMedia(url);
-          console.log('[DeleteAction] Cloudinary result:', cloudRes);
-        }
-      }
-    }
-
-    // Delete from DB
-    console.log('[DeleteAction] Deleting from database:', postId);
-    const { error } = await supabase.from('posts').delete().eq('id', postId);
-    if (error) {
-      console.error('[DeleteAction] Database delete error:', error);
-      throw error;
-    }
-
-    console.log('[DeleteAction] Success');
-
-    revalidatePath('/');
-    revalidatePath('/profile');
-    revalidatePath('/explore');
-    revalidatePath('/studio');
-
-    return { success: true };
-  } catch (error: any) {
-    console.error('Delete Post Error:', error);
-    return { success: false, error: error.message };
-  }
-}
 
 export async function getJoinedCommunitiesAction() {
   try {
