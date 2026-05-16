@@ -22,11 +22,15 @@ export default function E2EEInitializer() {
       }
 
       // Check if public key is in database
-      const { data: profile } = await supabase
+      const { data: profile, error: profError } = await supabase
         .from('profiles')
         .select('public_key')
         .eq('id', user.id)
-        .maybeSingle();
+        .single();
+
+      if (profError && profError.code !== 'PGRST116') {
+        console.error('[E2EE] Profile fetch error:', profError);
+      }
 
       if (keys && (!profile || profile.public_key !== keys.publicKey)) {
         console.log('[E2EE] Syncing public key to database...');

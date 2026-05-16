@@ -20,9 +20,9 @@ export async function getMonetizationDataAction() {
       .from('profiles')
       .select('id, username, full_name, avatar_url, coins, referral_code, referred_by, total_earnings, is_creator, wallet_balance, payout_account, profile_subscription_price')
       .eq('id', user.id)
-      .maybeSingle();
+      .single();
 
-    if (profError) {
+    if (profError && profError.code !== 'PGRST116') {
       console.error('[Monetization] Profile fetch error:', profError);
       throw new Error(`Profile fetch failed: ${profError.message}`);
     }
@@ -99,7 +99,8 @@ export async function applyFriendReferralAction(friendCode: string) {
     const cleanCode = friendCode.trim().toUpperCase();
 
     // Fetch current user profile
-    const { data: rawCurrentUser } = await db.from('profiles').select('referred_by, referral_code, coins').eq('id', user.id).single();
+    const { data: rawCurrentUser, error: userError } = await db.from('profiles').select('referred_by, referral_code, coins').eq('id', user.id).single();
+    if (userError && userError.code !== 'PGRST116') throw userError;
     const currentUser = rawCurrentUser as any;
     if (!currentUser) return { success: false, error: 'Profile not found' };
 
@@ -112,11 +113,12 @@ export async function applyFriendReferralAction(friendCode: string) {
     }
 
     // Find friend profile
-    const { data: rawFriendProfile } = await db
+    const { data: rawFriendProfile, error: friendError } = await db
       .from('profiles')
       .select('id, coins')
       .ilike('referral_code', cleanCode)
       .single();
+    if (friendError && friendError.code !== 'PGRST116') throw friendError;
     const friendProfile = rawFriendProfile as any;
 
     if (!friendProfile) {
@@ -228,7 +230,8 @@ export async function verifyRazorpayPaymentAction(orderId: string, paymentId: st
     const db = supabase as any;
 
     // Fetch order details
-    const { data: order } = await db.from('razorpay_orders').select('*').eq('order_id', orderId).single();
+    const { data: order, error: orderError } = await db.from('razorpay_orders').select('*').eq('order_id', orderId).single();
+    if (orderError && orderError.code !== 'PGRST116') throw orderError;
     if (!order) return { success: false, error: 'Order not found' };
 
     if (order.status === 'completed') {
@@ -239,7 +242,8 @@ export async function verifyRazorpayPaymentAction(orderId: string, paymentId: st
     await db.from('razorpay_orders').update({ status: 'completed' }).eq('order_id', orderId);
 
     // Fetch user profile
-    const { data: rawProfile } = await db.from('profiles').select('coins, total_earnings').eq('id', user.id).single();
+    const { data: rawProfile, error: profError } = await db.from('profiles').select('coins, total_earnings').eq('id', user.id).single();
+    if (profError && profError.code !== 'PGRST116') throw profError;
     const profile = rawProfile as any;
 
     if (order.type === 'buy_coins') {
@@ -252,7 +256,8 @@ export async function verifyRazorpayPaymentAction(orderId: string, paymentId: st
     else if (order.type === 'subscribe_community') {
       const communityId = order.target_id;
       // Get community details
-      const { data: rawComm } = await db.from('communities').select('creator_id, subscription_price').eq('id', communityId).single();
+      const { data: rawComm, error: commError } = await db.from('communities').select('creator_id, subscription_price').eq('id', communityId).single();
+      if (commError && commError.code !== 'PGRST116') throw commError;
       const comm = rawComm as any;
       if (comm) {
         // Create active subscription for 30 days
@@ -271,7 +276,8 @@ export async function verifyRazorpayPaymentAction(orderId: string, paymentId: st
         // Revenue split: 70% creator, 30% indico
         const creatorShare = order.amount * 0.70;
         // Update creator earnings
-        const { data: rawCreatorProf } = await db.from('profiles').select('total_earnings, wallet_balance').eq('id', comm.creator_id).single();
+        const { data: rawCreatorProf, error: creatorProfError } = await db.from('profiles').select('total_earnings, wallet_balance').eq('id', comm.creator_id).single();
+        if (creatorProfError && creatorProfError.code !== 'PGRST116') throw creatorProfError;
         const creatorProf = rawCreatorProf as any;
         if (creatorProf) {
           await db.from('profiles').update({
@@ -292,7 +298,8 @@ export async function verifyRazorpayPaymentAction(orderId: string, paymentId: st
     else if (order.type === 'subscribe_profile') {
       const creatorId = order.target_id;
       // Get creator details
-      const { data: rawCreator } = await db.from('profiles').select('profile_subscription_price').eq('id', creatorId).single();
+      const { data: rawCreator, error: creatorError } = await db.from('profiles').select('profile_subscription_price').eq('id', creatorId).single();
+      if (creatorError && creatorError.code !== 'PGRST116') throw creatorError;
       const creator = rawCreator as any;
       if (creator) {
         // Create active subscription for 30 days, no community_id means profile subscription
@@ -311,7 +318,8 @@ export async function verifyRazorpayPaymentAction(orderId: string, paymentId: st
         // Revenue split: 80% creator, 20% indico for profile exclusives
         const creatorShare = order.amount * 0.80;
         // Update creator earnings
-        const { data: rawCreatorProf } = await db.from('profiles').select('total_earnings, wallet_balance').eq('id', creatorId).single();
+        const { data: rawCreatorProf, error: creatorProfError } = await db.from('profiles').select('total_earnings, wallet_balance').eq('id', creatorId).single();
+        if (creatorProfError && creatorProfError.code !== 'PGRST116') throw creatorProfError;
         const creatorProf = rawCreatorProf as any;
         if (creatorProf) {
           await db.from('profiles').update({
@@ -324,7 +332,8 @@ export async function verifyRazorpayPaymentAction(orderId: string, paymentId: st
     else if (order.type === 'boost_reel') {
       const postId = order.target_id;
       // Directly mark post as boosted
-      const { data: rawPost } = await db.from('posts').select('boost_coins').eq('id', postId).single();
+      const { data: rawPost, error: postError } = await db.from('posts').select('boost_coins').eq('id', postId).single();
+      if (postError && postError.code !== 'PGRST116') throw postError;
       const post = rawPost as any;
       if (post) {
         await db.from('posts').update({
@@ -349,7 +358,8 @@ export async function boostReelWithCoinsAction(postId: string, coinsCost: number
     const db = supabase as any;
 
     // Check balance
-    const { data: rawProfile } = await db.from('profiles').select('coins').eq('id', user.id).single();
+    const { data: rawProfile, error: profError } = await db.from('profiles').select('coins').eq('id', user.id).single();
+    if (profError && profError.code !== 'PGRST116') throw profError;
     const profile = rawProfile as any;
     if (!profile || (profile.coins || 0) < coinsCost) {
       return { success: false, error: 'Insufficient coins balance. Please buy coins first!' };
@@ -361,7 +371,8 @@ export async function boostReelWithCoinsAction(postId: string, coinsCost: number
     }).eq('id', user.id);
 
     // Boost reel
-    const { data: rawPost } = await db.from('posts').select('boost_coins').eq('id', postId).single();
+    const { data: rawPost, error: postError } = await db.from('posts').select('boost_coins').eq('id', postId).single();
+    if (postError && postError.code !== 'PGRST116') throw postError;
     const post = rawPost as any;
     if (post) {
       await db.from('posts').update({
@@ -402,7 +413,8 @@ export async function withdrawFundsAction(amount: number) {
     if (!user) return { success: false, error: 'Unauthorized' };
     const db = supabase as any;
 
-    const { data: rawProfile } = await db.from('profiles').select('wallet_balance, payout_account').eq('id', user.id).single();
+    const { data: rawProfile, error: profError } = await db.from('profiles').select('wallet_balance, payout_account').eq('id', user.id).single();
+    if (profError && profError.code !== 'PGRST116') throw profError;
     const profile = rawProfile as any;
 
     if (!profile.payout_account) {

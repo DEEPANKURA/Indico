@@ -164,8 +164,8 @@ export const onboardSubscribers = async (supabase: any) => {
       .eq('creator_id', user.id)
       .eq('status', 'active');
 
-    if (!subscribers || subscribers.length === 0) return;
-
+    if (!Array.isArray(subscribers) || subscribers.length === 0) return;
+    
     // 2. Find my exclusive encrypted posts
     const { data: posts } = await (supabase as any)
       .from('posts')
@@ -174,12 +174,32 @@ export const onboardSubscribers = async (supabase: any) => {
       .eq('is_exclusive', true)
       .eq('is_encrypted', true);
 
-    if (!posts || posts.length === 0) return;
+    if (!Array.isArray(posts) || posts.length === 0) return;
+
+    console.log(`[E2EE] Onboarding subscribers for ${posts.length} posts and ${subscribers.length} subscribers...`);
 
     const myKeys = getMyE2EEKeys();
     if (!myKeys) return;
 
     for (const post of posts) {
+      // Fetch my own encrypted key for this post once per post
+      const { data: myKeyData, error: myKeyError } = await (supabase as any)
+        .from('content_keys')
+        .select('encrypted_key')
+        .eq('content_id', post.id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (myKeyError && myKeyError.code !== 'PGRST116') throw myKeyError;
+      if (!myKeyData) continue;
+
+      const mySharedKey = await deriveSharedKey(myKeys.privateKey, myKeys.publicKey);
+      if (!mySharedKey) continue;
+
+      const contentKey = await decryptE2EE(myKeyData.encrypted_key, mySharedKey);
+      if (contentKey.startsWith('[Decryption Error')) continue;
+
+      // Process subscribers sequentially to be safe with Edge CPU limits
       for (const sub of subscribers) {
         let subProfile = (sub as any).profiles;
         if (Array.isArray(subProfile)) subProfile = subProfile[0];
@@ -187,40 +207,26 @@ export const onboardSubscribers = async (supabase: any) => {
         if (!subProfile?.public_key) continue;
 
         // Check if they already have the key
-        const { data: existing } = await (supabase as any)
+        const { data: existing, error: keyError } = await (supabase as any)
           .from('content_keys')
           .select('id')
           .eq('content_id', post.id)
           .eq('user_id', subProfile.id)
-          .maybeSingle();
+          .single();
 
+        if (keyError && keyError.code !== 'PGRST116') continue;
         if (existing) continue;
 
-        // Fetch my own encrypted key for this post to get the content key
-        const { data: myKeyData } = await (supabase as any)
-          .from('content_keys')
-          .select('encrypted_key')
-          .eq('content_id', post.id)
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (myKeyData) {
-          const mySharedKey = await deriveSharedKey(myKeys.privateKey, myKeys.publicKey);
-          if (mySharedKey) {
-            const contentKey = await decryptE2EE(myKeyData.encrypted_key, mySharedKey);
-            
-            // Now encrypt this content key for the subscriber
-            const subSharedKey = await deriveSharedKey(myKeys.privateKey, subProfile.public_key);
-            if (subSharedKey) {
-              const encryptedForSub = await encryptE2EE(contentKey, subSharedKey);
-              await (supabase as any).from('content_keys').insert({
-                content_id: post.id,
-                user_id: subProfile.id,
-                encrypted_key: encryptedForSub
-              });
-              console.log(`[E2EE] Shared key for post ${post.id} with subscriber ${subProfile.id}`);
-            }
-          }
+        // Encrypt this content key for the subscriber
+        const subSharedKey = await deriveSharedKey(myKeys.privateKey, subProfile.public_key);
+        if (subSharedKey) {
+          const encryptedForSub = await encryptE2EE(contentKey, subSharedKey);
+          await (supabase as any).from('content_keys').insert({
+            content_id: post.id,
+            user_id: subProfile.id,
+            encrypted_key: encryptedForSub
+          });
+          console.log(`[E2EE] Shared key for post ${post.id} with subscriber ${subProfile.id}`);
         }
       }
     }

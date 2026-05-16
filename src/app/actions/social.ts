@@ -11,12 +11,14 @@ export async function toggleLikeAction(postId: string) {
     if (!user) return { success: false, error: 'Unauthorized' };
 
     // Check if liked
-    const { data: existingLike } = await supabase
+    const { data: existingLike, error: likeError } = await supabase
       .from('likes')
       .select('id')
       .eq('post_id', postId)
       .eq('user_id', user.id)
-      .maybeSingle();
+      .single();
+
+    if (likeError && likeError.code !== 'PGRST116') throw likeError;
 
     if (existingLike) {
       await supabase.from('likes').delete().eq('id', existingLike.id);
@@ -38,12 +40,14 @@ export async function toggleFollowAction(targetUserId: string) {
 
     if (user.id === targetUserId) return { success: false, error: 'Cannot follow yourself' };
 
-    const { data: existingFollow } = await supabase
+    const { data: existingFollow, error: followError } = await supabase
       .from('follows')
       .select('*')
       .eq('follower_id', user.id)
       .eq('following_id', targetUserId)
-      .maybeSingle();
+      .single();
+
+    if (followError && followError.code !== 'PGRST116') throw followError;
 
     if (existingFollow) {
       await supabase

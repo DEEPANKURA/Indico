@@ -79,9 +79,9 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         author:profiles!posts_author_id_fkey(id, username, full_name, avatar_url, is_creator)
       `)
       .eq('id', id)
-      .maybeSingle();
+      .single();
 
-    if (postError) {
+    if (postError && postError.code !== 'PGRST116') {
       console.error('Database Error:', postError);
       throw new Error(postError.message);
     }
@@ -107,12 +107,16 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     let initialIsFollowing = false;
     
     if (user) {
-      const [{ data: likeData }, { data: followData }] = await Promise.all([
-        supabase.from('likes').select('id').eq('post_id', id).eq('user_id', user.id).maybeSingle(),
-        supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', postData.author_id).maybeSingle()
+      const [likeRes, followRes] = await Promise.all([
+        supabase.from('likes').select('id').eq('post_id', id).eq('user_id', user.id).single(),
+        supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', postData.author_id).single()
       ]);
-      initialIsLiked = !!likeData;
-      initialIsFollowing = !!followData;
+
+      if (likeRes.error && likeRes.error.code !== 'PGRST116') console.error(likeRes.error);
+      if (followRes.error && followRes.error.code !== 'PGRST116') console.error(followRes.error);
+
+      initialIsLiked = !!likeRes.data;
+      initialIsFollowing = !!followRes.data;
     }
 
     // 4. Handle exclusive content logic
@@ -122,16 +126,20 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
       }
       
       if (user.id !== postData.author_id) {
-        const { data: subData } = await supabase
+        const subRes = await supabase
           .from('subscriptions')
           .select('id')
           .eq('subscriber_id', user.id)
           .eq('creator_id', postData.author_id)
           .is('community_id', null)
           .eq('status', 'active')
-          .maybeSingle();
+          .single();
           
-        if (!subData) {
+        if (subRes.error && subRes.error.code !== 'PGRST116') {
+          console.error('Subscription error:', subRes.error);
+        }
+
+        if (!subRes.data) {
           return (
             <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '60px', textAlign: 'center' }}>
               <div className="glass-card" style={{ padding: '60px', borderRadius: '24px', background: 'var(--bg-glass)', border: '1px solid var(--border-light)' }}>

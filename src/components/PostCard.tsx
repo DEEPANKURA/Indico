@@ -218,12 +218,17 @@ export default function PostCard({ post }: PostCardProps) {
     if (post.initialIsLiked !== undefined || currentUserId === null) return;
 
     const checkLike = async () => {
-      const { data } = await supabase
+      const { data, error: likeError } = await supabase
         .from('likes')
         .select('id')
         .eq('post_id', post.id)
         .eq('user_id', currentUserId)
-        .maybeSingle();
+        .single();
+
+      if (likeError && likeError.code !== 'PGRST116') {
+        console.error('Like check error:', likeError);
+      }
+
 
       if (data) setIsLiked(true);
     };
@@ -253,10 +258,10 @@ export default function PostCard({ post }: PostCardProps) {
           .select('encrypted_key')
           .eq('content_id', post.id)
           .eq('user_id', currentUserId)
-          .maybeSingle();
+          .single();
 
-        if (keyError || !keyData) {
-          console.warn('[E2EE] No content key found for user:', currentUserId, post.id);
+        if (keyError && keyError.code !== 'PGRST116') {
+          console.error('Content key fetch error:', keyError);
           setIsDecrypting(false);
           setHasAccess(false);
           return;
@@ -267,9 +272,13 @@ export default function PostCard({ post }: PostCardProps) {
           .from('profiles')
           .select('public_key')
           .eq('id', post.authorId)
-          .maybeSingle();
+          .single();
 
-        if (profileError || !authorProfile?.public_key) {
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Author profile fetch error:', profileError);
+        }
+
+        if (!authorProfile?.public_key) {
            console.error('[E2EE] Author public key missing:', post.authorId);
            throw new Error('Author public key not found');
         }
@@ -285,6 +294,10 @@ export default function PostCard({ post }: PostCardProps) {
         if (!sharedKey) {
            console.error('[E2EE] Shared key derivation failed');
            throw new Error('Shared key derivation failed');
+        }
+
+        if (!keyData?.encrypted_key) {
+          throw new Error('Encrypted content key not found');
         }
 
         const contentKey = await decryptE2EE(keyData.encrypted_key, sharedKey);

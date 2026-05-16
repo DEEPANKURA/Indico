@@ -72,11 +72,15 @@ export async function deletePostAction(postId: string) {
     if (!user) return { success: false, error: 'Unauthorized' };
 
     // Fetch media URLs first
-    const { data: post } = await supabase
+    const { data: post, error: postFetchError } = await supabase
       .from('posts')
       .select('author_id, media_urls')
       .eq('id', postId)
-      .maybeSingle();
+      .single();
+
+    if (postFetchError && postFetchError.code !== 'PGRST116') {
+      console.error('Error fetching post for deletion:', postFetchError);
+    }
 
     if (!post) return { success: false, error: 'Post not found' };
     if (post.author_id !== user.id) return { success: false, error: 'Unauthorized' };
