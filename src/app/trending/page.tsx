@@ -108,11 +108,7 @@ export default function TrendingPage() {
   }
 
   return (
-    <div style={{ maxWidth: '680px', margin: '0 auto', paddingTop: '10px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-        <TrendingUp size={28} style={{ color: 'var(--accent-secondary)' }} />
-        <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>Trending Reels</h1>
-      </div>
+    <div style={{ width: '100%', maxWidth: '680px', margin: '0 auto', paddingTop: '0' }}>
 
       {error ? (
         <div className="glass-card" style={{ padding: '60px', textAlign: 'center', borderRadius: '20px', border: '1px solid #ef4444' }}>
@@ -125,10 +121,9 @@ export default function TrendingPage() {
         <div 
           ref={containerRef}
           style={{ 
-            height: 'calc(100vh - 180px)', 
+            height: 'calc(100dvh - 64px)', 
             overflowY: 'scroll', 
             scrollSnapType: 'y mandatory',
-            borderRadius: '20px'
           }}
           className="hide-scrollbar"
         >

@@ -307,21 +307,7 @@ export default function CreatePost({
             <span>Music</span>
           </button>
 
-          <button 
-            onClick={() => setIsExclusive(!isExclusive)}
-            style={{ 
-              background: isExclusive ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.05)', 
-              border: isExclusive ? '1px solid rgba(139,92,246,0.3)' : '1px solid var(--border-light)', 
-              color: isExclusive ? 'var(--accent-primary)' : 'var(--text-secondary)', 
-              cursor: 'pointer', display: 'flex', gap: '8px', alignItems: 'center', 
-              padding: '10px 16px', borderRadius: '14px', fontWeight: '700', fontSize: '0.9rem',
-              transition: 'all 0.2s'
-            }}
-            className="hover-scale"
-          >
-            <ShieldCheck size={18} />
-            <span>{isExclusive ? 'Exclusive' : 'Public'}</span>
-          </button>
+
         </div>
 
         <button
