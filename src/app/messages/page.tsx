@@ -471,7 +471,7 @@ export default function MessagesPage() {
                 <div>
                   <div style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {selectedUser.full_name}
-                    {selectedUser.public_key && <ShieldCheck size={14} style={{ color: 'var(--accent-neon)' }} title="End-to-end encrypted" />}
+                    {selectedUser.public_key && <span title="End-to-end encrypted"><ShieldCheck size={14} style={{ color: 'var(--accent-neon)' }} /></span>}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--accent-neon)' }}>Online</div>
                 </div>
