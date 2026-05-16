@@ -130,7 +130,7 @@ export default function CreatePost({
       if (isExclusive && (window as any)._pendingContentKey) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          await saveContentKeyAction(result.postId, user.id, (window as any)._pendingContentKey);
+          await saveContentKeyAction((result as any).postId, user.id, (window as any)._pendingContentKey);
         }
         delete (window as any)._pendingContentKey;
       }
