@@ -172,8 +172,9 @@ export default function ProfileClient({
     const res = await toggleFollowAction(userId);
     setIsTogglingFollow(false);
     if (res.success) {
-      setIsFollowing(res.following!);
-      setFollowerCount(prev => res.following ? prev + 1 : Math.max(0, prev - 1));
+      const nowFollowing = !!res.following;
+      setIsFollowing(nowFollowing);
+      setFollowerCount(prev => nowFollowing ? prev + 1 : Math.max(0, prev - 1));
     }
   };
 
