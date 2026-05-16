@@ -31,7 +31,7 @@ export default function ProfileClient({
   const [loading, setLoading] = useState(!initialProfile);
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
   const [isTogglingFollow, setIsTogglingFollow] = useState(false);
-  const [followerCount, setFollowerCount] = useState(initialProfile?.followers_count || 0);
+  const [followerCount, setFollowerCount] = useState<number>(initialProfile?.followers_count || 0);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [showFollows, setShowFollows] = useState<{ type: 'followers' | 'following', userId: string } | null>(null);
