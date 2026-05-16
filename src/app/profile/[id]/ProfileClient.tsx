@@ -50,43 +50,56 @@ export default function ProfileClient({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) console.error('[Profile] Auth error:', userError);
 
-      if (user && user.id === userId) {
-        router.replace('/profile');
-        return;
-      }
+        if (user && user.id === userId) {
+          router.replace('/profile');
+          return;
+        }
 
-      const [{ data: profileData }, { data: postsData }] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', userId).single(),
-        supabase.from('posts')
-          .select('id, content, like_count, comment_count, created_at, media_urls, music_url, music_title, music_artist, music_start_time, music_volume, video_volume, video_trim_start, video_trim_end, is_exclusive, is_encrypted, moderation_status')
-          .eq('author_id', userId)
-          .eq('moderation_status', 'approved')
-          .is('community_id', null)
-          .order('created_at', { ascending: false }),
-      ]);
-
-      if (!profileData) {
-        setLoading(false);
-        return;
-      }
-
-      setProfile(profileData);
-      setFollowerCount(profileData.followers_count || 0);
-      setPosts(postsData || []);
-
-      if (user) {
-        const [{ data: followData }, { data: subData }] = await Promise.all([
-          supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', userId).maybeSingle(),
-          supabase.from('subscriptions').select('id').eq('subscriber_id', user.id).eq('creator_id', userId).is('community_id', null).eq('status', 'active').maybeSingle()
+        const [{ data: profileData, error: profError }, { data: postsData, error: postsError }] = await Promise.all([
+          supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+          supabase.from('posts')
+            .select('id, content, like_count, comment_count, created_at, media_urls, music_url, music_title, music_artist, music_start_time, music_volume, video_volume, video_trim_start, video_trim_end, is_exclusive, is_encrypted, moderation_status')
+            .eq('author_id', userId)
+            .eq('moderation_status', 'approved')
+            .is('community_id', null)
+            .order('created_at', { ascending: false }),
         ]);
-        
-        setIsFollowing(!!followData);
-        setIsSubscribed(!!subData);
-      }
 
-      setLoading(false);
+        if (profError) console.error('[Profile] Profile fetch error:', profError);
+        if (postsError) console.error('[Profile] Posts fetch error:', postsError);
+
+        if (!profileData) {
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+
+        setProfile(profileData);
+        setFollowerCount(profileData.followers_count || 0);
+        setPosts(postsData || []);
+
+        if (user) {
+          try {
+            const [{ data: followData }, { data: subData }] = await Promise.all([
+              supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', userId).maybeSingle(),
+              supabase.from('subscriptions').select('id').eq('subscriber_id', user.id).eq('creator_id', userId).is('community_id', null).eq('status', 'active').maybeSingle()
+            ]);
+            
+            setIsFollowing(!!followData);
+            setIsSubscribed(!!subData);
+          } catch (innerError) {
+            console.error('[Profile] Interaction data error:', innerError);
+          }
+        }
+      } catch (err) {
+        console.error('[Profile] Critical fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchData();

@@ -92,7 +92,8 @@ export async function uploadAvatarAction(formData: FormData) {
     }
 
     const buffer = await file.arrayBuffer();
-    const base64Data = Buffer.from(buffer).toString('base64');
+    const binary = String.fromCharCode(...new Uint8Array(buffer));
+    const base64Data = btoa(binary);
     const dataUri = `data:${file.type};base64,${base64Data}`;
 
     const { getCloudinarySignatureAction } = await import('./cloudinary');

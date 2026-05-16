@@ -59,7 +59,7 @@ Instructions: If the text OR the attached media contains nudity, sexual acts, ex
 
         result = await model.generateContent([
           prompt,
-          { inlineData: { data: Buffer.from(buffer).toString('base64'), mimeType: 'image/jpeg' } }
+          { inlineData: { data: btoa(String.fromCharCode(...new Uint8Array(buffer))), mimeType: 'image/jpeg' } }
         ]);
       } else {
         // Analyze Text Only

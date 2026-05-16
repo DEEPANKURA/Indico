@@ -234,14 +234,20 @@ export default function PostCard({ post }: PostCardProps) {
     if (!post.isEncrypted || !currentUserId) return;
 
     const attemptDecryption = async () => {
+      if (!post.isEncrypted || !post.content || !post.id || !post.authorId) {
+        return;
+      }
+      
       try {
-        if (!post.authorId || !currentUserId) {
-          setIsDecrypting(false);
-          setHasAccess(false);
-          return;
+        setIsDecrypting(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        const currentUserId = user?.id;
+        if (!currentUserId) {
+           setIsDecrypting(false);
+           return;
         }
 
-        // 1. Fetch the encrypted content key for this user
+        // 1. Fetch the encrypted content key for the current user
         const { data: keyData, error: keyError } = await (supabase as any)
           .from('content_keys')
           .select('encrypted_key')
@@ -249,38 +255,50 @@ export default function PostCard({ post }: PostCardProps) {
           .eq('user_id', currentUserId)
           .maybeSingle();
 
-        if (keyError || !keyData?.encrypted_key) {
+        if (keyError || !keyData) {
+          console.warn('[E2EE] No content key found for user:', currentUserId, post.id);
           setIsDecrypting(false);
           setHasAccess(false);
           return;
         }
 
         // 2. Fetch the author's public key (to derive shared secret)
-        const { data: authorProfile, error: profileError } = await (supabase as any)
+        const { data: authorProfile, error: profileError } = await supabase
           .from('profiles')
           .select('public_key')
           .eq('id', post.authorId)
           .maybeSingle();
 
         if (profileError || !authorProfile?.public_key) {
-          console.warn('Author public key not found or error:', profileError);
-          setIsDecrypting(false);
-          setHasAccess(false);
-          return;
+           console.error('[E2EE] Author public key missing:', post.authorId);
+           throw new Error('Author public key not found');
         }
 
         const myKeys = getMyE2EEKeys();
-        if (!myKeys) throw new Error('My keys not found');
+        if (!myKeys) {
+           console.error('[E2EE] Local keys not found');
+           throw new Error('My keys not found');
+        }
 
         // 3. Derive shared secret and decrypt the content key
         const sharedKey = await deriveSharedKey(myKeys.privateKey, authorProfile.public_key);
-        if (!sharedKey) throw new Error('Shared key derivation failed');
+        if (!sharedKey) {
+           console.error('[E2EE] Shared key derivation failed');
+           throw new Error('Shared key derivation failed');
+        }
 
         const contentKey = await decryptE2EE(keyData.encrypted_key, sharedKey);
-        if (!contentKey || contentKey.includes('Error')) throw new Error('Content key decryption failed');
+        if (!contentKey) {
+           console.error('[E2EE] Content key decryption failed');
+           throw new Error('Content key decryption failed');
+        }
 
-        // 4. Decrypt the actual content and media
+        // 4. Decrypt the actual post content
         const decContent = CryptoJS.AES.decrypt(post.content, contentKey).toString(CryptoJS.enc.Utf8);
+        if (!decContent) {
+           console.error('[E2EE] AES decryption resulted in empty content');
+           throw new Error('Decryption failed');
+        }
         setDecryptedContent(decContent || '[Decryption Error]');
 
         if (post.mediaUrl) {

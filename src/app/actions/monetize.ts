@@ -6,8 +6,12 @@ import { revalidatePath } from 'next/cache';
 export async function getMonetizationDataAction() {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: 'Unauthorized' };
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      console.warn('[Monetization] Auth failed or no user:', authError);
+      return { success: false, error: 'Unauthorized' };
+    }
 
     const db = supabase as any;
 
@@ -16,45 +20,60 @@ export async function getMonetizationDataAction() {
       .from('profiles')
       .select('id, username, full_name, avatar_url, coins, referral_code, referred_by, total_earnings, is_creator, wallet_balance, payout_account, profile_subscription_price')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (profError) throw profError;
+    if (profError) {
+      console.error('[Monetization] Profile fetch error:', profError);
+      throw new Error(`Profile fetch failed: ${profError.message}`);
+    }
+    
+    if (!rawProfile) {
+      return { success: false, error: 'Profile not found' };
+    }
+    
     const profile = rawProfile as any;
 
-    // Ensure referral code exists
-    let refCode = profile.referral_code;
-    if (!refCode) {
-      refCode = `${profile.username || 'user'}_${Math.random().toString(36).substring(2, 6)}`.toUpperCase();
+    // Ensure referral code exists - only update if missing to avoid unnecessary writes
+    if (!profile.referral_code) {
+      const refCode = `${profile.username || 'user'}_${Math.random().toString(36).substring(2, 6)}`.toUpperCase();
       await db.from('profiles').update({ referral_code: refCode }).eq('id', user.id);
       profile.referral_code = refCode;
     }
 
     // Fetch user's communities to configure pricing
-    const { data: communities } = await db
+    const { data: communities, error: commError } = await db
       .from('communities')
       .select('*')
       .eq('creator_id', user.id);
+    
+    if (commError) console.warn('[Monetization] Communities fetch error:', commError);
 
     // Fetch user's active subscriptions to communities
-    const { data: subscriptions } = await db
+    const { data: subscriptions, error: subError } = await db
       .from('subscriptions')
       .select('*, community:communities(name, color, subscription_price)')
       .eq('subscriber_id', user.id)
       .eq('status', 'active');
+      
+    if (subError) console.warn('[Monetization] Subscriptions fetch error:', subError);
 
     // Fetch platform posts created by user to boost
-    const { data: posts } = await db
+    const { data: posts, error: postError } = await db
       .from('posts')
       .select('id, content, media_urls, like_count, comment_count, is_boosted, boost_coins, created_at')
       .eq('author_id', user.id)
       .order('created_at', { ascending: false });
+      
+    if (postError) console.warn('[Monetization] Posts fetch error:', postError);
 
-    // Fetch total subscription payouts earned as a creator
-    const { data: subscriberCount } = await db
+    // Fetch total subscription count earned as a creator
+    const { data: subscriberData, error: countError, count: subscriberCount } = await db
       .from('subscriptions')
-      .select('id', { count: 'exact' })
+      .select('id', { count: 'exact', head: true })
       .eq('creator_id', user.id)
       .eq('status', 'active');
+      
+    if (countError) console.warn('[Monetization] Subscriber count fetch error:', countError);
 
     return { 
       success: true, 
@@ -65,7 +84,8 @@ export async function getMonetizationDataAction() {
       subscriberCount: subscriberCount || 0
     };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    console.error('[Monetization] Critical Error in action:', error);
+    return { success: false, error: error.message || 'An unexpected error occurred' };
   }
 }
 
