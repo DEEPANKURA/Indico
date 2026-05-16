@@ -48,8 +48,29 @@ export default function UpdatePasswordPage() {
       }, 2000);
       
     } catch (err: any) {
-      const msg = err?.message || err?.error_description || err?.msg || JSON.stringify(err);
-      setError(msg || 'An error occurred while updating your password. Please try again.');
+      console.error('Update Password Error:', err);
+      let msg = 'An error occurred while updating your password. Please try again.';
+      
+      if (err instanceof Error) {
+        msg = err.message;
+      } else if (typeof err === 'string') {
+        msg = err;
+      } else if (err?.message) {
+        msg = err.message;
+      } else if (err?.error_description) {
+        msg = err.error_description;
+      } else if (err?.msg) {
+        msg = err.msg;
+      } else {
+        try {
+          const stringified = JSON.stringify(err);
+          if (stringified !== '{}') msg = stringified;
+        } catch (e) {
+          // Ignore stringify errors
+        }
+      }
+      
+      setError(msg);
     } finally {
       setLoading(false);
     }
