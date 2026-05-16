@@ -55,6 +55,21 @@ export default function MessagesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setCurrentUser(user);
+
+      // Check for 'user' param in URL to auto-select a chat
+      const params = new URLSearchParams(window.location.search);
+      const targetUserId = params.get('user');
+      if (targetUserId) {
+        const { data: targetProfile } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url, public_key')
+          .eq('id', targetUserId)
+          .single();
+        
+        if (targetProfile) {
+          setSelectedUser(targetProfile);
+        }
+      }
     };
     init();
   }, []);
