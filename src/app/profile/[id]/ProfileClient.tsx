@@ -9,22 +9,34 @@ import { createRazorpayOrderAction, verifyRazorpayPaymentAction } from '@/app/ac
 import FollowsModal from '@/components/FollowsModal';
 import PostCard from '@/components/PostCard';
 
-export default function ProfileClient({ params }: { params: { id: string } }) {
+export default function ProfileClient({ 
+  params,
+  initialProfile,
+  initialPosts,
+  initialIsFollowing = false,
+  initialIsSubscribed = false
+}: { 
+  params: { id: string },
+  initialProfile?: any,
+  initialPosts?: any[],
+  initialIsFollowing?: boolean,
+  initialIsSubscribed?: boolean
+}) {
   const router = useRouter();
   const userId = params.id;
   const supabase = createClient();
 
-  const [profile, setProfile] = useState<any>(null);
-  const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [profile, setProfile] = useState<any>(initialProfile || null);
+  const [posts, setPosts] = useState<any[]>(initialPosts || []);
+  const [loading, setLoading] = useState(!initialProfile);
+  const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
   const [isTogglingFollow, setIsTogglingFollow] = useState(false);
-  const [followerCount, setFollowerCount] = useState(0);
+  const [followerCount, setFollowerCount] = useState(initialProfile?.followers_count || 0);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [showFollows, setShowFollows] = useState<{ type: 'followers' | 'following', userId: string } | null>(null);
   
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(initialIsSubscribed);
   const [activeTab, setActiveTab] = useState<'public' | 'exclusive' | 'reels'>('public');
 
   // Checkout modal
@@ -50,6 +62,8 @@ export default function ProfileClient({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     const fetchData = async () => {
+      // If we already have initial data, we don't need to block rendering, 
+      // but we might want to refresh it in the background if it's stale.
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError) console.error('[Profile] Auth error:', userError);
@@ -105,7 +119,24 @@ export default function ProfileClient({ params }: { params: { id: string } }) {
       }
     };
 
-    fetchData();
+    // If we have initial profile, we can fetch in background
+    if (!initialProfile) {
+      fetchData();
+    } else {
+      // Just check auth/interaction in background
+      const refreshInteractions = async () => {
+         const { data: { user } } = await supabase.auth.getUser();
+         if (user && user.id !== userId) {
+            const [followRes, subRes] = await Promise.all([
+              supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', userId).single(),
+              supabase.from('subscriptions').select('id').eq('subscriber_id', user.id).eq('creator_id', userId).is('community_id', null).eq('status', 'active').single()
+            ]);
+            setIsFollowing(!!followRes.data);
+            setIsSubscribed(!!subRes.data);
+         }
+      };
+      refreshInteractions();
+    }
 
     // Live sync for profile updates (followers, new posts)
     const channel = supabase
@@ -339,7 +370,7 @@ export default function ProfileClient({ params }: { params: { id: string } }) {
         {(activeTab === 'public' 
             ? posts.filter(p => !p.is_exclusive) 
             : activeTab === 'exclusive' 
-              ? posts.filter(p => p.is_exclusive)
+              ? (isSubscribed ? posts.filter(p => p.is_exclusive) : [])
               : activeTab === 'reels'
                 ? posts.filter(p => typeof p.media_urls?.[0] === 'string' && p.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/))
                 : []
@@ -347,7 +378,7 @@ export default function ProfileClient({ params }: { params: { id: string } }) {
           (activeTab === 'public' 
             ? posts.filter(p => !p.is_exclusive) 
             : activeTab === 'exclusive' 
-              ? posts.filter(p => p.is_exclusive)
+              ? (isSubscribed ? posts.filter(p => p.is_exclusive) : [])
               : activeTab === 'reels'
                 ? posts.filter(p => typeof p.media_urls?.[0] === 'string' && p.media_urls[0].toLowerCase().match(/\.(mp4|webm|ogg)/))
                 : []
@@ -387,17 +418,19 @@ export default function ProfileClient({ params }: { params: { id: string } }) {
             </div>
           ))
         ) : (
-          <div style={{ gridColumn: 'span 3', padding: '60px 20px', textAlign: 'center' }}>
-            <div style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-              {activeTab === 'exclusive' ? <Lock size={40} /> : <Camera size={40} />}
+          !(activeTab === 'exclusive' && !isSubscribed) && (
+            <div style={{ gridColumn: 'span 3', padding: '60px 20px', textAlign: 'center' }}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                {activeTab === 'exclusive' ? <Lock size={40} /> : <Camera size={40} />}
+              </div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: '800' }}>
+                {activeTab === 'exclusive' ? 'No Exclusive Content' : activeTab === 'reels' ? 'No Reels Yet' : 'No Posts Yet'}
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                {activeTab === 'exclusive' ? 'Subscribe to see exclusive content from this creator.' : 'This creator hasn\'t posted anything yet.'}
+              </p>
             </div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800' }}>
-              {activeTab === 'exclusive' ? 'No Exclusive Content' : activeTab === 'reels' ? 'No Reels Yet' : 'No Posts Yet'}
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              {activeTab === 'exclusive' ? 'Subscribe to see exclusive content from this creator.' : 'This creator hasn\'t posted anything yet.'}
-            </p>
-          </div>
+          )
         )}
       </div>
 
