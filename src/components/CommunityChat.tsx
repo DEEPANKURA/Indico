@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Send, Smile, Loader2, User, ExternalLink, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
-import { encryptText, decryptText } from '@/utils/e2ee';
+import { encryptTextLegacy, decryptTextLegacy } from '@/utils/e2ee';
 
 const STICKERS = [
   'https://fonts.gstatic.com/s/e/notoemoji/latest/1f600/512.gif',
@@ -49,7 +49,7 @@ export default function CommunityChat({
       }, async (payload) => {
         const newMsg = payload.new;
         if (newMsg.message_type === 'text' && newMsg.content) {
-          newMsg.content = decryptText(newMsg.content, communityId);
+          newMsg.content = decryptTextLegacy(newMsg.content, communityId);
         }
         
         const [profRes, postRes] = await Promise.all([
@@ -58,7 +58,7 @@ export default function CommunityChat({
         ]);
 
         if (postRes.data && postRes.data.content) {
-          postRes.data.content = decryptText(postRes.data.content, communityId);
+          postRes.data.content = decryptTextLegacy(postRes.data.content, communityId);
         }
 
         setMessages(prev => {
@@ -87,10 +87,10 @@ export default function CommunityChat({
 
     const decryptedData = (data || []).map(msg => {
       if (msg.message_type === 'text' && msg.content) {
-        msg.content = decryptText(msg.content, communityId);
+        msg.content = decryptTextLegacy(msg.content, communityId);
       }
       if (msg.post && msg.post.content) {
-        msg.post.content = decryptText(msg.post.content, communityId);
+        msg.post.content = decryptTextLegacy(msg.post.content, communityId);
       }
       return msg;
     });
@@ -112,7 +112,7 @@ export default function CommunityChat({
     const newMsg = {
       community_id: communityId,
       sender_id: user.id,
-      content: isText ? encryptText(rawContent, communityId) : rawContent,
+      content: isText ? encryptTextLegacy(rawContent, communityId) : rawContent,
       message_type: stickerUrl ? 'sticker' : 'text',
       sticker_url: stickerUrl || null
     };

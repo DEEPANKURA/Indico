@@ -27,7 +27,7 @@ import {
 import PostCard from '@/components/PostCard';
 import CreatePost from '@/components/CreatePost';
 import CommunityChat from '@/components/CommunityChat';
-import { decryptText } from '@/utils/e2ee';
+import { decryptTextLegacy } from '@/utils/e2ee';
 import { uploadToCloudinary } from '@/utils/cloudinary';
 
 interface Profile {
@@ -208,7 +208,7 @@ export default function CommunityClient({ params }: { params: { id: string } }) 
 
       const mappedPosts = postData?.map((p: any) => ({
         ...p,
-        content: p.content ? decryptText(p.content, id) : p.content,
+        content: p.content ? decryptTextLegacy(p.content, id) : p.content,
         author: {
           name: p.author?.username || 'Anonymous',
           handle: `@${p.author?.username || 'anon'}`,
