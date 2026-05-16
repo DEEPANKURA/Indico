@@ -128,12 +128,17 @@ export default function TrendingPage() {
           className="hide-scrollbar"
         >
           {reels.map((post, index) => (
-            <div key={post.id} className="reel-item" data-index={index}>
+            <div 
+              key={post.id} 
+              className="reel-item" 
+              data-index={index}
+              style={{ height: 'calc(100dvh - 64px)', scrollSnapAlign: 'start', flexShrink: 0 }}
+            >
               <ReelCard 
                 isActive={index === activeIndex}
                 post={post}
               />
-          </div>
+            </div>
           ))}
         </div>
       ) : (

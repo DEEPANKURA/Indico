@@ -191,15 +191,11 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
 
   return (
     <div style={{
-      height: 'calc(100vh - 120px)',
-      maxHeight: '800px',
+      height: '100%',
       width: '100%',
       backgroundColor: '#000',
-      borderRadius: '20px',
       position: 'relative',
       overflow: 'hidden',
-      scrollSnapAlign: 'start',
-      marginBottom: '20px'
     }}>
       <video
         ref={videoRef}
