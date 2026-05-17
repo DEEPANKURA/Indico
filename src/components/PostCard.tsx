@@ -132,6 +132,21 @@ export default function PostCard({ post }: PostCardProps) {
                 });
               }
             }
+            // In view: handle audio auto-play if applicable
+            if (audioRef.current) {
+              audioRef.current.volume = post.musicVolume ?? 0.5;
+              if (post.musicStartTime && audioRef.current.currentTime < post.musicStartTime) {
+                audioRef.current.currentTime = post.musicStartTime;
+              }
+              const playPromise = audioRef.current.play();
+              if (playPromise !== undefined) {
+                playPromise.then(() => setIsPlayingMusic(true)).catch(error => {
+                  console.warn('Audio auto-play failed or was interrupted:', error);
+                });
+              } else {
+                setIsPlayingMusic(true);
+              }
+            }
           }
         });
       },

@@ -5,6 +5,7 @@ import { Heart, MessageCircle, Share2, Music2, User, Volume2, VolumeX, Flame } f
 import { toggleLikeAction } from '@/app/actions/social';
 import { boostReelWithCoinsAction } from '@/app/actions/monetize';
 import { createClient } from '@/utils/supabase/client';
+import Link from 'next/link';
 import CommentModal from './CommentModal';
 import ShareModal from './ShareModal';
 
@@ -233,24 +234,26 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
         background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
         color: 'white'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-          <div style={{ 
-            width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', 
-            border: '2px solid var(--accent-primary)', background: 'var(--bg-secondary)'
-          }}>
-            {post.author.avatar ? (
-              <img src={post.author.avatar} alt={post.author.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <User size={20} />
-              </div>
-            )}
-          </div>
-          <div>
-            <div style={{ fontWeight: 'bold' }}>{post.author.name}</div>
-            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>@{post.author.username}</div>
-          </div>
-          <button className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.8rem', marginLeft: '10px' }}>Follow</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', width: '100%' }}>
+          <Link href={`/profile/${post.author.id}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'inherit', flex: 1 }}>
+            <div style={{ 
+              width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', 
+              border: '2px solid var(--accent-primary)', background: 'var(--bg-secondary)', flexShrink: 0
+            }}>
+              {post.author.avatar ? (
+                <img src={post.author.avatar} alt={post.author.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <User size={20} />
+                </div>
+              )}
+            </div>
+            <div style={{ overflow: 'hidden' }}>
+              <div style={{ fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.author.name}</div>
+              <div style={{ fontSize: '0.8rem', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{post.author.username}</div>
+            </div>
+          </Link>
+          <button className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.8rem', flexShrink: 0 }}>Follow</button>
         </div>
         
         <p style={{ fontSize: '0.95rem', marginBottom: '12px', lineHeight: '1.4' }}>{post.content}</p>
