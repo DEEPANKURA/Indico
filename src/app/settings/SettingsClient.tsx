@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, User, Camera, Save, Loader2, LogOut, Bell, Shield, CreditCard } from 'lucide-react';
+import { Settings, User, Camera, Save, Loader2, LogOut, Bell, Shield, CreditCard, ShieldAlert, FileText, BookOpen } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { uploadToCloudinary } from '@/utils/cloudinary';
 
@@ -93,6 +93,7 @@ export default function SettingsClient({ profile, email }: Props) {
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'privacy', label: 'Privacy', icon: Shield },
     { id: 'billing', label: 'Billing', icon: CreditCard },
+    { id: 'legal', label: 'Legal & Guidelines', icon: ShieldAlert },
   ];
 
   return (
@@ -304,6 +305,70 @@ export default function SettingsClient({ profile, email }: Props) {
             </ul>
           </div>
           <button className="btn-primary" style={{ width: '100%', padding: '14px', fontSize: '1rem' }}>Upgrade to Pro</button>
+        </div>
+      )}
+
+      {activeTab === 'legal' && (
+        <div className="glass-card" style={{ padding: '24px', borderRadius: '20px' }}>
+          <h2 style={{ fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShieldAlert size={22} style={{ color: 'var(--accent-neon, #00f0ff)' }} />
+            Platform Policies & Safety
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px', lineHeight: '1.5' }}>
+            Indico is dedicated to creator freedom, safe interactions, and transparent privacy compliance. Read our official terms and guidelines below.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[
+              { title: 'Terms of Service', desc: 'Read your rights, content ownership licensing, and account policies.', path: '/terms', icon: FileText, color: 'var(--accent-primary, #8a2be2)' },
+              { title: 'Privacy Policy', desc: 'Understand what personal records we collect, how we secure payments, and GDPR/DPDPA data compliance.', path: '/privacy', icon: Shield, color: 'var(--accent-secondary, #a855f7)' },
+              { title: 'Community Guidelines', desc: 'Learn about zero-tolerance policies on harassment, scams, hate speech, violent threats, and child safety.', path: '/guidelines', icon: BookOpen, color: '#ef4444' },
+            ].map((policy, idx) => {
+              const PolicyIcon = policy.icon;
+              return (
+                <div 
+                  key={idx}
+                  onClick={() => router.push(policy.path)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px',
+                    borderRadius: '16px',
+                    background: 'var(--bg-glass)',
+                    border: '1px solid var(--border-light)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  className="hover-glow"
+                >
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                    <div style={{
+                      width: '40px', height: '40px', borderRadius: '12px',
+                      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                    }}>
+                      <PolicyIcon size={20} style={{ color: policy.color }} />
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                      <strong style={{ fontSize: '0.95rem', color: 'white', display: 'block' }}>{policy.title}</strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{policy.desc}</span>
+                    </div>
+                  </div>
+                  <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: '1.2rem', paddingLeft: '8px' }}>→</span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ marginTop: '28px', padding: '16px', borderRadius: '14px', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.02)', textAlign: 'center' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>
+              For support, safe-reporting, or privacy requests:
+            </span>
+            <strong style={{ fontSize: '0.85rem', color: 'var(--accent-neon, #00f0ff)', display: 'block', marginTop: '4px' }}>
+              legal@indicosocial.in
+            </strong>
+          </div>
         </div>
       )}
     </div>

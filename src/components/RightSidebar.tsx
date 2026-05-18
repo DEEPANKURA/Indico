@@ -111,9 +111,11 @@ export default function RightSidebar() {
         color: 'var(--text-muted, #94a3b8)',
         opacity: 0.8
       }}>
-        <Link href="/terms" style={{ color: 'var(--text-muted, #94a3b8)', textDecoration: 'none' }} className="hover-neon">Terms of Service</Link>
+        <Link href="/terms" style={{ color: 'var(--text-muted, #94a3b8)', textDecoration: 'none' }} className="hover-neon">Terms</Link>
         <span>•</span>
-        <Link href="/privacy" style={{ color: 'var(--text-muted, #94a3b8)', textDecoration: 'none' }} className="hover-neon">Privacy Policy</Link>
+        <Link href="/privacy" style={{ color: 'var(--text-muted, #94a3b8)', textDecoration: 'none' }} className="hover-neon">Privacy</Link>
+        <span>•</span>
+        <Link href="/guidelines" style={{ color: 'var(--text-muted, #94a3b8)', textDecoration: 'none' }} className="hover-neon">Guidelines</Link>
         <span>•</span>
         <span>© 2026 Indico</span>
       </div>
