@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { 
   Users, AlertOctagon, HeartOff, MegaphoneOff, ShieldAlert, 
-  Flame, Skull, Ban, HelpCircle, FileWarning, EyeOff 
+  Flame, Skull, Ban, HelpCircle, FileWarning, EyeOff, CheckCircle2, XCircle
 } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -161,6 +161,71 @@ export default function GuidelinesPage() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Side-by-Side Content Policy */}
+        <div style={{ marginTop: '48px', paddingTop: '40px', borderTop: '1px solid var(--border-light)' }}>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: '900', color: 'white', marginBottom: '8px', textAlign: 'center' }}>
+            Recommended Content Policy
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '32px', textAlign: 'center', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto', lineHeight: '1.6' }}>
+            To protect our creators' artistic freedom while upholding strict legal safety limits, here is our explicit checklist of what is permitted and banned on Indico.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+            
+            {/* Allowed Content */}
+            <div className="glass-card" style={{ padding: '28px', borderRadius: '24px', border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.02)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                <CheckCircle2 size={24} style={{ color: '#10b981' }} />
+                <h3 style={{ fontSize: '1.3rem', fontWeight: '800', color: '#10b981', margin: 0 }}>Allowed Content</h3>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {[
+                  { title: 'Bikinis & Swimwear', desc: 'Standard beachwear and swimwear are fully permitted.' },
+                  { title: 'Beachwear & Outdoor', desc: 'Vacation outfits and scenic outdoor beach modeling.' },
+                  { title: 'Fitness Clothing', desc: 'Athletic wear, gym outfits, yoga clothing, and sports modeling.' },
+                  { title: 'Fashion Modeling', desc: 'High-end apparel, runway, editorial lifestyle and catalog shoots.' },
+                  { title: 'Artistic Photography', desc: 'Fine-art creative portraits and aesthetic visual works without nudity.' }
+                ].map((item, idx) => (
+                  <li key={idx} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <span style={{ color: '#10b981', fontWeight: 'bold', marginTop: '2px' }}>✓</span>
+                    <div style={{ textAlign: 'left' }}>
+                      <strong style={{ color: 'white', fontSize: '0.95rem', display: 'block' }}>{item.title}</strong>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{item.desc}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Not Allowed Content */}
+            <div className="glass-card" style={{ padding: '28px', borderRadius: '24px', border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.02)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                <XCircle size={24} style={{ color: '#ef4444' }} />
+                <h3 style={{ fontSize: '1.3rem', fontWeight: '800', color: '#ef4444', margin: 0 }}>Prohibited Content</h3>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {[
+                  { title: 'Visible Genitals', desc: 'Strict ban on any real or simulated exposure.' },
+                  { title: 'Visible Nipples', desc: 'Prohibited in line with gender-specific content policies.' },
+                  { title: 'Explicit Sexual Content', desc: 'Sexually suggestive, provocative physical exposure or simulated media.' },
+                  { title: 'Fetish & Pornography', desc: 'Commercial pornographic content, sexually explicit acts, or fetish videos.' },
+                  { title: 'Overly Explicit Close-ups', desc: 'Focusing exclusively on intimate areas or highly suggestive framing.' },
+                  { title: 'Escort/Prostitution Promotion', desc: 'Promoting paid sexual companionship, escort agencies, or solicitation.' }
+                ].map((item, idx) => (
+                  <li key={idx} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <span style={{ color: '#ef4444', fontWeight: 'bold', marginTop: '2px' }}>✗</span>
+                    <div style={{ textAlign: 'left' }}>
+                      <strong style={{ color: 'white', fontSize: '0.95rem', display: 'block' }}>{item.title}</strong>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{item.desc}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+          </div>
         </div>
       </section>
 
