@@ -26,7 +26,8 @@ export async function createClient() {
         },
       },
       global: {
-        fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
+        // Use default caching strategy to allow CDN cached egress.
+        fetch: (url, options) => fetch(url, { ...options }),
       },
     }
   );
