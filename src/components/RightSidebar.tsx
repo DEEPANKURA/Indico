@@ -113,6 +113,8 @@ export default function RightSidebar() {
       }}>
         <Link href="/terms" style={{ color: 'var(--text-muted, #94a3b8)', textDecoration: 'none' }} className="hover-neon">Terms of Service</Link>
         <span>•</span>
+        <Link href="/privacy" style={{ color: 'var(--text-muted, #94a3b8)', textDecoration: 'none' }} className="hover-neon">Privacy Policy</Link>
+        <span>•</span>
         <span>© 2026 Indico</span>
       </div>
     </aside>
