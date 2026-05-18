@@ -1,0 +1,190 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  user
+  moderator
+  admin
+  superadmin
+}
+
+enum ModerationStatus {
+  pending
+  approved
+  flagged
+  rejected
+}
+
+enum AuditAction {
+  USER_BAN
+  USER_SHADOWBAN
+  USER_VERIFY
+  USER_ROLE_CHANGE
+  POST_DELETE
+  COMMUNITY_DISABLE
+  EMERGENCY_LOCKDOWN
+  SETTINGS_UPDATE
+}
+
+model User {
+  id                        String              @id @default(uuid())
+  email                     String              @unique
+  username                  String              @unique
+  fullName                  String?             @map("full_name")
+  avatarUrl                 String?             @map("avatar_url")
+  bio                       String?
+  role                      Role                @default(user)
+  isCreator                 Boolean             @default(false) @map("is_creator")
+  walletBalance             Decimal             @default(0.00) @map("wallet_balance")
+  isShadowbanned            Boolean             @default(false) @map("is_shadowbanned")
+  isSuspended               Boolean             @default(false) @map("is_suspended")
+  twoFactorEnabled          Boolean             @default(false) @map("two_factor_enabled")
+  twoFactorSecret           String?             @map("two_factor_secret")
+  createdAt                 DateTime            @default(now()) @map("created_at")
+  updatedAt                 DateTime            @updatedAt @map("updated_at")
+  
+  // Relations
+  posts                     Post[]
+  communities               Community[]         @relation("CreatedCommunities")
+  memberships               CommunityMember[]
+  reportsSubmitted          Report[]            @relation("Reporter")
+  auditLogs                 AdminAuditLog[]
+  sessions                  Session[]
+  notifications             Notification[]      @relation("UserNotifications")
+  actionsPerformed          ModerationAction[]  @relation("ModeratorActions")
+  
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  token        String   @unique
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Post {
+  id               String           @id @default(uuid())
+  authorId         String           @map("author_id")
+  content          String?
+  mediaUrls        String[]         @map("media_urls")
+  moderationStatus ModerationStatus @default(approved) @map("moderation_status")
+  aiSafetyScore    Int              @default(100) @map("ai_safety_score")
+  aiConfidenceScore Decimal?        @map("ai_confidence_score")
+  isFlagged        Boolean          @default(false) @map("is_flagged")
+  communityId      String?          @map("community_id")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  author           User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  community        Community?       @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  reports          Report[]
+
+  @@map("posts")
+}
+
+model Community {
+  id                 String            @id @default(uuid())
+  name               String            @unique
+  description        String?
+  category           String?
+  isPublic           Boolean           @default(true) @map("is_public")
+  isExclusive        Boolean           @default(false) @map("is_exclusive")
+  joinPrice          Decimal           @default(0.00) @map("join_price")
+  color              String            @default("#8b5cf6")
+  creatorId          String            @map("creator_id")
+  isDisabled         Boolean           @default(false) @map("is_disabled")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  creator            User              @relation("CreatedCommunities", fields: [creatorId], references: [id], onDelete: Cascade)
+  members            CommunityMember[]
+  posts              Post[]
+
+  @@map("communities")
+}
+
+model CommunityMember {
+  communityId String   @map("community_id")
+  userId      String   @map("user_id")
+  role        String   @default("member")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([communityId, userId])
+  @@map("community_members")
+}
+
+model Report {
+  id         String   @id @default(uuid())
+  postId     String?  @map("post_id")
+  reporterId String   @map("reporter_id")
+  reason     String
+  details    String?
+  status     String   @default("pending") // pending, resolved, dismissed
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  post       Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporter   User     @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+model AdminAuditLog {
+  id         String      @id @default(uuid())
+  adminId    String      @map("admin_id")
+  action     AuditAction
+  details    String?
+  ipAddress  String?     @map("ip_address")
+  userAgent  String?     @map("user_agent")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  admin      User        @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("admin_audit_logs")
+}
+
+model ModerationAction {
+  id          String           @id @default(uuid())
+  moderatorId String           @map("moderator_id")
+  targetType  String           @map("target_type") // post, user, comment
+  targetId    String           @map("target_id")
+  actionTaken String           @map("action_taken") // delete, ban, warn
+  reason      String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  moderator   User             @relation("ModeratorActions", fields: [moderatorId], references: [id], onDelete: Cascade)
+
+  @@map("moderation_actions")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}

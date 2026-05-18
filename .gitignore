@@ -48,3 +48,7 @@ next-env.d.ts
 
 # Cloudflare Workers local dev secrets (contains real keys)
 .dev.vars
+
+# wrangler dev state caches
+.wrangler/
+
