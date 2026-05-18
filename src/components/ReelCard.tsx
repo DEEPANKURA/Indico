@@ -1,11 +1,12 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { Heart, MessageCircle, Share2, Music2, User, Volume2, VolumeX, Flame } from 'lucide-react';
-import { toggleLikeAction } from '@/app/actions/social';
+import { Heart, MessageCircle, Share2, Music2, User, Volume2, VolumeX, Flame, Flag, Bookmark, Loader2 } from 'lucide-react';
+import { toggleLikeAction, toggleFollowAction, reportPostAction } from '@/app/actions/social';
 import { boostReelWithCoinsAction } from '@/app/actions/monetize';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
+import { toast } from 'react-hot-toast';
 import CommentModal from './CommentModal';
 import ShareModal from './ShareModal';
 
@@ -54,6 +55,8 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(post.currentUserId || null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
 
   useEffect(() => {
@@ -190,6 +193,53 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
     setBoosting(false);
   };
 
+  const handleFollow = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!currentUserId) {
+      toast.error('Please log in to follow creators.');
+      return;
+    }
+    const wasFollowing = isFollowing;
+    setIsFollowing(!wasFollowing);
+    const res = await toggleFollowAction(post.author.id);
+    if (!res.success) {
+      setIsFollowing(wasFollowing);
+      toast.error(res.error || 'Failed to toggle follow status');
+    } else {
+      setIsFollowing(res.following!);
+      toast.success(res.following ? `Following @${post.author.username}` : `Unfollowed @${post.author.username}`);
+    }
+  };
+
+  const handleSave = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const nextSaved = !isSaved;
+    setIsSaved(nextSaved);
+    if (nextSaved) {
+      toast.success('Reel saved to bookmarks!');
+    } else {
+      toast.success('Reel removed from bookmarks!');
+    }
+  };
+
+  const handleReport = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const reason = prompt('Reason for reporting (Sexual content, Vulger, Harassment, Porn, Child abuses, Criminal act):');
+    if (!reason) return;
+
+    setIsReporting(true);
+    const res = await reportPostAction(post.id, reason);
+    if (res.success) {
+      toast.success(res.message || 'Reported successfully');
+    } else {
+      toast.error(res.error || 'Failed to report');
+    }
+    setIsReporting(false);
+  };
+
   return (
     <div style={{
       height: '100%',
@@ -232,10 +282,11 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
         right: 0,
         padding: '20px',
         background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
-        color: 'white'
+        color: 'white',
+        zIndex: 5
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', width: '100%' }}>
-          <Link href={`/profile/${post.author.id}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'inherit', flex: 1 }}>
+          <Link href={`/profile/${post.author.id}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
             <div style={{ 
               width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', 
               border: '2px solid var(--accent-primary)', background: 'var(--bg-secondary)', flexShrink: 0
@@ -248,12 +299,33 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
                 </div>
               )}
             </div>
-            <div style={{ overflow: 'hidden' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
               <div style={{ fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.author.name}</div>
-              <div style={{ fontSize: '0.8rem', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{post.author.username}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.8rem', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{post.author.username}</span>
+                {currentUserId !== post.author.id && (
+                  <button 
+                    onClick={handleFollow}
+                    style={{ 
+                      padding: '2px 8px', 
+                      fontSize: '0.7rem', 
+                      fontWeight: 'bold',
+                      borderRadius: '4px',
+                      border: isFollowing ? '1px solid rgba(255,255,255,0.4)' : 'none',
+                      background: isFollowing ? 'transparent' : 'var(--accent-primary, #6366f1)',
+                      color: 'white',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      lineHeight: '1.2',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </button>
+                )}
+              </div>
             </div>
           </Link>
-          <button className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.8rem', flexShrink: 0 }}>Follow</button>
         </div>
         
         <p style={{ fontSize: '0.95rem', marginBottom: '12px', lineHeight: '1.4' }}>{post.content}</p>
@@ -270,11 +342,12 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
       <div style={{
         position: 'absolute',
         right: '15px',
-        bottom: '100px',
+        bottom: '80px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '20px',
-        alignItems: 'center'
+        gap: '16px',
+        alignItems: 'center',
+        zIndex: 10
       }}>
         <button onClick={handleLike} style={{ background: 'none', border: 'none', color: liked ? '#ef4444' : 'white', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
           <div style={{ padding: '10px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
@@ -290,10 +363,25 @@ export default function ReelCard({ post, isActive }: ReelCardProps) {
           <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{post.comments}</span>
         </button>
 
-        <button onClick={() => setShowShare(true)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+        <button onClick={() => setShowShare(true)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
           <div style={{ padding: '10px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
             <Share2 size={24} />
           </div>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Share</span>
+        </button>
+
+        <button onClick={handleSave} style={{ background: 'none', border: 'none', color: isSaved ? '#f59e0b' : 'white', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+          <div style={{ padding: '10px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', border: isSaved ? '1px solid #f59e0b' : 'none' }}>
+            <Bookmark size={24} fill={isSaved ? '#f59e0b' : 'none'} />
+          </div>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Save</span>
+        </button>
+
+        <button onClick={handleReport} disabled={isReporting} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+          <div style={{ padding: '10px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+            {isReporting ? <Loader2 size={24} className="animate-spin" /> : <Flag size={24} />}
+          </div>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Report</span>
         </button>
 
         {/* Boost Reel Option */}

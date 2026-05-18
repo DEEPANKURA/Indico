@@ -420,7 +420,7 @@ export default function PostCard({ post }: PostCardProps) {
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           {post.authorId && (
             <button onClick={handleFollow} className={isFollowing ? "btn-secondary" : "btn-primary"} style={{ padding: '6px 16px', fontSize: '0.85rem' }}>
               {isFollowing ? 'Following' : 'Follow'}
@@ -436,14 +436,6 @@ export default function PostCard({ post }: PostCardProps) {
               {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
             </button>
           )}
-          <button
-            onClick={handleReport}
-            disabled={isReporting}
-            style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
-            title="Report Content"
-          >
-            {isReporting ? <Loader2 size={18} className="animate-spin" /> : <Flag size={18} />}
-          </button>
         </div>
       </div>
 
@@ -594,8 +586,17 @@ export default function PostCard({ post }: PostCardProps) {
             <Share2 size={22} /> <span className="text-sm font-semibold">{post.shares}</span>
           </button>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button style={{ color: 'var(--text-secondary)' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <button
+            onClick={handleReport}
+            disabled={isReporting}
+            style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px', transition: 'transform 0.2s' }}
+            title="Report Content"
+            className="hover-scale"
+          >
+            {isReporting ? <Loader2 size={20} className="animate-spin" /> : <Flag size={20} />}
+          </button>
+          <button style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
             <Bookmark size={22} />
           </button>
         </div>
