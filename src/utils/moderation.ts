@@ -1,34 +1,10 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-let genAIInstance: any = null;
-function getGenAI() {
-  if (!genAIInstance) {
-    if (process.env.GEMINI_API_KEY) {
-      genAIInstance = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    } else {
-      console.error('CRITICAL: GEMINI_API_KEY is not defined in environment variables.');
-    }
-  }
-  return genAIInstance;
-}
-
 export async function analyzeContentSafety(content: string, mediaUrl?: string) {
-  const genAI = getGenAI();
-  if (!genAI) {
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey) {
     return { is_flagged: false, safety_score: 100, reason: 'AI disabled (missing API key)' };
   }
 
   try {
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
-      safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-      ]
-    });
-
     const parts: any[] = [];
     
     // Fetch image data if URL is provided
@@ -68,13 +44,39 @@ export async function analyzeContentSafety(content: string, mediaUrl?: string) {
       
       Return ONLY JSON: { "is_flagged": boolean, "safety_score": number, "reason": string }`;
 
-    parts.unshift(prompt);
+    parts.unshift({ text: prompt });
 
-    const moderationPromise = model.generateContent(parts);
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+    
+    const requestBody = {
+      contents: [
+        {
+          parts: parts
+        }
+      ],
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      ]
+    };
+
+    const fetchPromise = fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    }).then(async (res) => {
+      if (!res.ok) {
+        throw new Error(`Gemini API HTTP ${res.status}`);
+      }
+      return res.json();
+    });
+
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI Timeout')), 10000));
 
-    const result: any = await Promise.race([moderationPromise, timeoutPromise]);
-    const responseText = result.response.text();
+    const data: any = await Promise.race([fetchPromise, timeoutPromise]);
+    const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {

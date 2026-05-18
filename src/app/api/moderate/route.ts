@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -38,48 +37,74 @@ export async function POST(req: Request) {
     const content = record.content || '';
 
     // 3. Prepare AI Analysis
-    const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
     const prompt = `Analyze this post.
 Content: "${content}"
 Instructions: If the text OR the attached media contains nudity, sexual acts, extreme vulgarity, harassment, or prohibited content, respond ONLY with 'REJECT'. Otherwise respond 'APPROVE'.`;
 
-    let result;
-    try {
-      if (mediaUrl) {
-        // Analyze Text + Media
-        let fetchUrl = mediaUrl;
-        if (mediaUrl.toLowerCase().match(/\.(mp4|webm|mov|m4v|ogg)/i)) {
-          fetchUrl = mediaUrl.replace('/upload/', '/upload/so_0,f_jpg,w_500/');
-        }
-
-        const mediaResp = await fetch(fetchUrl);
-        if (!mediaResp.ok) throw new Error('Failed to fetch media');
-        const buffer = await mediaResp.arrayBuffer();
-
-        result = await model.generateContent([
-          prompt,
-          { inlineData: { data: btoa(String.fromCharCode(...new Uint8Array(buffer))), mimeType: 'image/jpeg' } }
-        ]);
-      } else {
-        // Analyze Text Only
-        result = await model.generateContent(prompt);
+    const parts: any[] = [];
+    
+    if (mediaUrl) {
+      let fetchUrl = mediaUrl;
+      if (mediaUrl.toLowerCase().match(/\.(mp4|webm|mov|m4v|ogg)/i)) {
+        fetchUrl = mediaUrl.replace('/upload/', '/upload/so_0,f_jpg,w_500/');
       }
-    } catch (aiError: any) {
-      console.error('[Moderation] AI Error:', aiError.message);
-      return NextResponse.json({ success: true, ai_error: aiError.message });
+
+      const mediaResp = await fetch(fetchUrl);
+      if (!mediaResp.ok) throw new Error('Failed to fetch media');
+      const buffer = await mediaResp.arrayBuffer();
+      
+      const uint8 = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < uint8.byteLength; i++) {
+        binary += String.fromCharCode(uint8[i]);
+      }
+      const base64 = btoa(binary);
+
+      parts.push({
+        inlineData: {
+          data: base64,
+          mimeType: 'image/jpeg'
+        }
+      });
     }
 
-    const text = result.response.text().trim().toUpperCase();
+    parts.unshift({ text: prompt });
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+    
+    const requestBody = {
+      contents: [
+        {
+          parts: parts
+        }
+      ],
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      ]
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!res.ok) {
+      throw new Error(`Gemini API HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim().toUpperCase();
 
     if (text.includes('REJECT')) {
       console.log(`[Moderation] REPORTING/FLAGGING offensive post ${record.id}`);
       
-      // Update as flagged but DON'T delete and DON'T change from approved
-      // This fulfills "no moderation, only report"
       await supabase.from('posts').update({ 
         is_flagged: true,
-        ai_confidence_score: 99.9 // Mark as high confidence rejection for reporting
+        ai_confidence_score: 99.9
       }).eq('id', record.id);
       
       return NextResponse.json({ action: 'flagged' });
@@ -89,7 +114,6 @@ Instructions: If the text OR the attached media contains nudity, sexual acts, ex
 
   } catch (error: any) {
     console.error('[Moderation] Critical Error:', error.message);
-    // Even on critical error, return 200 to Supabase pg_net to avoid retries/noise
     return NextResponse.json({ error: error.message }, { status: 200 });
   }
 }
