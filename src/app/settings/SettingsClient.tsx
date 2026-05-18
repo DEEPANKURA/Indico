@@ -365,9 +365,12 @@ export default function SettingsClient({ profile, email }: Props) {
             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>
               For support, safe-reporting, or privacy requests:
             </span>
-            <strong style={{ fontSize: '0.85rem', color: 'var(--accent-neon, #00f0ff)', display: 'block', marginTop: '4px' }}>
-              legal@indicosocial.in
-            </strong>
+            <a 
+              href="mailto:indicosocialprivacy@gmail.com"
+              style={{ fontSize: '0.85rem', color: 'var(--accent-neon, #00f0ff)', display: 'block', marginTop: '4px', textDecoration: 'none', fontWeight: 'bold' }}
+            >
+              indicosocialprivacy@gmail.com
+            </a>
           </div>
         </div>
       )}

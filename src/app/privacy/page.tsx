@@ -169,7 +169,7 @@ export default function PrivacyPage() {
             <span style={{ fontSize: '0.9rem', color: 'white', fontWeight: '700' }}>Compliance Office:</span>
             <a 
               id="privacy-contact-link"
-              href="mailto:privacy@indicosocial.in" 
+              href="mailto:indicosocialprivacy@gmail.com" 
               style={{ 
                 fontSize: '0.9rem', 
                 color: 'var(--accent-neon, #00f0ff)', 
@@ -178,7 +178,7 @@ export default function PrivacyPage() {
                 borderBottom: '1px dashed var(--accent-neon)' 
               }}
             >
-              privacy@indicosocial.in
+              indicosocialprivacy@gmail.com
             </a>
           </div>
         </div>

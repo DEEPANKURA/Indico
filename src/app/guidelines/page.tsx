@@ -174,7 +174,7 @@ export default function GuidelinesPage() {
           <span style={{ fontSize: '0.9rem', color: 'white', fontWeight: '700' }}>Report Violations:</span>
           <a 
             id="guidelines-report-link"
-            href="mailto:safety@indicosocial.in" 
+            href="mailto:indicosocialprivacy@gmail.com" 
             style={{ 
               fontSize: '0.9rem', 
               color: 'var(--accent-neon, #00f0ff)', 
@@ -183,7 +183,7 @@ export default function GuidelinesPage() {
               borderBottom: '1px dashed var(--accent-neon)' 
             }}
           >
-            safety@indicosocial.in
+            indicosocialprivacy@gmail.com
           </a>
         </div>
         <p style={{ color: 'var(--text-muted, #94a3b8)', fontSize: '0.8rem', marginTop: '24px', margin: 0 }}>

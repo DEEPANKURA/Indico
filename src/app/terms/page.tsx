@@ -144,7 +144,7 @@ export default function TermsPage() {
           <span style={{ fontSize: '0.9rem', color: 'white', fontWeight: '700' }}>Legal & Support Contact:</span>
           <a 
             id="legal-contact-link"
-            href="mailto:legal@indicosocial.in" 
+            href="mailto:indicosocialprivacy@gmail.com" 
             style={{ 
               fontSize: '0.9rem', 
               color: 'var(--accent-neon, #00f0ff)', 
@@ -153,7 +153,7 @@ export default function TermsPage() {
               borderBottom: '1px dashed var(--accent-neon)' 
             }}
           >
-            legal@indicosocial.in
+            indicosocialprivacy@gmail.com
           </a>
         </div>
         <p style={{ color: 'var(--text-muted, #94a3b8)', fontSize: '0.8rem', marginTop: '24px', margin: 0 }}>
