@@ -100,6 +100,21 @@ export default function RightSidebar() {
           ))}
         </div>
       </div>
+
+      <div style={{ 
+        marginTop: '24px', 
+        padding: '0 8px', 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: '8px', 
+        fontSize: '0.75rem', 
+        color: 'var(--text-muted, #94a3b8)',
+        opacity: 0.8
+      }}>
+        <Link href="/terms" style={{ color: 'var(--text-muted, #94a3b8)', textDecoration: 'none' }} className="hover-neon">Terms of Service</Link>
+        <span>•</span>
+        <span>© 2026 Indico</span>
+      </div>
     </aside>
   );
 }
