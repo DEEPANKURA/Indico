@@ -11,6 +11,8 @@ interface CreateCommunityModalProps {
 
 export default function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModalProps) {
   const [loading, setLoading] = useState(false);
+  const [showGuidelinesAlert, setShowGuidelinesAlert] = useState(false);
+  const [agreedGuidelines, setAgreedGuidelines] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -24,6 +26,11 @@ export default function CreateCommunityModal({ onClose, onSuccess }: CreateCommu
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
+
+    if (!agreedGuidelines) {
+      setShowGuidelinesAlert(true);
+      return;
+    }
 
     setLoading(true);
     const res = await createCommunityAction(formData);
@@ -52,6 +59,102 @@ export default function CreateCommunityModal({ onClose, onSuccess }: CreateCommu
         }} 
         onClick={(e) => e.stopPropagation()}
       >
+        {showGuidelinesAlert && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 1010,
+            background: 'var(--bg-primary)',
+            display: 'flex', flexDirection: 'column',
+            padding: '24px', borderRadius: '24px',
+            boxSizing: 'border-box'
+          }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: '900', color: 'white', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: 'var(--accent-neon, #00f0ff)' }}>🛡️</span> Community Guidelines
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px', lineHeight: '1.4' }}>
+              As a community owner, you are legally responsible for moderating all content uploaded by your members. To justify platform access and monetization eligibility, you must agree to enforce our policies.
+            </p>
+
+            <div style={{
+              flex: 1, overflowY: 'auto', padding: '16px', borderRadius: '16px',
+              background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-light)',
+              marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '14px'
+            }} className="scrollbar-hidden">
+              
+              <div style={{ paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <strong style={{ color: '#ef4444', fontSize: '0.9rem', display: 'block', marginBottom: '4px' }}>🚫 Banned Behaviors</strong>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: '1.4', display: 'block' }}>
+                  Hate speech, harassment, violent threats, terrorism, impersonation, scams, spam, or digital piracy are strictly prohibited.
+                </span>
+              </div>
+
+              <div style={{ paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <strong style={{ color: '#10b981', fontSize: '0.9rem', display: 'block', marginBottom: '4px' }}>✓ Allowed Media</strong>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: '1.4', display: 'block' }}>
+                  Bikinis, swimwear, beachwear, fitness clothing, fashion modeling, and non-nude artistic photography.
+                </span>
+              </div>
+
+              <div style={{ paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <strong style={{ color: '#ef4444', fontSize: '0.9rem', display: 'block', marginBottom: '4px' }}>✗ Prohibited Media</strong>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: '1.4', display: 'block' }}>
+                  Visible genitals, visible nipples, pornography, sexual acts, explicit close-ups, or escort/prostitution promotion.
+                </span>
+              </div>
+
+              <div>
+                <strong style={{ color: 'var(--accent-secondary, #a855f7)', fontSize: '0.9rem', display: 'block', marginBottom: '4px' }}>⚖️ Owner Moderation Duties</strong>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: '1.4', display: 'block' }}>
+                  You must actively delete prohibited posts in your community. Failure to moderate your channel will lead to immediate deletion of the community and account suspension.
+                </span>
+              </div>
+
+            </div>
+
+            <label style={{ display: 'flex', gap: '10px', cursor: 'pointer', marginBottom: '20px', alignItems: 'flex-start', userSelect: 'none' }}>
+              <input 
+                type="checkbox" 
+                checked={agreedGuidelines}
+                onChange={(e) => setAgreedGuidelines(e.target.checked)}
+                style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: 'var(--accent-neon, #00f0ff)' }} 
+              />
+              <span style={{ fontSize: '0.85rem', color: 'white', lineHeight: '1.4', fontWeight: '600', textAlign: 'left' }}>
+                I agree to enforce and uphold Indico's Community Guidelines and Content Policy in my community.
+              </span>
+            </label>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                type="button"
+                onClick={() => setShowGuidelinesAlert(false)}
+                className="glass-card"
+                style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-light)', color: 'white', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button"
+                disabled={!agreedGuidelines || loading}
+                onClick={async () => {
+                  setShowGuidelinesAlert(false);
+                  setLoading(true);
+                  const res = await createCommunityAction(formData);
+                  if (res.success) {
+                    onSuccess();
+                    onClose();
+                  } else {
+                    alert(res.error || 'Failed to create community');
+                  }
+                  setLoading(false);
+                }}
+                className="btn-primary"
+                style={{ flex: 2, padding: '12px', borderRadius: '12px', color: 'white', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                {loading ? <Loader2 size={16} className="animate-spin" /> : 'Agree & Create'}
+              </button>
+            </div>
+          </div>
+        )}
+
         <button onClick={onClose} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
           <X size={24} />
         </button>
