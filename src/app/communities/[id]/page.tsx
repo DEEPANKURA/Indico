@@ -13,7 +13,7 @@ export async function generateMetadata(
 
   const { data: community } = await supabase
     .from('communities')
-    .select('name, description, color, banner_url')
+    .select('name, description, color, banner_url, is_public, is_exclusive, category')
     .eq('id', id)
     .single();
 
@@ -26,9 +26,25 @@ export async function generateMetadata(
   const name = community.name || 'Community';
   const description = community.description ? community.description.substring(0, 160) : `Join the ${name} community on Indico.`;
 
+  const isSensitiveCategory = ['swimwear', 'beachwear', 'fitness', 'fashion', 'modeling', 'artistic', 'adult', 'nsfw'].includes(
+    (community.category || '').toLowerCase()
+  );
+
+  const sensitiveKeywords = ['nudity', 'sensual', 'bikini', 'bikinis', 'swimwear', 'beachwear', 'artistic photography', 'fashion modeling', '18+', 'nsfw', 'adult'];
+  const hasSensitiveKeywords = sensitiveKeywords.some(keyword => 
+    (community.name || '').toLowerCase().includes(keyword) || 
+    (community.description || '').toLowerCase().includes(keyword)
+  );
+
+  const isSensitive = !community.is_public || community.is_exclusive || isSensitiveCategory || hasSensitiveKeywords;
+
   return {
     title: `${name} Community | Indico`,
     description,
+    robots: isSensitive ? {
+      index: false,
+      follow: false,
+    } : undefined,
     openGraph: {
       title: `${name} on Indico`,
       description,
