@@ -119,7 +119,7 @@ export default function SettingsClient({ profile, email }: Props) {
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
             flex: 1, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
             background: activeTab === tab.id ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' : 'transparent',
-            color: 'white', fontWeight: activeTab === tab.id ? '700' : '500', fontSize: '0.85rem',
+            color: activeTab === tab.id ? 'white' : 'var(--text-secondary, #64748b)', fontWeight: activeTab === tab.id ? '700' : '500', fontSize: '0.85rem',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
             minWidth: 'fit-content', whiteSpace: 'nowrap'
           }}>
