@@ -27,30 +27,6 @@ export default async function AdminUsersPage({
   const { data: rawUsers } = await dbQuery.limit(30);
   const users = (rawUsers || []) as any[];
 
-  // Action delegates mapped to server actions
-  const handleVerify = async (formData: FormData) => {
-    'use server';
-    const id = formData.get('userId') as string;
-    const isCreator = formData.get('isCreator') === 'true';
-    await adminVerifyCreatorAction(id, isCreator);
-    revalidatePath('/admin/users');
-  };
-
-  const handleShadowban = async (formData: FormData) => {
-    'use server';
-    const id = formData.get('userId') as string;
-    const isShadow = formData.get('isShadow') === 'true';
-    await adminShadowbanUserAction(id, isShadow);
-    revalidatePath('/admin/users');
-  };
-
-  const handleBan = async (formData: FormData) => {
-    'use server';
-    const id = formData.get('userId') as string;
-    const isBan = formData.get('isBan') === 'true';
-    await adminBanUserAction(id, isBan);
-    revalidatePath('/admin/users');
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -104,6 +80,10 @@ export default async function AdminUsersPage({
             ) : (
               users.map((user) => {
                 const isSuspended = (user.bio || '').includes('[ACCOUNT SUSPENDED');
+                const verifyAction = adminVerifyCreatorAction.bind(null, user.id, !user.is_creator);
+                const shadowAction = adminShadowbanUserAction.bind(null, user.id, true);
+                const banAction = adminBanUserAction.bind(null, user.id, !isSuspended);
+
                 return (
                   <tr 
                     key={user.id} 
@@ -170,9 +150,7 @@ export default async function AdminUsersPage({
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         
                         {/* Toggle Creator Verified badge */}
-                        <form action={handleVerify}>
-                          <input type="hidden" name="userId" value={user.id} />
-                          <input type="hidden" name="isCreator" value={(!user.is_creator).toString()} />
+                        <form action={verifyAction}>
                           <button 
                             type="submit" 
                             title={user.is_creator ? "Revoke Creator Status" : "Promote to Creator"}
@@ -187,9 +165,7 @@ export default async function AdminUsersPage({
                         </form>
 
                         {/* Toggle Shadowban */}
-                        <form action={handleShadowban}>
-                          <input type="hidden" name="userId" value={user.id} />
-                          <input type="hidden" name="isShadow" value="true" />
+                        <form action={shadowAction}>
                           <button 
                             type="submit" 
                             title="Shadowban User"
@@ -203,9 +179,7 @@ export default async function AdminUsersPage({
                         </form>
 
                         {/* Toggle Suspension/Ban */}
-                        <form action={handleBan}>
-                          <input type="hidden" name="userId" value={user.id} />
-                          <input type="hidden" name="isBan" value={(!isSuspended).toString()} />
+                        <form action={banAction}>
                           <button 
                             type="submit" 
                             title={isSuspended ? "Unsuspend Account" : "Suspend Account"}

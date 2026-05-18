@@ -226,3 +226,23 @@ export async function adminEmergencyLockdownAction(lockdownEnabled: boolean) {
     return { success: false, error: err.message };
   }
 }
+
+export async function adminSaveSettingsAction(formData: FormData) {
+  try {
+    const session = await assertAdminAccess(['superadmin', 'admin']);
+    const reg = formData.get('registrations') === 'on';
+    const sub = formData.get('subscriptions') === 'on';
+    const size = formData.get('maxSize') as string;
+
+    await logAdminAction(
+      session.user.email,
+      'SETTINGS_UPDATE',
+      `Config updated: Registrations enabled: ${reg}, Subscriptions: ${sub}, Max upload resolution: ${size}MB.`
+    );
+    revalidatePath('/admin/settings');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+

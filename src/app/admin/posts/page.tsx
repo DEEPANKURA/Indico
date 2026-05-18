@@ -17,12 +17,6 @@ export default async function AdminPostsPage() {
 
   const posts = (rawPosts || []) as any[];
 
-  const handleDelete = async (formData: FormData) => {
-    'use server';
-    const postId = formData.get('postId') as string;
-    await adminDeletePostAction(postId);
-    revalidatePath('/admin/posts');
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -47,6 +41,7 @@ export default async function AdminPostsPage() {
             const mediaUrl = post.media_urls?.[0];
             const isVideo = mediaUrl?.toLowerCase()?.endsWith('.mp4');
             const hasMedia = !!mediaUrl;
+            const deleteAction = adminDeletePostAction.bind(null, post.id);
 
             return (
               <div 
@@ -131,8 +126,7 @@ export default async function AdminPostsPage() {
                       <Eye size={14} /> View
                     </a>
                     
-                    <form action={handleDelete} style={{ flex: 1 }}>
-                      <input type="hidden" name="postId" value={post.id} />
+                    <form action={deleteAction} style={{ flex: 1 }}>
                       <button 
                         type="submit" 
                         style={{

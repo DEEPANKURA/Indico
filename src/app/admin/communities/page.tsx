@@ -15,13 +15,6 @@ export default async function AdminCommunitiesPage() {
 
   const communities = (rawComms || []) as any[];
 
-  const handleToggle = async (formData: FormData) => {
-    'use server';
-    const id = formData.get('commId') as string;
-    const isDisabled = formData.get('isDisabled') === 'true';
-    await adminDisableCommunityAction(id, isDisabled);
-    revalidatePath('/admin/communities');
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -44,6 +37,7 @@ export default async function AdminCommunitiesPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
           {communities.map((comm) => {
             const isDisabled = (comm.rules || '').includes('[COMMUNITY DISABLED');
+            const toggleAction = adminDisableCommunityAction.bind(null, comm.id, !isDisabled);
 
             return (
               <div 
@@ -116,10 +110,7 @@ export default async function AdminCommunitiesPage() {
 
                 {/* Trigger control */}
                 <div style={{ marginTop: 'auto', paddingTop: '12px' }}>
-                  <form action={handleToggle}>
-                    <input type="hidden" name="commId" value={comm.id} />
-                    <input type="hidden" name="isDisabled" value={(!isDisabled).toString()} />
-                    
+                  <form action={toggleAction}>
                     <button 
                       type="submit"
                       style={{

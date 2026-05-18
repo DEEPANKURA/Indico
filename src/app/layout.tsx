@@ -8,6 +8,8 @@ import PWARegister from "@/components/PWARegister";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
 import ChunkErrorHandler from "@/components/ChunkErrorHandler";
 import E2EEInitializer from "@/components/E2EEInitializer";
+import { headers } from "next/headers";
+
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -79,11 +81,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') || '';
+  const isAdminPath = pathname.startsWith('/admin');
+
   return (
     <html lang="en">
       <head>
@@ -106,15 +112,23 @@ export default function RootLayout({
         <RealtimeRefresh />
         <ChunkErrorHandler />
         <E2EEInitializer />
-        <div className="app-layout">
-          <Sidebar />
-          <main className="main-feed-area">
+        {isAdminPath ? (
+          <div className="admin-layout" style={{ minHeight: '100vh', background: '#050507', color: 'white' }}>
             {children}
-          </main>
-          <RightSidebar />
-        </div>
-        {/* Bottom nav shown only on mobile via CSS */}
-        <BottomNav />
+          </div>
+        ) : (
+          <>
+            <div className="app-layout">
+              <Sidebar />
+              <main className="main-feed-area">
+                {children}
+              </main>
+              <RightSidebar />
+            </div>
+            {/* Bottom nav shown only on mobile via CSS */}
+            <BottomNav />
+          </>
+        )}
         <PWARegister />
       </body>
     </html>

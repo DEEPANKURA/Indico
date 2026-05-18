@@ -1,24 +1,9 @@
 import { Settings, Save, AlertTriangle, EyeOff, Radio } from 'lucide-react';
-import { logAdminAction } from '@/utils/admin';
-import { revalidatePath } from 'next/cache';
+import { adminSaveSettingsAction } from '@/app/actions/admin';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminSettingsPage() {
-
-  const handleSave = async (formData: FormData) => {
-    'use server';
-    const reg = formData.get('registrations') === 'on';
-    const sub = formData.get('subscriptions') === 'on';
-    const size = formData.get('maxSize') as string;
-
-    await logAdminAction(
-      'indicosocialprivacy@gmail.com',
-      'SETTINGS_UPDATE',
-      `Config updated: Registrations enabled: ${reg}, Subscriptions: ${sub}, Max upload resolution: ${size}MB.`
-    );
-    revalidatePath('/admin/settings');
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -32,7 +17,7 @@ export default async function AdminSettingsPage() {
         </p>
       </div>
 
-      <form action={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '640px' }}>
+      <form action={adminSaveSettingsAction} style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '640px' }}>
         
         {/* Registration block */}
         <div style={{ background: '#0a0a0d', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '24px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>

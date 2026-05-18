@@ -18,7 +18,14 @@ const PUBLIC_ROUTES = [
 ]
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next()
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-pathname', request.nextUrl.pathname)
+
+  let supabaseResponse = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    }
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://zmtohgjowcntyhuiuqop.supabase.co',

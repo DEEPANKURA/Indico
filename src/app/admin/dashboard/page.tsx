@@ -30,15 +30,6 @@ export default async function AdminDashboard() {
 
   const pendingReports = (rawReports.data || []) as any[];
 
-  // Server Action handler wrapped for form submit
-  const handleAction = async (formData: FormData) => {
-    'use server';
-    const id = formData.get('reportId') as string;
-    const action = formData.get('action') as 'approved' | 'rejected';
-    
-    await adminResolveReportAction(id, action);
-    revalidatePath('/admin/dashboard');
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -116,70 +107,71 @@ export default async function AdminDashboard() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {pendingReports.map((report) => (
-                <div 
-                  key={report.id} 
-                  style={{
-                    padding: '16px', borderRadius: '16px', background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '12px'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '4px 8px', borderRadius: '6px' }}>
-                      REPORTED FOR: {report.reason.toUpperCase()}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                      {new Date(report.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  
-                  {report.details && (
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary, #94a3b8)', lineHeight: '1.4' }}>
-                      "{report.details}"
-                    </p>
-                  )}
+              {pendingReports.map((report) => {
+                const keepAction = adminResolveReportAction.bind(null, report.id, 'approved');
+                const rejectAction = adminResolveReportAction.bind(null, report.id, 'rejected');
 
-                  {report.posts && (
-                    <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '4px' }}>POST CONTENT</div>
-                      <div style={{ fontSize: '0.8rem', color: 'white', lineHeight: '1.4' }}>
-                        {report.posts.content || '[Media Only Post]'}
-                      </div>
+                return (
+                  <div 
+                    key={report.id} 
+                    style={{
+                      padding: '16px', borderRadius: '16px', background: 'rgba(255,255,255,0.02)',
+                      border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '4px 8px', borderRadius: '6px' }}>
+                        REPORTED FOR: {report.reason.toUpperCase()}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        {new Date(report.created_at).toLocaleDateString()}
+                      </span>
                     </div>
-                  )}
+                    
+                    {report.details && (
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary, #94a3b8)', lineHeight: '1.4' }}>
+                        "{report.details}"
+                      </p>
+                    )}
 
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-                    <form action={handleAction} style={{ flex: 1 }}>
-                      <input type="hidden" name="reportId" value={report.id} />
-                      <input type="hidden" name="action" value="approved" />
-                      <button 
-                        type="submit" 
-                        style={{
-                          width: '100%', padding: '8px', borderRadius: '8px', background: 'rgba(16,185,129,0.1)',
-                          border: '1px solid rgba(16,185,129,0.2)', color: '#10b981', fontSize: '0.8rem', fontWeight: '700',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Keep & Approve
-                      </button>
-                    </form>
-                    <form action={handleAction} style={{ flex: 1 }}>
-                      <input type="hidden" name="reportId" value={report.id} />
-                      <input type="hidden" name="action" value="rejected" />
-                      <button 
-                        type="submit" 
-                        style={{
-                          width: '100%', padding: '8px', borderRadius: '8px', background: 'rgba(239,68,68,0.1)',
-                          border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: '0.8rem', fontWeight: '700',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Delete Post
-                      </button>
-                    </form>
+                    {report.posts && (
+                      <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '4px' }}>POST CONTENT</div>
+                        <div style={{ fontSize: '0.8rem', color: 'white', lineHeight: '1.4' }}>
+                          {report.posts.content || '[Media Only Post]'}
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                      <form action={keepAction} style={{ flex: 1 }}>
+                        <button 
+                          type="submit" 
+                          style={{
+                            width: '100%', padding: '8px', borderRadius: '8px', background: 'rgba(16,185,129,0.1)',
+                            border: '1px solid rgba(16,185,129,0.2)', color: '#10b981', fontSize: '0.8rem', fontWeight: '700',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Keep & Approve
+                        </button>
+                      </form>
+                      <form action={rejectAction} style={{ flex: 1 }}>
+                        <button 
+                          type="submit" 
+                          style={{
+                            width: '100%', padding: '8px', borderRadius: '8px', background: 'rgba(239,68,68,0.1)',
+                            border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: '0.8rem', fontWeight: '700',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Delete Post
+                        </button>
+                      </form>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

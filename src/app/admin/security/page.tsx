@@ -5,19 +5,14 @@ import { revalidatePath } from 'next/cache';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminSecurityPage() {
+  const enableAction = adminEmergencyLockdownAction.bind(null, true);
+  const disableAction = adminEmergencyLockdownAction.bind(null, false);
   
   const suspiciousActivities = [
     { ip: '198.51.100.42', attempts: '14 rapid POST calls', location: 'Frankfurt, DE', reason: 'High-frequency brute force on /api/auth', severity: 'HIGH' },
     { ip: '203.0.113.189', attempts: 'API scanning', location: 'Tokyo, JP', reason: 'Attempted Directory Traversal', severity: 'CRITICAL' },
     { ip: '192.0.2.77', attempts: 'Multiple registration failures', location: 'Mumbai, IN', reason: 'Invalid payload structured schema injection', severity: 'MEDIUM' }
   ];
-
-  const handleLockdown = async (formData: FormData) => {
-    'use server';
-    const isLock = formData.get('lockdown') === 'true';
-    await adminEmergencyLockdownAction(isLock);
-    revalidatePath('/admin/security');
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -52,8 +47,7 @@ export default async function AdminSecurityPage() {
             <strong>WARNING:</strong> Triggering lockdown freezes all content creation, disables incoming transactions, and forces a mandatory 2-Factor check for all administrators.
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <form action={handleLockdown} style={{ flex: 1 }}>
-              <input type="hidden" name="lockdown" value="true" />
+            <form action={enableAction} style={{ flex: 1 }}>
               <button 
                 type="submit"
                 style={{
@@ -65,8 +59,7 @@ export default async function AdminSecurityPage() {
                 ENABLE LOCKDOWN NOW
               </button>
             </form>
-            <form action={handleLockdown} style={{ flex: 1 }}>
-              <input type="hidden" name="lockdown" value="false" />
+            <form action={disableAction} style={{ flex: 1 }}>
               <button 
                 type="submit"
                 style={{
